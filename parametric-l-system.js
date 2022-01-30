@@ -7,6 +7,146 @@ const foo =
      B(x)  : x< 1 -> C
      B(x)  : x>=1 -> B(x-1)`;
 
+function parseSystemDefinition(definition) {
+  // first pass
+  // split productions in four parts
+  // don't initialize functions in condition and transformation yet
+
+  // gather all parameters in the system
+
+  // second pass
+  // initialize functions in condition and tranformation
+
+  // return L-system
+}
+
+function findClosingParenthesis(str, pos = 0) {
+  let depth = 1;
+  for (let i = pos + 1; i < str.length; ++i) {
+    if (str[i] === ')' && --depth === 0) {
+      return i;
+    } else if (str[i] === '(') {
+      depth++;
+    }
+  }
+  return -1;
+}
+
+class Module {
+  constructor(name, args = [], isQuery = false) {
+    this.name = name;
+    this.args = args;
+    this.isQuery = isQuery;
+  }
+  toString() {
+    if (this.args.length) {
+      return `${this.isQuery ? '?': ''}${this.name}(${this.args.join(',')})`;
+    } else {
+      return this.name;
+    }
+  }
+  static fromDefinition (definition) {
+    const parenOpenIndex = definition.indexOf('(');
+    const args = parenOpenIndex > 0 ?
+      definition.slice(parenOpenIndex + 1, findClosingParenthesis(definition, parenOpenIndex)).split(',') : [];
+    const isQuery = definition[0] === '?';
+    return new Module(definition[isQuery ? 1 : 0], args, isQuery);
+  }
+}
+
+class LSystem {
+  static #getProductionProbability (definition) {
+    const parts = definition.split(';');
+    if (parts.length === 2) {
+      try {
+        return parseFloat(parts[0]);
+      } catch (e) {} // just swallow it...
+    }
+    return 1.0;
+  }
+
+  static #getProductionModuleSpecification (definition) {
+    const parts = definition.split(':');
+  }
+
+  static #getProductionBody (definition) {
+    const parts = definition.split('->');
+    return parts[parts.length - 1];
+  }
+
+  static #splitProductionDefinition (definition) {
+    const cleanDefinition = definition.replace(/\s/g, '');
+    let semicolonIndex = cleanDefinition.indexOf(';');
+    let colonIndex = cleanDefinition.indexOf(':');
+    let arrowIndex = cleanDefinition.indexOf('->');
+
+    console.assert(arrowIndex > 0);
+    console.assert(semicolonIndex < colonIndex < arrowIndex);
+
+    // probabilities & conditions are optional
+    if (colonIndex < 0) colonIndex = arrowIndex;
+
+    return {
+      probability: semicolonIndex < 0 ? '' : cleanDefinition.slice(0, semicolonIndex),
+      moduleSpecification: cleanDefinition.slice(semicolonIndex + 1, colonIndex),
+      condition: cleanDefinition.slice(colonIndex + 1, arrowIndex),
+      body: cleanDefinition.slice(arrowIndex + 2)
+    };
+  }
+
+  static #parseModuleString (moduleString) {
+    const modules = [];
+    for (let i = 0; i < moduleString.length; ++i) {
+      const parenOpenIndex = i + (moduleString[i] === '?' ? 2 : 1);
+      const moduleEndIndex =
+        (moduleString[parenOpenIndex] === '(' ? findClosingParenthesis(moduleString, parenOpenIndex) : i) + 1;
+      modules.push(Module.fromDefinition(moduleString.slice(i, moduleEndIndex)));
+      i = moduleEndIndex - 1;
+    }
+    return modules;
+  }
+
+  static #parseModuleSpecification (definition) {
+    const lessThanIndex = definition.indexOf('<');
+    const greaterThanIndex = definition.indexOf('>');
+    return {
+      predecessors: this.#parseModuleString(lessThanIndex < 0 ? '' : definition.slice(0, lessThanIndex)),
+      successors: this.#parseModuleString(greaterThanIndex < 0 ? '' : definition.slice(greaterThanIndex + 1)),
+      module: this.#parseModuleString(
+        definition.slice(lessThanIndex + 1, greaterThanIndex < 0 ? definition.length : greaterThanIndex))
+    }
+  }
+
+  static parseProductionDefinition (definition) {
+    const {probability, moduleSpecification, condition, body} = this.#splitProductionDefinition(definition);
+
+    console.log('new rule:', definition);
+    console.log('probability', probability);
+    console.log('moduleSpecification', moduleSpecification);
+    console.log('condition', condition);
+    console.log('body', body);
+
+    const moduleSpec = this.#parseModuleSpecification(moduleSpecification);
+    const variables = [
+      ...moduleSpec.predecessors.flatMap(m => m.args),
+      ...moduleSpec.module.flatMap(m => m.args),
+      ...moduleSpec.successors.flatMap(m => m.args),
+    ];
+    console.assert(variables.length === new Set(variables).size,
+      'Variables in module specification must be unique.');
+
+    // todo: get parameters from condition & body (args of modules)
+    // nope: they will have to be supplied together with the rest of the system
+
+    const bodyModules = this.#parseModuleString(body);
+    console.log(bodyModules.map(p => p.toString()));
+    console.log(moduleSpec.predecessors.map(p => p.toString()).join(''));
+    console.log(moduleSpec.module.map(p => p.toString()).join(''));
+    console.log(moduleSpec.successors.map(p => p.toString()).join(''));
+  }
+}
+
+
 class Symbol {
     constructor(definition) {
         const parts = definition.split(')')[0].split('(');
@@ -22,17 +162,6 @@ class Symbol {
     }
 }
 
-function findClosingParenthesis(str, pos = 0) {
-    let depth = 1;
-    for (let i = pos + 1; i < str.length; ++i) {
-        if (str[i] === ')' && --depth === 0) {
-            return i;
-        } else if (str[i] === '(') {
-            depth++;
-        }
-    }
-    return -1;
-}
 
 class X {
     constructor(name, args = []) {
@@ -188,11 +317,7 @@ function next2(axiom, productionsMap, systemParameters) {
     return nextIteration;
 }
 
-class LSystem {
-    axiomToSymbols(axiom) {
 
-    }
-}
 
 // assumptions: no function name is longer than one character!
 
@@ -214,7 +339,7 @@ function test() {
         return m;
     }, {});
 
-    const numIterations = 10000;
+    const numIterations = 1000;
     const systemParameters = [];
 
     let start = performance.now();
@@ -236,4 +361,21 @@ function test() {
     console.log(currentAxiom);
     console.log('string', performance.now() - start);
 
+    const systems = [
+      deterministic,
+      stochastic,
+      contextSensitive,
+      parametric,
+      treeModel,
+      queryParameters,
+      {
+        productions: ['ab<c>def -> a', 'a(b,c)>?P(x,y)->a']
+      }
+    ];
+    for (const s of systems) {
+      for (const p of s.productions) {
+        LSystem.parseProductionDefinition(p);
+      }
+    }
+    console.log('test', 'x+Math.cos(y)/34.5f'.matchAll(validVariableNameRegex));
 }
