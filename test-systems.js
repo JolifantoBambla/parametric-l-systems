@@ -1,6 +1,6 @@
 "use strict";
 
-const deterministic = {
+export const deterministic = {
   axiom: 'a',
   productions: [
     'a->ab',
@@ -16,7 +16,7 @@ const deterministic = {
   ]
 }
 
-const stochastic = {
+export const stochastic = {
   axiom: 'F',
   productions: [
     'F->F[+F]F[-F]F',
@@ -28,7 +28,7 @@ const stochastic = {
   results: []
 }
 
-const contextSensitive = {
+export const contextSensitive = {
   axiom: 'baaaaaaa',
   productions: [
     'b<a -> b',
@@ -47,7 +47,7 @@ const contextSensitive = {
   ]
 }
 
-const parametric = {
+export const parametric = {
   axiom: 'B(2)A(4,4)',
   productions: [
     'A(x,y): y<=3 -> A(x*2,x+y)',
@@ -66,7 +66,7 @@ const parametric = {
   ]
 }
 
-const treeModel = {
+export const treeModel = {
   axiom: 'A(1,10)',
   productions: [
     'A(l,w) -> F(l,w)[&(a0)B(l*r2,w*wr)]/(d)A(l*r1,w*wr)',
@@ -78,7 +78,7 @@ const treeModel = {
   results: []
 };
 
-const queryParameters = {
+export const queryParameters = {
   axiom: 'A',
   productions: [
     'A->F(1)?P(x,y)-A',

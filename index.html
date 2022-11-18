@@ -3,11 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <title>Title</title>
-    <script src="valid-variable-name.js"></script>
-    <script src="test-systems.js"></script>
-    <script src="parametric-l-system.js"></script>
 </head>
-<body onload="test()">
+<body>
+    <script type="module">
+        import { test } from "./parametric-l-system.js";
+        import { Symbol } from "./l-system/module.js";
 
+        class X {
+            constructor(name, args = []) {
+                this.name = name;
+                this.args = args;
+            }
+            toString() {
+                if (this.args.length) {
+                    return `${this.name}(${this.args.join(',')})`;
+                }
+                return `${this.name}`;
+            }
+        }
+
+        test();
+
+        console.log(new Symbol('Foo', ['x', 'y']).toGenericString());
+    </script>
 </body>
 </html>

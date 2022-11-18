@@ -1,5 +1,8 @@
 "use strict";
 
+import { findClosingParenthesis } from "./util/string.js";
+import { deterministic, stochastic, contextSensitive, treeModel, queryParameters, parametric } from "./test-systems.js";
+
 const foo =
     `B(2)A(4,4)
      A(x,y): y<=3 -> A(x*2,x+y)
@@ -20,17 +23,7 @@ function parseSystemDefinition(definition) {
   // return L-system
 }
 
-function findClosingParenthesis(str, pos = 0) {
-  let depth = 1;
-  for (let i = pos + 1; i < str.length; ++i) {
-    if (str[i] === ')' && --depth === 0) {
-      return i;
-    } else if (str[i] === '(') {
-      depth++;
-    }
-  }
-  return -1;
-}
+
 
 class Module {
   constructor(name, args = [], isQuery = false) {
@@ -212,7 +205,6 @@ class Result {
         }).join('')}\``;
         this.func = new Function(...args, ...systemParameters, `return ${this.formatString}`);
 
-
         const formatCode = [];
         for (let i = 0; i < definition.length; ++i) {
             const symbol = definition[i];
@@ -241,6 +233,7 @@ class Production {
 
         parts = parts[1].split('->');
         this.conditionDefinition = parts[0];
+        console.log('condition definition', this.conditionDefinition);
         this.#condition = new Function(
             ...this.symbol.parameters, ...systemParameters, `return !!(${this.conditionDefinition})`);
 
@@ -321,13 +314,15 @@ function next2(axiom, productionsMap, systemParameters) {
 
 // assumptions: no function name is longer than one character!
 
-function test() {
+export function test() {
     const lines = foo.split('\n');
     const axiom = lines[0];
     const productions = lines.slice(1).map(p => new Production(p));
+
     console.log('lines', lines);
     console.log('axiom', axiom);
     console.log('productions', productions);
+
     const productionsMap = productions.reduce((m, p) => {
         if (!(p.symbol.name in m)) {
             m[p.symbol.name] = {};
@@ -344,11 +339,14 @@ function test() {
 
     let start = performance.now();
 
+
     let currentAxiom = [new X('B',[2]), new X('A', [4,4])];
+    /*
     for (let i = 0; i < numIterations; ++i) {
         currentAxiom = next2(currentAxiom, productionsMap, systemParameters);
         //console.log('next', currentAxiom.map(s => s.toString()).join(''));
     }
+    */
     console.log('obj', performance.now() - start);
 
     // looks like the string implementation is much faster...
@@ -377,5 +375,5 @@ function test() {
         LSystem.parseProductionDefinition(p);
       }
     }
-    console.log('test', 'x+Math.cos(y)/34.5f'.matchAll(validVariableNameRegex));
+    //console.log('test', 'x+Math.cos(y)/34.5f'.matchAll(validVariableNameRegex));
 }
