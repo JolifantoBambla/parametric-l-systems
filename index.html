@@ -6,25 +6,8 @@
 </head>
 <body>
     <script type="module">
-        import { test } from "./parametric-l-system.js";
-        import { Symbol, testLSystems } from "./l-system/module.js";
+        import { testLSystems } from "./js/l-system/module.js";
 
-        class X {
-            constructor(name, args = []) {
-                this.name = name;
-                this.args = args;
-            }
-            toString() {
-                if (this.args.length) {
-                    return `${this.name}(${this.args.join(',')})`;
-                }
-                return `${this.name}`;
-            }
-        }
-
-        //test();
-
-        //console.log(new Symbol('Foo', ['x', 'y']).toGenericString());
         console.log(testLSystems());
     </script>
 </body>
