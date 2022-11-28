@@ -21,17 +21,11 @@ pub fn initialize() {
 
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen()]
-pub fn main(lsystem_definition: JsValue) {
-    log::info!("running wasm!");
-
-    let lsystem = lindenmayer::LSystem::new(lsystem_definition);
+pub fn main(l_system_definition: JsValue) {
+    let l_system = lindenmayer::LSystem::new(l_system_definition);
     for i in 0..5 {
-        log::info!("step {}", lsystem.next());
+        let commands: Vec<turtle::TurtleCommand> = serde_wasm_bindgen::from_value(l_system.next_raw())
+            .expect("Could not parse turtle commands");
+        turtle::execute_turtle_commands(&commands);
     }
-
-    /*
-    let tc: Vec<turtle::TurtleCommand> = serde_wasm_bindgen::from_value(turtle_commands)
-        .expect("Could not parse turtle commands");
-    log::info!("turtle commands {:?}", tc);
-     */
 }

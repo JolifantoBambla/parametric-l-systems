@@ -107,6 +107,14 @@ pub enum TurtleCommand {
 
     #[serde(rename = "]")]
     PopFromStack,
+
+    // every command below this line is not needed for the exercise
+
+    #[serde(rename = "$")]
+    ToHorizontal,
+
+    #[serde(other)]
+    Unknown,
 }
 
 pub fn execute_turtle_commands(commands: &Vec<TurtleCommand>) -> Vec<Mat4> {
@@ -143,6 +151,9 @@ pub fn execute_turtle_commands(commands: &Vec<TurtleCommand>) -> Vec<Mat4> {
             TurtleCommand::PopFromStack => {
                 state = stack.pop_front()
                     .expect("Invalid PopFromStack command: empty stack");
+            }
+            _ => {
+                log::warn!("encountered unknown command {:?}", c);
             }
         }
     }
