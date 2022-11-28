@@ -8,6 +8,26 @@
     <script type="module">
         import { testLSystems } from "./js/l-system/module.js";
 
+        import init, { main } from "./pkg/parametric_l_systems.js";
+
+        async function run() {
+            await init();
+            main(
+                {
+                    axiom: 'A(1,10)',
+                    productions: [
+                        'A(l,w) -> F(l,w)[&(a0)B(l*r2,w*wr)]/(d)A(l*r1,w*wr)',
+                        'B(l,w) -> F(l,w)[+(-a1)$C(l*r2,w*wr)]C(l*r1,w*wr)',
+                        'C(l,w) -> F(l,w)[+(a1)$B(l*r2,w*wr)]B(l*r1,w*wr)'
+                    ],
+                    parameters: {r1: 7.0, r2: 7.1, a0: 7.2, a1: 7.3, d: 7.4, wr: 7.5},
+                    alphabet: ['A(l,w)', 'B(l,w)', 'C(l,w)', 'F(l,w)', '[', ']', '+(a)', '&(a)', '/(d)', '$'],
+                }
+                //[{name: "F", parameters: [1.2,2.3]}]
+            );
+        }
+
+        run();
         console.log(testLSystems());
     </script>
 </body>
