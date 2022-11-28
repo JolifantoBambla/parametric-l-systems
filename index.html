@@ -7,7 +7,7 @@
 <body>
     <script type="module">
         import { test } from "./parametric-l-system.js";
-        import { Symbol } from "./l-system/module.js";
+        import { Symbol, testLSystems } from "./l-system/module.js";
 
         class X {
             constructor(name, args = []) {
@@ -22,9 +22,10 @@
             }
         }
 
-        test();
+        //test();
 
-        console.log(new Symbol('Foo', ['x', 'y']).toGenericString());
+        //console.log(new Symbol('Foo', ['x', 'y']).toGenericString());
+        console.log(testLSystems());
     </script>
 </body>
 </html>

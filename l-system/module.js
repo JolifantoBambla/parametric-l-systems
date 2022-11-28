@@ -1,6 +1,6 @@
 "use strict";
 
-import {findClosingParenthesis} from "../util/string";
+import {findClosingParenthesis} from "../util/string.js";
 
 class ToSerializable {
     toSerializable() {
@@ -17,17 +17,15 @@ class Clone extends ToSerializable {
     }
 }
 
-export class Parameter {
-    #name;
-    #initialValue;
-}
-
 export class Symbol extends Clone {
     #name;
     #parameters;
 
-    constructor({name, parameters}) {
+    constructor({name, parameters = []}) {
         super();
+        if (!name.length) {
+            throw Error('symbol name must not be empty');
+        }
         this.#name = name;
         this.#parameters = parameters;
     }
@@ -45,27 +43,31 @@ export class Symbol extends Clone {
     }
 
     toGenericString() {
-        return `${this.name}(${this.parameters.map(_ => '')})`;
+        return `${this.name}(${this.parameters.map(_ => '_')})`;
     }
 
     toSerializable() {
         return { name: this.name, parameters: this.parameters };
     }
 
-    createModule(values) {
-        console.assert(values.length === this.parameters.length);
-        return new Module({
-            name: this.name,
-            parameters: values
-        });
+    toString(ignoreEmptyParameters = false) {
+        if (ignoreEmptyParameters && !this.parameters.length) {
+            return `${this.name}`;
+        } else {
+            return `${this.name}(${this.parameters})`;
+        }
     }
 
     static fromString(str) {
-        const openIdx = str.indexOf('(');
-        return new Symbol({
-            name: str.split(0, openIdx),
-            parameters: openIdx > 0 ? str.slice(openIdx + 1, findClosingParenthesis(str, openIdx)).split(',') : []
-        });
+        if (str.includes('(')) {
+            const openIdx = str.indexOf('(');
+            return new Symbol({
+                name: str.slice(0, openIdx),
+                parameters: str.slice(openIdx + 1, findClosingParenthesis(str, openIdx)).split(','),
+            });
+        } else {
+            return new Symbol({name: str});
+        }
     }
 }
 
@@ -74,8 +76,11 @@ export class Module extends Clone {
     #parameters;
     #isQuery;
 
-    constructor({name, parameters}) {
+    constructor({name, parameters = []}) {
         super();
+        if (!name.length) {
+            throw Error('module name must not be empty');
+        }
         this.#name = name;
         this.#parameters = parameters;
         this.#isQuery = name[0] === '?';
@@ -98,11 +103,15 @@ export class Module extends Clone {
     }
 
     toGenericString() {
-        return `${this.name}(${this.parameters.map(_ => '')})`;
+        return `${this.name}(${this.parameters.map(_ => '_')})`;
     }
 
-    toString() {
-        return `${this.name}(${this.parameters})`;
+    toString(ignoreEmptyParameters = false) {
+        if (ignoreEmptyParameters && !this.parameters.length) {
+            return `${this.name}`;
+        } else {
+            return `${this.name}(${this.parameters})`;
+        }
     }
 
     toSerializable() {
@@ -122,7 +131,7 @@ class LSystemState extends Clone {
     #axiom;
     parameters;
 
-    constructor({axiom, parameters}) {
+    constructor({axiom = [], parameters = {}}) {
         super();
         this.#axiom = axiom;
         this.parameters = parameters;
@@ -144,7 +153,7 @@ class LSystemState extends Clone {
     }
 
     toString() {
-        return this.#axiom.map(m => m.toString()).join('')
+        return this.#axiom.map(m => m.toString(true)).join('')
     }
 }
 
@@ -161,8 +170,8 @@ class Operation {
         return this.#probability;
     }
 
-    apply(module, state) {
-        return this.#func(Module.prototype.constructor, ...module.parameters, state);
+    apply(module, systemState) {
+        return this.#func(Module.prototype.constructor, ...module.parameters, systemState.parameters);
     }
 }
 
@@ -209,16 +218,24 @@ class Production {
         }
     }
 
-    apply(module, state) {
-        return this.#chooseOperation().apply(module, state);
+    apply(module, systemState) {
+        return this.#chooseOperation().apply(module, systemState);
     }
 
     condition(module, systemState) {
-        this.#condition ? this.#condition(...module.parameters, ...systemState.parameters) : true;
+        return this.#condition ? this.#condition(...module.parameters, systemState.parameters) : true;
     }
 
     rank() {
         return this.#predecessors.length + this.#successors.length + (this.#condition ? 1 : 0);
+    }
+
+    get predecessors() {
+        return this.#predecessors;
+    }
+
+    get successors() {
+        return this.#successors;
     }
 }
 
@@ -252,7 +269,7 @@ export class LSystemParser {
         //  - symbols for which productions exist are first extracted from the productions
         //  -
 
-        const productionSpecs = productions.map(this.#splitProductionDefinition)
+        const productionSpecs = productions.map(p => this.#splitProductionDefinition(p))
             .reduce((symbolsToProdSpecs, p) => {
                 const symbol = p.moduleSpecification.module.toGenericString();
                 if (!symbolsToProdSpecs[symbol]) {
@@ -285,27 +302,34 @@ export class LSystemParser {
         return new LSystem({
             symbols,
             parameters,
-            axiom: this.#parseAxiom(axiom, symbols),
+            axiom: LSystemParser.#parseAxiom(axiom, symbols),
             productions: this.#processProductionSpecs(productionSpecs, symbols, parameters),
         })
     }
 
+    static #conditionEquals(a, b) {
+        let condA = `${a.condition.conditionDefinition}`;
+        let condB = `${b.condition.conditionDefinition}`;
+        for (const i in b.parameters) {
+            condA = condA.replace(b.parameters[i], a.parameters[i]);
+            condB = condB.replace(b.parameters[i], a.parameters[i]);
+        }
+        return condA === condB;
+    }
+
     #processProductionSpecs(productionSpecs, symbols, parameters) {
         return Object.keys(productionSpecs).reduce((productions, symbolName) => {
-            // todo: allow for productions without condition!
             const specs = productionSpecs[symbolName].map(({probability, moduleSpecification, condition, body}) => {
                 return {
-                    // todo: parse probability
                     probability,
                     symbol: moduleSpecification.module,
-                    predecessors: this.#parseProductionPreOrSuccessors(moduleSpecification.predecessors, symbols),
-                    successors: this.#parseProductionPreOrSuccessors(moduleSpecification.successors, symbols),
+                    predecessors: LSystemParser.#parseProductionPreOrSuccessors(moduleSpecification.predecessors, symbols),
+                    successors: LSystemParser.#parseProductionPreOrSuccessors(moduleSpecification.successors, symbols),
                     condition: this.#parseProductionCondition(condition, moduleSpecification.module.parameters, parameters),
                     body: this.#parseProductionBody(body, moduleSpecification.module.parameters, parameters, symbols),
                 };
             });
 
-            // todo: group by predecessors & successors & condition and construct productions
             const processed = new Set();
             for (const i in specs) {
                 if (processed.has(i)) {
@@ -314,17 +338,17 @@ export class LSystemParser {
 
                 const spec = specs[i];
                 const operations = [];
-                for (const s of specs) {
+                for (let j = i; j < specs.length; ++j) {
+                    const s = specs[j];
                     if (s.predecessors.length !== spec.predecessors.length ||
-                        s.successors.length !== spec.successors.length //||
-                        // todo: compare conditions
-                        //new Set(Object.keys(s.condition.requiredSystemParameters) )
+                        s.successors.length !== spec.successors.length ||
+                        !LSystemParser.#conditionEquals(spec, s)
                     ) {
                         continue;
                     }
                     let candidate = true;
-                    for (const j in s.predecessors) {
-                        if (!s.predecessors[i].equals(spec.predecessors[i])) {
+                    for (const l in s.predecessors) {
+                        if (!s.predecessors[l].equals(spec.predecessors[l])) {
                             candidate = false;
                             break;
                         }
@@ -332,8 +356,8 @@ export class LSystemParser {
                     if (!candidate) {
                         continue;
                     }
-                    for (const j in s.successors) {
-                        if (!s.successors[i].equals(spec.successors[i])) {
+                    for (const l in s.successors) {
+                        if (!s.successors[l].equals(spec.successors[l])) {
                             candidate = false;
                             break;
                         }
@@ -342,21 +366,24 @@ export class LSystemParser {
                         continue;
                     }
                     operations.push(s);
+                    processed.add(j);
                 }
+
+                const numNoProbability = operations.reduce((sum, c) => sum + (c.probability ? 0 : 1), 0);
+                const sumProbability = operations.reduce((sum, c) => sum + (c.probability || 0), 0);
+                const defaultProbability = (1.0 - sumProbability) / numNoProbability;
 
                 // todo: make sameO
                 const ops = [];
-
-                // todo: if any operations have no probability, they need to be assigned (1-sumOfProbs)/numNoProb
-
                 let offset = 0.0;
                 for (const i in operations) {
                     const op = operations[i];
                     if (i === operations.length - 1) {
                         ops.push(new Operation(1.0, op.body));
                     } else {
-                        ops.push(new Operation(offset + op.probability, op.body));
-                        offset += op.probability;
+                        const probability = op.probability || defaultProbability;
+                        ops.push(new Operation(offset + probability, op.body));
+                        offset += probability;
                     }
                 }
 
@@ -388,31 +415,36 @@ export class LSystemParser {
         const systemParamsString = `{${
             requiredSystemParameters.map(p => `${p}=${systemParameters[p]}`)
         }`;
+        const funcArgs = [...moduleParameters];
+        if (Object.keys(requiredSystemParameters).length) {
+            funcArgs.push(systemParamsString);
+        }
         return {
-            func: new Function(
-                ...moduleParameters,
-                systemParamsString,
-                conditionDefinition,
-            ),
-            requiredSystemParameters,
+            func: conditionDefinition.length ? new Function(
+                ...funcArgs,
+                `return !!(${conditionDefinition})`,
+            ) : null,
+            conditionDefinition,
         };
     }
 
     #parseProductionBody(bodyDefinition, moduleParameters, systemParameters, symbols) {
-        const producedSymbols = this.#parseProductionPreOrSuccessors(bodyDefinition, symbols);
+        const producedSymbols = LSystemParser.#parseProductionPreOrSuccessors(bodyDefinition, symbols);
         const body = producedSymbols.map(s => {
-            return `new ctor(${s.name},[${s.parameters}])`
+            return `new ctor({ name: '${s.name}', parameters: [${s.parameters}] })`
         });
+        const funcArgs = ['ctor', ...moduleParameters];
+        if (Object.keys(systemParameters).length) {
+            funcArgs.push(`{${Object.keys(systemParameters).map(k =>`${k}=${systemParameters[k]}`)}}`);
+        }
         return new Function(
-            'ctor',
-            ...moduleParameters,
-            `{${Object.keys(systemParameters).map(k =>`${k}=${systemParameters[k]}`)})}}`,
+            ...funcArgs,
             `return [${body}];`
         );
     }
 
     // todo: same as parseAxiom except for Symbol instead of Module -> combine and add if statement
-    #parseProductionPreOrSuccessors(moduleDefinitions, symbols) {
+    static #parseProductionPreOrSuccessors(moduleDefinitions, symbols) {
         const parsedSymbols = [];
         const originalAxiom = `${moduleDefinitions}`;
         while (moduleDefinitions.length) {
@@ -426,7 +458,7 @@ export class LSystemParser {
                         if (s.equals(Symbol.fromString(moduleDefinition))) {
                             found = true;
                             parsedSymbols.push(Symbol.fromString(moduleDefinition));
-                            moduleDefinitions = moduleDefinitions.split(moduleDefinition)[1];
+                            moduleDefinitions = moduleDefinitions.slice(moduleDefinition.length);
                         }
                     } else if (s.parameters.length === 0) {
                         found = true;
@@ -434,7 +466,7 @@ export class LSystemParser {
                             name: s.name,
                             parameters: [],
                         }));
-                        moduleDefinitions = moduleDefinitions.split(s.name)[1];
+                        moduleDefinitions = moduleDefinitions.slice(s.name.length);
                     }
                 }
                 if (found) {
@@ -448,7 +480,7 @@ export class LSystemParser {
         return parsedSymbols;
     }
 
-    #parseAxiom(axiom, symbols) {
+    static #parseAxiom(axiom, symbols) {
         const parsedAxiom = [];
         const originalAxiom = `${axiom}`;
         while (axiom.length) {
@@ -462,7 +494,7 @@ export class LSystemParser {
                         if (s.equals(Symbol.fromString(moduleDefinition))) {
                             found = true;
                             parsedAxiom.push(Module.fromString(moduleDefinition));
-                            axiom = axiom.split(moduleDefinition)[1];
+                            axiom = axiom.slice(moduleDefinition.length);
                         }
                     } else if (s.parameters.length === 0) {
                         found = true;
@@ -470,7 +502,7 @@ export class LSystemParser {
                             name: s.name,
                             parameters: [],
                         }));
-                        axiom = axiom.split(s.name)[1];
+                        axiom = axiom.slice(s.name.length);
                     }
                 }
                 if (found) {
@@ -485,8 +517,8 @@ export class LSystemParser {
     }
 
     #splitModuleSpecification(definition) {
-        const predSeparator = definition.indexOf('<');
-        const succSeparator = definition.indexOf('>');
+        const predSeparator = definition.indexOf(this.#modulePredecessorSeparator);
+        const succSeparator = definition.indexOf(this.#moduleSuccessorSeparator);
         return {
             predecessors: predSeparator < 0 ? '' : definition.slice(0, predSeparator),
             successors: succSeparator < 0 ? '' : definition.slice(succSeparator + 1),
@@ -509,7 +541,7 @@ export class LSystemParser {
         if (condSepIdx < 0) condSepIdx = opSepIdx;
 
         return {
-            probability: probSepIdx < 0 ? '' : cleanDefinition.slice(0, probSepIdx),
+            probability: probSepIdx < 0 ? null : Number(cleanDefinition.slice(0, probSepIdx)),
             moduleSpecification: this.#splitModuleSpecification(cleanDefinition.slice(probSepIdx + 1, condSepIdx)),
             condition: cleanDefinition.slice(condSepIdx + 1, opSepIdx),
             body: cleanDefinition.slice(opSepIdx + 2)
@@ -527,15 +559,7 @@ export class LSystem {
         this.#symbols = symbols;
         this.#parameters = parameters;
         this.#axiom = axiom;
-
-        this.#productions = {};
-        for (const p of productions) {
-            const symbol = p.symbol().toGenericString();
-            if (!this.#productions[symbol]) {
-                this.#productions[symbol] = [];
-            }
-            this.#productions[symbol].push(p);
-        }
+        this.#productions = productions;
     }
 
     evaluate(systemState) {
@@ -545,7 +569,7 @@ export class LSystem {
             const p = this.#findProduction(i, systemState);
             result.push(p ? p.apply(m, systemState) : m.clone());
         }
-        systemState.axiom(result);
+        systemState.axiom = result.flat();
         return systemState;
     }
 
@@ -568,7 +592,7 @@ export class LSystem {
                     matches = false;
                     break;
                 }
-                if (!c.predecessors[c.predecessors.length - j - 1].equals(modules[i - j - 1].symbol)) {
+                if (!c.predecessors[c.predecessors.length - j - 1].equals(modules[i - j - 1])) {
                     matches = false;
                     break;
                 }
@@ -579,7 +603,7 @@ export class LSystem {
                         matches = false;
                         break;
                     }
-                    if (!c.successors[j].equals(modules[i + j].symbol)) {
+                    if (!c.successors[j].equals(modules[i + j])) {
                         matches = false;
                         break;
                     }
@@ -592,15 +616,12 @@ export class LSystem {
         return null;
     }
 
-    get parameters() {
-        return JSON.parse(JSON.stringify(this.#parameters));
+    get axiom() {
+        return this.#axiom.map(m => m.clone());
     }
 
-
-
-    // todo: refactor from other file
-    static parseFromDefinition({alphabet = undefined, parameters = [], productions, axiom}) {
-
+    get parameters() {
+        return JSON.parse(JSON.stringify(this.#parameters));
     }
 }
 
@@ -621,6 +642,7 @@ export class LSystemEvaluator {
         return this.state.toString();
     }
 
+    // todo: this is an infinite loop?
     nth(i) {
         if (this.#previousStates.length > i) {
             return this.#previousStates[i].toString;
@@ -630,10 +652,24 @@ export class LSystemEvaluator {
         }
         return this.#state.toString();
     }
+}
 
-    static parseFromDefinition({parameters, production, axiom}) {
-
+function runLSystem(definition) {
+    const lSystem = new LSystemParser({}).parseLSystem(definition);
+    const evaluator = new LSystemEvaluator(lSystem);
+    console.log(definition);
+    console.log(lSystem);
+    for (const r of definition.results) {
+        const result = evaluator.next();
+        console.log(r);
+        console.log(result);
     }
+    if (!definition.results.length) {
+        for (let i = 0; i < 5; ++i) {
+            console.log(evaluator.next());
+        }
+    }
+    return lSystem;
 }
 
 export function testLSystems() {
@@ -644,7 +680,7 @@ export function testLSystems() {
             'b->ac'
         ],
         parameters: {},
-        symbols: ['a', 'b', 'c'],
+        alphabet: ['a', 'b', 'c'],
         results: [
             'ab',
             'abac',
@@ -653,5 +689,105 @@ export function testLSystems() {
         ]
     }
 
-    const deterministicLSystem = LSystem.parseFromDefinition(deterministic);
+    const stochastic = {
+        axiom: 'F',
+        productions: [
+            'F->F[+F]F[-F]F',
+            'F->F[+F]F',
+            'F->F[-F]F'
+        ],
+        parameters: {},
+        alphabet: ['F', '[', ']', '+', '-'],
+        results: []
+    }
+
+    const contextSensitive = {
+        axiom: 'baaaaaaa',
+        productions: [
+            'b<a -> b',
+            'b->a'
+        ],
+        parameters: {},
+        alphabet: ['a', 'b'],
+        results: [
+            'abaaaaaa',
+            'aabaaaaa',
+            'aaabaaaa',
+            'aaaabaaa',
+            'aaaaabaa',
+            'aaaaaaba'
+        ]
+    }
+
+    const parametric = {
+        axiom: 'B(2)A(4,4)',
+        productions: [
+            'A(x,y): y<=3 -> A(x*2,x+y)',
+            'A(x,y): y> 3 -> B(x)A(x/y,0)',
+            'B(x)  : x< 1 -> C',
+            'B(x)  : x>=1 -> B(x-1)'
+        ],
+        parameters: {},
+        alphabet: ['A(x,y)', 'B(x)', 'C'],
+        results: [
+            'B(1)B(4)A(1,0)',
+            'B(0)B(3)A(2,1)',
+            'CB(2)A(4,3)',
+            'CB(1)A(8,7)',
+            'CB(0)B(8)A(1.142,0)'
+        ]
+    }
+
+    const treeModel = {
+        axiom: 'A(1,10)',
+        productions: [
+            'A(l,w) -> F(l,w)[&(a0)B(l*r2,w*wr)]/(d)A(l*r1,w*wr)',
+            'B(l,w) -> F(l,w)[+(-a1)$C(l*r2,w*wr)]C(l*r1,w*wr)',
+            'C(l,w) -> F(l,w)[+(a1)$B(l*r2,w*wr)]B(l*r1,w*wr)'
+        ],
+        parameters: {r1: 7.0, r2: 7.1, a0: 7.2, a1: 7.3, d: 7.4, wr: 7.5},
+        alphabet: ['A(l,w)', 'B(l,w)', 'C(l,w)', 'F(l,w)', '[', ']', '+(a)', '&(a)', '/(d)', '$'],
+        results: []
+    };
+
+    const queryParameters = {
+        axiom: 'A',
+        productions: [
+            'A->F(1)?P(x,y)-A',
+            'F(k)->F(k+1)'
+        ],
+        parameters: {},
+        alphabet: ['A', 'F(k)', '?P(x,y)', '-'],
+        results: [
+            'F(1)?P(0,1)-A',
+            'F(2)?P(0,2)-F(1)?P(1,2)-A',
+            'F(3)?P(0,3)-F(1)?P(2,3)-F(1)?P(2,2)-A'
+        ],
+        interpreter: {
+            'F': (k, ctx) => {
+                const result = {...ctx};
+                const distance = k * ctx.dir;
+                if (ctx.axis === 'x') {
+                    result.x += distance;
+                } else {
+                    result.y += distance;
+                }
+                return result;
+            }
+        }
+    };
+
+    const definitions = [
+        deterministic,
+        stochastic,
+        contextSensitive,
+        parametric,
+        treeModel,
+        queryParameters
+    ];
+    const systems = [];
+    for (const d of definitions) {
+        systems.push(runLSystem(d));
+    }
+    return systems;
 }
