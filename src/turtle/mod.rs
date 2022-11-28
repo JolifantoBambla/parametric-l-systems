@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 use glam::Mat4;
-use serde::{Deserialize, Deserializer};
+use serde::{Deserialize};
 
 // F(d,r)
 // Positioniere einen Zylinder der Länge d mit Radius r entlang der h-Achse.
