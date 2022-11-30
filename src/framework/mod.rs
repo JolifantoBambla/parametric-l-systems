@@ -1,4 +1,9 @@
 pub mod app;
+pub mod camera;
 pub mod context;
+pub mod gpu;
 pub mod input;
+pub mod mesh;
+pub mod renderer;
+pub mod scene;
 pub mod util;

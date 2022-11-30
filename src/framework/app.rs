@@ -17,7 +17,7 @@ use crate::framework::input::Input;
 use crate::framework::util::web::{get_or_create_window, WindowConfig};
 
 pub trait GpuApp<UserEvent> {
-    fn init(&mut self, event_loop: &EventLoop<()>, context: &Rc<DeviceContext>);
+    fn init(&mut self, event_loop: &EventLoop<()>, context: &GpuContext);
     fn resize(&mut self);
     fn on_user_event(&mut self, _event: &UserEvent) {}
     fn on_window_event(&mut self, _event: &WindowEvent) {}
@@ -58,7 +58,7 @@ impl<G: 'static + GpuApp<()>> AppRunner<G> {
 
         let event_loop = self.event_loop.take().unwrap();
 
-        app.init(&event_loop, self.ctx.device_context());
+        app.init(&event_loop, &self.ctx);
 
         log::debug!("Starting event loop");
         event_loop
