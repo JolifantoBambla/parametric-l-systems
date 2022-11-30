@@ -4,6 +4,7 @@ use wasm_bindgen::prelude::*;
 pub mod turtle;
 pub mod lindenmayer;
 pub mod geometry;
+pub mod framework;
 
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
 // allocator.
