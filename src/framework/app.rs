@@ -18,8 +18,8 @@ use crate::framework::util::window::{Resize, WindowConfig};
 
 pub trait GpuApp<UserEvent> {
     fn init(&mut self, event_loop: &EventLoop<()>, context: &SurfaceContext);
-    fn on_user_event(&mut self, _event: &UserEvent);
-    fn on_window_event(&mut self, _event: &WindowEvent);
+    fn on_user_event(&mut self, event: &UserEvent);
+    fn on_window_event(&mut self, event: &WindowEvent);
     fn render(&mut self, view: &TextureView, input: &Input);
     fn get_context_descriptor() -> ContextDescriptor<'static>;
 }

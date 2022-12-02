@@ -8,8 +8,8 @@ pub trait VertexType: bytemuck::Pod {
     fn wgsl_definition<'a>() -> &'a str;
 }
 
-#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Vertex {
     position: Vec3,
     normal: Vec3,
