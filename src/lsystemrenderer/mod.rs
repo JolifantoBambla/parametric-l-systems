@@ -74,7 +74,6 @@ impl App {
             format: depth_format,
             usage: TextureUsages::RENDER_ATTACHMENT,
         });
-        // todo: maybe this needs to be explicitly set
         let depth_view = depth_texture.create_view(&TextureViewDescriptor::default());
 
         let shader_module = ctx.device().create_shader_module(ShaderModuleDescriptor {
