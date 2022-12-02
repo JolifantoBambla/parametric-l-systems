@@ -1,7 +1,9 @@
 use std::rc::Rc;
+use std::sync::Arc;
 use wgpu;
-use wgpu::{Adapter, Device, Instance, Queue, Surface, SurfaceConfiguration};
-use winit;
+use wgpu::{Adapter, Device, Instance, Queue, RequestAdapterOptions, Surface, SurfaceConfiguration, TextureUsages};
+use winit::window::Window;
+use crate::framework::util::window::Resize;
 
 /// Helper struct for constructing a `GPUContext`.
 pub struct ContextDescriptor<'a> {
@@ -37,12 +39,12 @@ impl<'a> Default for ContextDescriptor<'a> {
     }
 }
 
-pub struct DeviceContext {
+pub struct Gpu {
     device: Device,
     queue: Queue,
 }
 
-impl DeviceContext {
+impl Gpu {
     pub fn device(&self) -> &Device {
         &self.device
     }
@@ -51,23 +53,164 @@ impl DeviceContext {
     }
 }
 
-///
-pub struct GpuContext {
-    instance: Instance,
-    adapter: Adapter,
-    device_context: Rc<DeviceContext>,
-    surface: Option<Surface>,
-    surface_configuration: Option<SurfaceConfiguration>,
+pub enum SurfaceTarget<'a> {
+    Window(&'a Window),
+    #[cfg(all(target_arch = "wasm32", not(feature = "emscripten")))]
+    Canvas(&'a web_sys::HtmlCanvasElement),
+    #[cfg(all(target_arch = "wasm32", not(feature = "emscripten")))]
+    OffscreenCanvas(&'a web_sys::OffscreenCanvas),
 }
 
-impl GpuContext {
-    pub async fn new<'a>(context_descriptor: &ContextDescriptor<'a>) -> Self {
+impl<'a> SurfaceTarget<'a> {
+    pub fn create_surface(&self, instance: &Instance) -> Surface {
+        let surface = match self {
+            SurfaceTarget::Window(w) => {
+                unsafe { instance.create_surface(w) }
+            }
+            #[cfg(all(target_arch = "wasm32", not(feature = "emscripten")))]
+            SurfaceTarget::Canvas(c) => {
+                instance.create_surface_from_canvas(c)
+            }
+            #[cfg(all(target_arch = "wasm32", not(feature = "emscripten")))]
+            SurfaceTarget::OffscreenCanvas(c) => {
+                instance.create_surface_from_offscreen_canvas(c)
+            }
+        };
+        surface
+    }
+
+    pub fn width(&self) -> u32 {
+        match self {
+            SurfaceTarget::Window(w) => {
+                w.inner_size().width
+            }
+            #[cfg(all(target_arch = "wasm32", not(feature = "emscripten")))]
+            SurfaceTarget::Canvas(c) => {
+                c.width()
+            }
+            #[cfg(all(target_arch = "wasm32", not(feature = "emscripten")))]
+            SurfaceTarget::OffscreenCanvas(c) => {
+                c.width()
+            }
+        }
+    }
+
+    pub fn height(&self) -> u32 {
+        match self {
+            SurfaceTarget::Window(w) => {
+                w.inner_size().height
+            }
+            #[cfg(all(target_arch = "wasm32", not(feature = "emscripten")))]
+            SurfaceTarget::Canvas(c) => {
+                c.height()
+            }
+            #[cfg(all(target_arch = "wasm32", not(feature = "emscripten")))]
+            SurfaceTarget::OffscreenCanvas(c) => {
+                c.height()
+            }
+        }
+    }
+}
+
+pub struct HeadlessContext {
+    instance: Instance,
+    adapter: Adapter,
+    device_context: Arc<Gpu>,
+}
+
+impl HeadlessContext {
+    pub fn instance(&self) -> &Instance {
+        &self.instance
+    }
+    pub fn adapter(&self) -> &Adapter {
+        &self.adapter
+    }
+    pub fn gpu(&self) -> &Arc<Gpu> {
+        &self.device_context
+    }
+}
+
+pub struct SurfaceContext {
+    instance: Instance,
+    adapter: Adapter,
+    gpu: Arc<Gpu>,
+    surface: Surface,
+    surface_configuration: SurfaceConfiguration,
+}
+
+impl SurfaceContext {
+    fn choose_surface_format(&self) -> wgpu::TextureFormat {
+        self.surface.get_supported_formats(&self.adapter)[0]
+    }
+
+    fn choose_present_mode(&self) -> wgpu::PresentMode {
+        self.surface.get_supported_present_modes(&self.adapter)[0]
+    }
+
+    fn choose_alpha_mode(&self) -> wgpu::CompositeAlphaMode {
+        self.surface.get_supported_alpha_modes(&self.adapter)[0]
+    }
+
+    pub fn configure_surface(&self) {
+        self.surface
+            .configure(self.gpu.device(), &self.surface_configuration);
+    }
+
+    pub fn instance(&self) -> &Instance {
+        &self.instance
+    }
+
+    pub fn adapter(&self) -> &Adapter {
+        &self.adapter
+    }
+
+    pub fn gpu(&self) -> &Arc<Gpu> {
+        &self.gpu
+    }
+
+    pub fn surface(&self) -> &Surface {
+        &self.surface
+    }
+
+    pub fn surface_configuration(&self) -> &SurfaceConfiguration {
+        &self.surface_configuration
+    }
+}
+
+impl Resize for SurfaceContext {
+    fn resize(&mut self, width: u32, height: u32) {
+        self.surface_configuration.width = width;
+        self.surface_configuration.height = height;
+        self.configure_surface();
+    }
+}
+
+pub enum WgpuContext {
+    Surface(SurfaceContext),
+    Headless(HeadlessContext),
+}
+
+impl WgpuContext {
+    pub async fn new<'a>(context_descriptor: &ContextDescriptor<'a>, surface_target: Option<SurfaceTarget<'a>>) -> Self {
         // Instantiates instance of WebGPU
         let instance = wgpu::Instance::new(context_descriptor.backends);
 
+        let surface = if let Some(surface_target) = surface_target.as_ref() {
+            Some(surface_target.create_surface(&instance))
+        } else {
+            None
+        };
+
+        let mut request_adapter_options = context_descriptor.request_adapter_options.clone();
+        request_adapter_options.compatible_surface = if let Some(surface) = surface.as_ref() {
+            Some(surface)
+        } else {
+            None
+        };
+
         // `request_adapter` instantiates the general connection to the GPU
         let adapter = instance
-            .request_adapter(&context_descriptor.request_adapter_options)
+            .request_adapter(&request_adapter_options)
             .await
             .expect("No suitable GPU adapters found on the system!");
 
@@ -115,116 +258,75 @@ impl GpuContext {
             )
             .await
             .expect("Unable to find a suitable GPU adapter!");
-        Self {
-            instance,
-            adapter,
-            device_context: Rc::new(DeviceContext { device, queue }),
-            surface: None,
-            surface_configuration: None,
+
+        let gpu = Arc::new(Gpu { device, queue });
+        if let Some(surface) = surface {
+            let surface_target = surface_target.unwrap();
+            let format = surface.get_supported_formats(&adapter)[0];
+            let present_mode = surface.get_supported_present_modes(&adapter)[0];
+            let alpha_mode = surface.get_supported_alpha_modes(&adapter)[0];
+            let surface_configuration = SurfaceConfiguration {
+                usage: TextureUsages::RENDER_ATTACHMENT,
+                format,
+                width: surface_target.width(),
+                height: surface_target.height(),
+                present_mode,
+                alpha_mode,
+            };
+            surface.configure(gpu.device(), &surface_configuration);
+
+            Self::Surface(SurfaceContext {
+                instance,
+                adapter,
+                gpu,
+                surface,
+                surface_configuration,
+            })
+        } else {
+            Self::Headless(HeadlessContext {
+                instance,
+                adapter,
+                device_context: gpu
+            })
         }
-    }
-
-    fn choose_surface_format(&self) -> wgpu::TextureFormat {
-        self.surface().get_supported_formats(&self.adapter)[0]
-    }
-
-    fn choose_present_mode(&self) -> wgpu::PresentMode {
-        self.surface().get_supported_present_modes(&self.adapter)[0]
-    }
-
-    fn choose_alpha_mode(&self) -> wgpu::CompositeAlphaMode {
-        self.surface().get_supported_alpha_modes(&self.adapter)[0]
-    }
-
-    pub fn configure_surface(&self) {
-        self.surface()
-            .configure(self.device_context.device(), self.surface_configuration());
-    }
-
-    pub fn with_surface_from_window(mut self, window: &winit::window::Window) -> Self {
-        self.surface = unsafe { Some(self.instance.create_surface(&window)) };
-
-        self.surface_configuration = Some(wgpu::SurfaceConfiguration {
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-            format: self.choose_surface_format(),
-            width: window.inner_size().width,
-            height: window.inner_size().height,
-            present_mode: self.choose_present_mode(),
-            alpha_mode: self.choose_alpha_mode(),
-        });
-
-        self.configure_surface();
-
-        self
-    }
-
-    #[cfg(all(target_arch = "wasm32", not(feature = "emscripten")))]
-    pub fn with_surface_from_offscreen_canvas(mut self, canvas: &web_sys::OffscreenCanvas) -> Self {
-        self.surface = Some(self.instance.create_surface_from_offscreen_canvas(canvas));
-
-        self.surface_configuration = Some(wgpu::SurfaceConfiguration {
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-            format: self.choose_surface_format(),
-            width: canvas.width(),
-            height: canvas.height(),
-            present_mode: self.choose_present_mode(),
-            alpha_mode: self.choose_alpha_mode(),
-        });
-
-        self.configure_surface();
-
-        self
-    }
-
-    #[cfg(all(target_arch = "wasm32", not(feature = "emscripten")))]
-    pub fn with_surface_from_canvas(mut self, canvas: &web_sys::HtmlCanvasElement) -> Self {
-        self.surface = Some(self.instance.create_surface_from_canvas(canvas));
-
-        self.surface_configuration = Some(wgpu::SurfaceConfiguration {
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-            format: self.choose_surface_format(),
-            width: canvas.width(),
-            height: canvas.height(),
-            present_mode: self.choose_present_mode(),
-            alpha_mode: self.choose_alpha_mode(),
-        });
-
-        self.configure_surface();
-
-        self
-    }
-
-    pub fn resize_surface(&mut self, width: u32, height: u32) {
-        if self.surface.is_none() || self.surface_configuration.is_none() {
-            panic!("No surface or surface configuration set!");
-        }
-        let mut surface_configuration = self.surface_configuration.as_mut().unwrap();
-        surface_configuration.width = width;
-        surface_configuration.height = height;
-        self.configure_surface();
     }
 
     pub fn instance(&self) -> &Instance {
-        &self.instance
+        match self {
+            WgpuContext::Surface(s) => s.instance(),
+            WgpuContext::Headless(h) => h.instance(),
+        }
     }
 
     pub fn adapter(&self) -> &Adapter {
-        &self.adapter
+        match self {
+            WgpuContext::Surface(s) => s.adapter(),
+            WgpuContext::Headless(h) => h.adapter(),
+        }
     }
 
-    pub fn device_context(&self) -> &Rc<DeviceContext> {
-        &self.device_context
+    pub fn gpu(&self) -> &Arc<Gpu> {
+        match self {
+            WgpuContext::Surface(s) => s.gpu(),
+            WgpuContext::Headless(h) => h.gpu(),
+        }
     }
 
-    pub fn surface(&self) -> &Surface {
-        self.surface
-            .as_ref()
-            .expect("GpuContext has no Surface")
+    pub fn surface_context(&self) -> &SurfaceContext {
+        match self {
+            WgpuContext::Surface(s) => s,
+            WgpuContext::Headless(_) => {
+                panic!("surface_context called on a headless context")
+            }
+        }
     }
 
-    pub fn surface_configuration(&self) -> &SurfaceConfiguration {
-        self.surface_configuration
-            .as_ref()
-            .expect("GpuContext has no SurfaceConfiguration")
+    pub fn surface_context_mut(&mut self) -> &mut SurfaceContext {
+        match self {
+            WgpuContext::Surface(s) => s,
+            WgpuContext::Headless(_) => {
+                panic!("surface_context_mut called on a headless context")
+            }
+        }
     }
 }

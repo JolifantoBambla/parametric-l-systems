@@ -1,5 +1,4 @@
 use std::marker::PhantomData;
-use std::rc::Rc;
 use wgpu::{SurfaceConfiguration, TextureView};
 use winit::{
     dpi::PhysicalSize,
@@ -10,38 +9,37 @@ use winit::{
 #[cfg(target_arch = "wasm32")]
 use winit::platform::web::EventLoopExtWebSys;
 
-use crate::framework::context::{ContextDescriptor, DeviceContext, GpuContext};
+use crate::framework::context::{ContextDescriptor, Gpu, SurfaceContext, SurfaceTarget, WgpuContext};
 use crate::framework::input::event_buffer::EventBuffer;
 use crate::framework::input::Input;
+use crate::framework::scene::Update;
 #[cfg(target_arch = "wasm32")]
-use crate::framework::util::web::{get_or_create_window, WindowConfig};
+use crate::framework::util::web::{get_or_create_window};
+use crate::framework::util::window::{Resize, WindowConfig};
 
 pub trait GpuApp<UserEvent> {
-    fn init(&mut self, event_loop: &EventLoop<()>, context: &GpuContext);
-    fn resize(&mut self);
-    fn on_user_event(&mut self, _event: &UserEvent) {}
-    fn on_window_event(&mut self, _event: &WindowEvent) {}
-    fn update(&mut self, input: &Input);
+    fn init(&mut self, event_loop: &EventLoop<()>, context: &SurfaceContext);
+    fn on_user_event(&mut self, _event: &UserEvent);
+    fn on_window_event(&mut self, _event: &WindowEvent);
     fn render(&mut self, view: &TextureView, input: &Input);
     fn get_context_descriptor() -> ContextDescriptor<'static>;
 }
 
-pub struct AppRunner<G: 'static + GpuApp<()>> {
-    ctx: GpuContext,
+pub struct AppRunner<G: 'static + GpuApp<()> + Resize + Update> {
+    ctx: WgpuContext,
     event_loop: Option<EventLoop<()>>,
     window: Window,
     phantom_data: PhantomData<G>,
 }
 
-impl<G: 'static + GpuApp<()>> AppRunner<G> {
+impl<G: 'static + GpuApp<()> + Resize + Update> AppRunner<G> {
     #[cfg(target_arch = "wasm32")]
     pub async fn new(window_config: WindowConfig) -> Self {
         let event_loop = EventLoop::new();
         let window = get_or_create_window(&window_config, &event_loop);
 
-        let context = GpuContext::new(&G::get_context_descriptor())
-                .await
-                .with_surface_from_window(&window);
+        let context = WgpuContext::new(&G::get_context_descriptor(), Some(SurfaceTarget::Window(&window)))
+                .await;
 
         AppRunner {
             ctx: context,
@@ -58,7 +56,7 @@ impl<G: 'static + GpuApp<()>> AppRunner<G> {
 
         let event_loop = self.event_loop.take().unwrap();
 
-        app.init(&event_loop, &self.ctx);
+        app.init(&event_loop, &self.ctx());
 
         log::debug!("Starting event loop");
         event_loop
@@ -82,8 +80,10 @@ impl<G: 'static + GpuApp<()>> AppRunner<G> {
                         ..
                     } => {
                         log::debug!("Resizing to {:?}", size);
-                        self.ctx.resize_surface(size.width.max(1), size.height.max(1));
-                        app.resize();
+                        let width = size.width.max(1);
+                        let height = size.height.max(1);
+                        self.ctx.surface_context_mut().resize(width, height);
+                        app.resize(width, height);
                     }
                     event::Event::WindowEvent { event, .. } => match event {
                         WindowEvent::KeyboardInput {
@@ -110,11 +110,11 @@ impl<G: 'static + GpuApp<()>> AppRunner<G> {
                         input = input.next(event_buffer.drain());
                         app.update(&input);
 
-                        let frame = match self.ctx.surface().get_current_texture() {
+                        let frame = match self.ctx().surface().get_current_texture() {
                             Ok(frame) => frame,
                             Err(_) => {
-                                self.ctx.configure_surface();
-                                self.ctx.surface()
+                                self.ctx().configure_surface();
+                                self.ctx().surface()
                                     .get_current_texture()
                                     .expect("Failed to acquire next surface texture!")
                             }
@@ -135,9 +135,7 @@ impl<G: 'static + GpuApp<()>> AppRunner<G> {
     pub fn event_loop(&self) -> &Option<EventLoop<()>> {
         &self.event_loop
     }
-    pub fn ctx(&self) -> &GpuContext {
-        &self.ctx
-    }
+    pub fn ctx(&self) -> &SurfaceContext { &self.ctx.surface_context() }
     pub fn window(&self) -> &Window {
         &self.window
     }

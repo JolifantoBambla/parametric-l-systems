@@ -4,7 +4,7 @@ use std::rc::Rc;
 use glam::{Mat4, Vec2};
 use wgpu::{BufferUsages, Color, CommandEncoder, Extent3d, Label, LoadOp, Operations, RenderPassColorAttachment, RenderPassDepthStencilAttachment, RenderPassDescriptor, Texture, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages, TextureView, TextureViewDescriptor};
 use crate::framework::camera::Camera;
-use crate::framework::context::{DeviceContext, GpuContext};
+use crate::framework::context::{Gpu, SurfaceContext};
 use crate::framework::gpu::buffer::Buffer;
 use crate::framework::input::Input;
 use crate::framework::renderer::Renderer;
@@ -26,7 +26,7 @@ pub struct TrivialRenderer {
 }
 
 impl TrivialRenderer {
-    pub fn new(width: u32, height: u32, ctx: &Rc<DeviceContext>) -> Self {
+    pub fn new(width: u32, height: u32, ctx: &Rc<Gpu>) -> Self {
         let uniform_buffer = Buffer::new_single_element(
             "uniforms",
             Uniforms::default(),

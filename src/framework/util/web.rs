@@ -14,6 +14,8 @@ use winit::{
 #[cfg(target_arch = "wasm32")]
 use winit::platform::web::{WindowBuilderExtWebSys, WindowExtWebSys};
 
+use crate::framework::util::window::WindowConfig;
+
 #[inline]
 pub fn window() -> Window {
     web_sys::window().unwrap_or_else(|| panic!("window does not exist"))
@@ -91,28 +93,6 @@ pub fn base_path() -> PathBuf {
     }
 }
 
-pub struct WindowConfig {
-    title: String,
-    size: PhysicalSize<u32>,
-    canvas_id: Option<String>,
-    parent_id: Option<String>,
-}
-
-impl WindowConfig {
-    pub fn title(&self) -> &str {
-        &self.title
-    }
-    pub fn size(&self) -> PhysicalSize<u32> {
-        self.size
-    }
-    pub fn canvas_id(&self) -> &Option<String> {
-        &self.canvas_id
-    }
-    pub fn parent_id(&self) -> &Option<String> {
-        &self.parent_id
-    }
-}
-
 pub fn get_or_create_window(window_config: &WindowConfig, event_loop: &EventLoop<()>) -> window::Window {
     let mut builder = WindowBuilder::new()
         .with_title(window_config.title())
@@ -130,7 +110,7 @@ pub fn get_or_create_window(window_config: &WindowConfig, event_loop: &EventLoop
 
     let window = builder.build(&event_loop).unwrap();
 
-    if window_config.canvas_id.is_none() {
+    if window_config.canvas_id().is_none() {
         attach_canvas(window.canvas(), window_config.parent_id());
     }
 
