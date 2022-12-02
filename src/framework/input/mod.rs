@@ -1,7 +1,7 @@
 use winit::event::WindowEvent;
 use winit::window::CursorIcon::Default;
 use crate::framework::input::frame::Frame;
-use crate::framework::input::mouse::Mouse;
+use crate::framework::input::mouse::{Mouse, MouseEvent};
 use crate::framework::input::time::Time;
 use crate::framework::util::window::Resize;
 
@@ -11,10 +11,16 @@ pub mod mouse;
 pub mod time;
 
 #[derive(Clone, Debug)]
+pub enum Event {
+    Mouse(MouseEvent)
+}
+
+#[derive(Clone, Debug)]
 pub struct Input {
     time: Time,
     frame: Frame,
     mouse: Mouse,
+    events: Vec<Event>,
 }
 
 impl Input {
@@ -23,6 +29,7 @@ impl Input {
             time: Time::default(),
             frame: Frame::default(),
             mouse: Mouse::new(width, height),
+            events: Vec::new(),
         }
     }
 
@@ -32,6 +39,7 @@ impl Input {
         self.time = self.time.next();
         self.frame = self.frame.next();
         self.mouse = self.mouse.next();
+        self.events = Vec::new();
 
         last
     }
@@ -41,8 +49,14 @@ impl Input {
     pub fn frame(&self) -> Frame {
         self.frame
     }
+    pub fn events(&self) -> &Vec<Event> {
+        &self.events
+    }
+
     pub fn handle_event(&mut self, event: &WindowEvent) {
-        self.mouse.handle_event(event);
+        if let Some(e) = self.mouse.handle_event(event) {
+            self.events.push(Event::Mouse(e));
+        }
     }
 }
 

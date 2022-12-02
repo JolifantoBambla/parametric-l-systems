@@ -1,25 +1,31 @@
 use std::sync::Arc;
-use wgpu::{Backends, DownlevelCapabilities, DownlevelFlags, Limits, ShaderModel, SurfaceConfiguration, TextureView};
+use wgpu::{Backends, BufferUsages, DownlevelCapabilities, DownlevelFlags, Limits, ShaderModel, SurfaceConfiguration, TextureView};
 use winit::event::WindowEvent;
 use winit::event_loop::EventLoop;
 use crate::framework::app::GpuApp;
 use crate::framework::camera::{CameraView, Projection};
 use crate::framework::context::{ContextDescriptor, Gpu, SurfaceContext};
+use crate::framework::gpu::buffer::Buffer;
 use crate::framework::input::Input;
+use crate::framework::mesh::mesh::Mesh;
+use crate::framework::mesh::vertex::Vertex;
+use crate::framework::renderer::drawable::GpuMesh;
 use crate::framework::scene::Update;
 use crate::framework::util::window::Resize;
-use crate::lsystemrenderer::camera::Camera;
+use crate::lsystemrenderer::camera::OrbitCamera;
 
 pub mod camera;
 
 pub struct App {
     ctx: Arc<Gpu>,
-    camera: Camera,
+    camera: OrbitCamera,
+    camera_uniforms: Buffer<camera::Uniforms>,
+    cylinder_mesh: GpuMesh,
 }
 
 impl App {
     pub fn new(ctx: &Arc<Gpu>, surface_configuration: &SurfaceConfiguration) -> Self {
-        let camera = Camera::new(
+        let camera = OrbitCamera::new(
             Projection::new_perspective(
                 f32::to_radians(45.),
                 surface_configuration.width as f32 / surface_configuration.height as f32,
@@ -29,7 +35,22 @@ impl App {
             CameraView::default(),
             5.0
         );
-        Self { ctx: ctx.clone(), camera }
+        let cylinder_mesh = GpuMesh::from_mesh::<Vertex>(
+            &Mesh::new_default_cylinder(false),
+            ctx.device()
+        );
+        let camera_uniforms = Buffer::new_single_element(
+            "camera uniforms",
+            camera.as_uniforms(),
+            BufferUsages::UNIFORM,
+            ctx,
+        );
+        Self {
+            ctx: ctx.clone(),
+            camera,
+            camera_uniforms,
+            cylinder_mesh
+        }
     }
 }
 
@@ -42,6 +63,8 @@ impl GpuApp<()> for App {
 
     fn render(&mut self, view: &TextureView, input: &Input) {
         log::info!("render called - frame {}", input.frame().number());
+
+        self.camera_uniforms.write_buffer(&vec![self.camera.as_uniforms()]);
     }
 
     fn get_context_descriptor() -> ContextDescriptor<'static> {

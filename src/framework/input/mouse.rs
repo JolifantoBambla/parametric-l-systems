@@ -84,7 +84,6 @@ pub enum MouseEvent {
 pub struct Mouse {
     window_size: Vec2,
     state: MouseState,
-    events: Vec<MouseEvent>,
 }
 
 impl Mouse {
@@ -92,7 +91,6 @@ impl Mouse {
         Self {
             window_size: Vec2::new(width as f32, height as f32),
             state: MouseState::default(),
-            events: Vec::new(),
         }
     }
 
@@ -100,32 +98,33 @@ impl Mouse {
         Self {
             window_size: self.window_size.clone(),
             state: self.state.clone(),
-            events: Vec::new(),
         }
     }
 
-    pub fn handle_event(&mut self, event: &WindowEvent) {
+    pub fn handle_event(&mut self, event: &WindowEvent) -> Option<MouseEvent> {
         match event {
             WindowEvent::CursorMoved { position, .. } => {
                 let new_position = Vec2::new(position.x as f32, position.y as f32);
                 let delta = (new_position - self.state.cursor_position) / self.window_size;
                 self.state.cursor_position = new_position;
-                self.events.push(MouseEvent::Move(MouseMove {
+                Some(MouseEvent::Move(MouseMove {
                     state: self.state.clone(),
                     delta
-                }));
+                }))
             }
             WindowEvent::CursorEntered { .. } => {
                 log::warn!("cursor enter event not handled");
+                None
             }
             WindowEvent::CursorLeft { .. } => {
                 log::warn!("cursor left event not handled");
+                None
             }
             WindowEvent::MouseWheel {
                 delta: MouseScrollDelta::PixelDelta(delta),
                 ..
             } => {
-                self.events.push(MouseEvent::Scroll(MouseScroll { delta: delta.y as f32 }));
+                Some(MouseEvent::Scroll(MouseScroll { delta: delta.y as f32 }))
             }
             WindowEvent::MouseInput { state, button, .. } => {
                 let state = match state {
@@ -146,20 +145,19 @@ impl Mouse {
                         self.state.other_buttons_pressed = state == ElementState::Pressed
                     }
                 }
-                self.events.push(MouseEvent::Button(MouseButtonEvent {
+                Some(MouseEvent::Button(MouseButtonEvent {
                     button: button.clone(),
                     state: state.clone(),
-                }));
+                }))
             }
-            _ => {}
+            _ => {
+                None
+            }
         }
     }
 
     pub fn state(&self) -> MouseState {
         self.state
-    }
-    pub fn events(&self) -> &Vec<MouseEvent> {
-        &self.events
     }
 }
 

@@ -254,6 +254,7 @@ impl PerspectiveProjection {
     }
 }
 
+#[derive(Copy, Clone, Debug)]
 pub enum Projection {
     Orthographic(OrthographicProjection),
     Perspective(PerspectiveProjection),

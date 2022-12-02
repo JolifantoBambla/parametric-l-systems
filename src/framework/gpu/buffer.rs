@@ -1,13 +1,13 @@
 use std::marker::PhantomData;
 use std::mem;
 use std::mem::size_of;
-use std::rc::Rc;
+use std::sync::Arc;
 use wgpu::{BufferAddress, BufferDescriptor, BufferUsages, Label};
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use crate::framework::context::Gpu;
 
 pub struct Buffer<T: bytemuck::Pod> {
-    ctx: Rc<Gpu>,
+    ctx: Arc<Gpu>,
     label: String,
     buffer: wgpu::Buffer,
     num_elements: usize,
@@ -15,17 +15,17 @@ pub struct Buffer<T: bytemuck::Pod> {
 }
 
 impl<T: bytemuck::Pod> Buffer<T> {
-    pub fn new_zeroed(label: &str, num_elements: usize, usage: BufferUsages, ctx: &Rc<Gpu>) -> Self {
+    pub fn new_zeroed(label: &str, num_elements: usize, usage: BufferUsages, ctx: &Arc<Gpu>) -> Self {
         let data = vec![unsafe { mem::zeroed() }; num_elements];
         Buffer::from_data(label, &data, usage, ctx)
     }
 
-    pub fn new_single_element(label: &str, element: T, usage: BufferUsages, ctx: &Rc<Gpu>) -> Self {
+    pub fn new_single_element(label: &str, element: T, usage: BufferUsages, ctx: &Arc<Gpu>) -> Self {
         let data = vec![element];
         Buffer::from_data(label, &data, usage, ctx)
     }
 
-    pub fn from_data(label: &str, data: &Vec<T>, usage: BufferUsages, ctx: &Rc<Gpu>) -> Self {
+    pub fn from_data(label: &str, data: &Vec<T>, usage: BufferUsages, ctx: &Arc<Gpu>) -> Self {
         let buffer = ctx.device().create_buffer_init(&BufferInitDescriptor {
             label: Label::from(label),
             contents: bytemuck::cast_slice(data),
@@ -40,7 +40,7 @@ impl<T: bytemuck::Pod> Buffer<T> {
         }
     }
 
-    fn create_read_buffer(&self, ctx: &Rc<Gpu>) -> Self {
+    fn create_read_buffer(&self, ctx: &Arc<Gpu>) -> Self {
         assert!(self.supports(BufferUsages::COPY_SRC));
         let label = format!("map buffer [{}]", self.label.as_str());
         let buffer = ctx.device().create_buffer(&BufferDescriptor {

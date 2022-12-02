@@ -1,6 +1,7 @@
 // todo: refactor / remove
 
 use std::rc::Rc;
+use std::sync::Arc;
 use glam::{Mat4, Vec2};
 use wgpu::{BufferUsages, Color, CommandEncoder, Extent3d, Label, LoadOp, Operations, RenderPassColorAttachment, RenderPassDepthStencilAttachment, RenderPassDescriptor, Texture, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages, TextureView, TextureViewDescriptor};
 use crate::framework::camera::Camera;
@@ -26,7 +27,7 @@ pub struct TrivialRenderer {
 }
 
 impl TrivialRenderer {
-    pub fn new(width: u32, height: u32, ctx: &Rc<Gpu>) -> Self {
+    pub fn new(width: u32, height: u32, ctx: &Arc<Gpu>) -> Self {
         let uniform_buffer = Buffer::new_single_element(
             "uniforms",
             Uniforms::default(),
