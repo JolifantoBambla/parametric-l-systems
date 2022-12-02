@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::mem;
 use std::sync::Arc;
 use glam::Vec3;
 use wgpu::{Backends, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType, BufferBindingType, BufferUsages, Color, ColorTargetState, CommandEncoder, CommandEncoderDescriptor, CompareFunction, DepthStencilState, DownlevelCapabilities, DownlevelFlags, Extent3d, FragmentState, Label, Limits, LoadOp, Operations, PipelineLayout, PipelineLayoutDescriptor, PrimitiveState, PrimitiveTopology, RenderPassColorAttachment, RenderPassDepthStencilAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, ShaderModel, ShaderModuleDescriptor, ShaderSource, ShaderStages, SurfaceConfiguration, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages, TextureView, TextureViewDescriptor, VertexState};
@@ -63,7 +64,7 @@ impl App {
             BufferUsages::UNIFORM | BufferUsages::COPY_DST,
             ctx,
         );
-        let depth_format = TextureFormat::Depth24Plus;
+        let depth_format = TextureFormat::Depth32Float;
         let depth_texture = ctx.device().create_texture(&TextureDescriptor {
             label: Label::from("depth texture"),
             size: Extent3d { width, height, depth_or_array_layers: 1 },
@@ -87,11 +88,13 @@ impl App {
                     label: None,
                     entries: &[BindGroupLayoutEntry {
                         binding: 0,
-                        visibility: ShaderStages::VERTEX,
+                        visibility: ShaderStages::VERTEX | ShaderStages::FRAGMENT,
                         ty: BindingType::Buffer {
                             ty: BufferBindingType::Uniform,
                             has_dynamic_offset: false,
-                            min_binding_size: None,
+                            min_binding_size: wgpu::BufferSize::new(
+                                mem::size_of::<Uniforms>() as _,
+                            ),
                         },
                         count: None
                     }],
@@ -111,13 +114,9 @@ impl App {
                 buffers: vertex_buffer_layouts.as_slice(),
             },
             primitive: PrimitiveState {
-                topology: PrimitiveTopology::TriangleList,
-                strip_index_format: None,
-                front_face: Default::default(),
+                front_face: wgpu::FrontFace::Ccw,
                 cull_mode: Some(Back),
-                unclipped_depth: false,
-                polygon_mode: Default::default(),
-                conservative: false,
+                ..Default::default()
             },
             depth_stencil: Some(DepthStencilState {
                 format: depth_format,
@@ -130,11 +129,7 @@ impl App {
             fragment: Some(FragmentState {
                 module: &shader_module,
                 entry_point: "fragment_main",
-                targets: &[Some(ColorTargetState {
-                    format: surface_configuration.format,
-                    blend: None,
-                    write_mask: Default::default(),
-                })],
+                targets: &[Some(surface_configuration.format.into())],
             }),
             multiview: None
         });
@@ -169,7 +164,7 @@ impl App {
             resolve_target: None,
             ops: Operations {
                 load: LoadOp::Clear(Color {r: 0.0, g: 0.0, b: 0.0, a: 1.0}),
-                store: false,
+                store: true,
             }
         };
         let depth_attachment = RenderPassDepthStencilAttachment {
