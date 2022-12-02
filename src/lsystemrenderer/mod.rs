@@ -21,7 +21,7 @@ impl App {
     pub fn new(ctx: &Arc<Gpu>, surface_configuration: &SurfaceConfiguration) -> Self {
         let camera = Camera::new(
             Projection::new_perspective(
-                45.,
+                f32::to_radians(45.),
                 surface_configuration.width as f32 / surface_configuration.height as f32,
                 0.0001,
                 1000.0

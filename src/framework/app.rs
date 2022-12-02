@@ -10,7 +10,6 @@ use winit::{
 use winit::platform::web::EventLoopExtWebSys;
 
 use crate::framework::context::{ContextDescriptor, Gpu, SurfaceContext, SurfaceTarget, WgpuContext};
-use crate::framework::input::event_buffer::EventBuffer;
 use crate::framework::input::Input;
 use crate::framework::scene::Update;
 #[cfg(target_arch = "wasm32")]
@@ -51,8 +50,10 @@ impl<G: 'static + GpuApp<()> + Resize + Update> AppRunner<G> {
 
     #[cfg(target_arch = "wasm32")]
     pub fn run<'a>(mut self, mut app: G) {
-        let mut input = Input::default();
-        let mut event_buffer = EventBuffer::default();
+        let mut input = Input::new(
+            self.ctx().surface_configuration().width,
+            self.ctx().surface_configuration().height
+        );
 
         let event_loop = self.event_loop.take().unwrap();
 
@@ -84,6 +85,7 @@ impl<G: 'static + GpuApp<()> + Resize + Update> AppRunner<G> {
                         let height = size.height.max(1);
                         self.ctx.surface_context_mut().resize(width, height);
                         app.resize(width, height);
+                        input.resize(width, height);
                     }
                     event::Event::WindowEvent { event, .. } => match event {
                         WindowEvent::KeyboardInput {
@@ -99,7 +101,7 @@ impl<G: 'static + GpuApp<()> + Resize + Update> AppRunner<G> {
                             *control_flow = ControlFlow::Exit;
                         }
                         _ => {
-                            event_buffer.handle_event(&event);
+                            input.handle_event(&event);
                             app.on_window_event(&event);
                         }
                     },
@@ -107,8 +109,8 @@ impl<G: 'static + GpuApp<()> + Resize + Update> AppRunner<G> {
                         app.on_user_event(&e);
                     },
                     event::Event::RedrawRequested(_) => {
-                        input = input.next(event_buffer.drain());
-                        app.update(&input);
+                        let frame_input = input.prepare_next();
+                        app.update(&frame_input);
 
                         let frame = match self.ctx().surface().get_current_texture() {
                             Ok(frame) => frame,
@@ -123,7 +125,7 @@ impl<G: 'static + GpuApp<()> + Resize + Update> AppRunner<G> {
                             .texture
                             .create_view(&wgpu::TextureViewDescriptor::default());
 
-                        app.render(&view, &input);
+                        app.render(&view, &frame_input);
 
                         frame.present();
                     },
