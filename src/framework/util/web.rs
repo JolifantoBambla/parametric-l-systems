@@ -93,7 +93,7 @@ pub fn base_path() -> PathBuf {
     }
 }
 
-pub fn get_or_create_window(window_config: &WindowConfig, event_loop: &EventLoop<()>) -> window::Window {
+pub fn get_or_create_window<T>(window_config: &WindowConfig, event_loop: &EventLoop<T>) -> window::Window {
     let mut builder = WindowBuilder::new()
         .with_title(window_config.title())
         .with_inner_size(window_config.size());

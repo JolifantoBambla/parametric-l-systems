@@ -96,6 +96,21 @@ impl CameraView {
         self.move_up(-delta);
     }
 
+    pub fn zoom_in(&mut self, delta: f32) {
+        let distance = self.position.distance(self.center_of_projection);
+        let movement = self.forward() *
+            if distance <= delta {
+                distance - f32::EPSILON
+            } else {
+                delta
+            };
+        self.position += movement;
+    }
+
+    pub fn zoom_out(&mut self, delta: f32) {
+        self.zoom_in(-delta);
+    }
+
     // todo: refactor into extra struct / trait
     pub fn orbit(&mut self, delta: Vec2, invert: bool) {
         if !(is_close_to_zero(delta.x) && is_close_to_zero(delta.y)) {

@@ -6,6 +6,7 @@ use winit::{
     event_loop::{ControlFlow, EventLoop},
     window::Window,
 };
+use winit::event_loop::EventLoopBuilder;
 #[cfg(target_arch = "wasm32")]
 use winit::platform::web::EventLoopExtWebSys;
 
@@ -17,24 +18,24 @@ use crate::framework::util::web::{get_or_create_window};
 use crate::framework::util::window::{Resize, WindowConfig};
 
 pub trait GpuApp<UserEvent> {
-    fn init(&mut self, event_loop: &EventLoop<()>, context: &SurfaceContext);
+    fn init(&mut self, event_loop: &EventLoop<UserEvent>, context: &SurfaceContext);
     fn on_user_event(&mut self, event: &UserEvent);
     fn on_window_event(&mut self, event: &WindowEvent);
     fn render(&mut self, view: &TextureView, input: &Input);
     fn get_context_descriptor() -> ContextDescriptor<'static>;
 }
 
-pub struct AppRunner<G: 'static + GpuApp<()> + Resize + Update> {
+pub struct AppRunner<UserEvent: 'static, G: 'static + GpuApp<UserEvent> + Resize + Update> {
     ctx: WgpuContext,
-    event_loop: Option<EventLoop<()>>,
+    event_loop: Option<EventLoop<UserEvent>>,
     window: Window,
     phantom_data: PhantomData<G>,
 }
 
-impl<G: 'static + GpuApp<()> + Resize + Update> AppRunner<G> {
+impl<UserEvent: 'static, G: 'static + GpuApp<UserEvent> + Resize + Update> AppRunner<UserEvent, G> {
     #[cfg(target_arch = "wasm32")]
     pub async fn new(window_config: WindowConfig) -> Self {
-        let event_loop = EventLoop::new();
+        let event_loop = EventLoopBuilder::<UserEvent>::with_user_event().build();
         let window = get_or_create_window(&window_config, &event_loop);
 
         let context = WgpuContext::new(&G::get_context_descriptor(), Some(SurfaceTarget::Window(&window)))
@@ -134,7 +135,7 @@ impl<G: 'static + GpuApp<()> + Resize + Update> AppRunner<G> {
             });
     }
 
-    pub fn event_loop(&self) -> &Option<EventLoop<()>> {
+    pub fn event_loop(&self) -> &Option<EventLoop<UserEvent>> {
         &self.event_loop
     }
     pub fn ctx(&self) -> &SurfaceContext { &self.ctx.surface_context() }
