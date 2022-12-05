@@ -40,7 +40,7 @@ pub fn main(l_system_definition: JsValue) {
 #[cfg(target_arch = "wasm32")]
 async fn run() {
     let window_config = WindowConfig::default();
-    let app_runner = AppRunner::<(), App>::new(window_config)
+    let app_runner = AppRunner::<App>::new(window_config)
         .await;
     let app = App::new(&app_runner.ctx().gpu(), &app_runner.ctx().surface_configuration());
     app_runner.run(app);

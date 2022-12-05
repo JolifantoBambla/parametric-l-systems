@@ -16,6 +16,7 @@ use crate::framework::mesh::vertex::{Vertex, VertexType};
 use crate::framework::renderer::drawable::{Draw, GpuMesh};
 use crate::framework::scene::Update;
 use crate::framework::util::window::Resize;
+use crate::lindenmayer::LSystem;
 use crate::lsystemrenderer::camera::{OrbitCamera, Uniforms};
 
 pub mod camera;
@@ -23,6 +24,8 @@ pub mod camera;
 pub struct App {
     ctx: Arc<Gpu>,
     camera: OrbitCamera,
+
+    //l_system: LSystem,
 
     cylinder_mesh: GpuMesh,
 
@@ -211,7 +214,9 @@ impl App {
     }
 }
 
-impl GpuApp<()> for App {
+impl GpuApp for App {
+    type UserEvent = ();
+
     fn init(&mut self, _event_loop: &EventLoop<()>, _context: &SurfaceContext) {}
     fn on_user_event(&mut self, _event: &()) {}
     fn on_window_event(&mut self, _event: &WindowEvent) {}
