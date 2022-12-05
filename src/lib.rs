@@ -34,14 +34,14 @@ pub fn main(l_system_definition: JsValue) {
             .expect("Could not parse turtle commands");
         turtle::execute_turtle_commands(&commands);
     }
-    wasm_bindgen_futures::spawn_local(run());
+    wasm_bindgen_futures::spawn_local(run(l_system));
 }
 
 #[cfg(target_arch = "wasm32")]
-async fn run() {
+async fn run(l_system: lindenmayer::LSystem) {
     let window_config = WindowConfig::default();
     let app_runner = AppRunner::<App>::new(window_config)
         .await;
-    let app = App::new(&app_runner.ctx().gpu(), &app_runner.ctx().surface_configuration());
+    let app = App::new(&app_runner.ctx().gpu(), &app_runner.ctx().surface_configuration(), l_system);
     app_runner.run(app);
 }

@@ -2,10 +2,17 @@ use std::borrow::Cow;
 use std::mem;
 use std::sync::Arc;
 use glam::{Mat4, Vec3};
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen::prelude::*;
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen::JsCast;
 use wgpu::{Backends, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType, BufferBindingType, BufferUsages, Color, ColorTargetState, CommandEncoder, CommandEncoderDescriptor, CompareFunction, DepthStencilState, DownlevelCapabilities, DownlevelFlags, Extent3d, FragmentState, Label, Limits, LoadOp, Operations, PipelineLayout, PipelineLayoutDescriptor, PrimitiveState, PrimitiveTopology, RenderPassColorAttachment, RenderPassDepthStencilAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, ShaderModel, ShaderModuleDescriptor, ShaderSource, ShaderStages, SurfaceConfiguration, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages, TextureView, TextureViewDescriptor, VertexState};
 use wgpu::Face::Back;
 use winit::event::WindowEvent;
 use winit::event_loop::EventLoop;
+#[cfg(target_arch = "wasm32")]
+use winit::platform::web::WindowExtWebSys;
+use winit::window::Window;
 use crate::framework::app::GpuApp;
 use crate::framework::camera::{CameraView, Projection};
 use crate::framework::context::{ContextDescriptor, Gpu, SurfaceContext};
@@ -18,14 +25,16 @@ use crate::framework::scene::Update;
 use crate::framework::util::window::Resize;
 use crate::lindenmayer::LSystem;
 use crate::lsystemrenderer::camera::{OrbitCamera, Uniforms};
+use crate::lsystemrenderer::event::{UiEvent, register_ui_event_handler, LSystemEvent};
 
 pub mod camera;
+pub mod event;
 
 pub struct App {
     ctx: Arc<Gpu>,
     camera: OrbitCamera,
 
-    //l_system: LSystem,
+    l_system: LSystem,
 
     cylinder_mesh: GpuMesh,
 
@@ -37,7 +46,7 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(ctx: &Arc<Gpu>, surface_configuration: &SurfaceConfiguration) -> Self {
+    pub fn new(ctx: &Arc<Gpu>, surface_configuration: &SurfaceConfiguration, l_system: LSystem) -> Self {
         let width = surface_configuration.width;
         let height = surface_configuration.height;
 
@@ -175,6 +184,7 @@ impl App {
 
         Self {
             ctx: ctx.clone(),
+            l_system,
             camera,
             cylinder_mesh,
             camera_uniforms,
@@ -215,10 +225,21 @@ impl App {
 }
 
 impl GpuApp for App {
-    type UserEvent = ();
+    type UserEvent = UiEvent;
 
-    fn init(&mut self, _event_loop: &EventLoop<()>, _context: &SurfaceContext) {}
-    fn on_user_event(&mut self, _event: &()) {}
+    fn init(&mut self, window: &Window, event_loop: &EventLoop<Self::UserEvent>, _context: &SurfaceContext) {
+        #[cfg(target_arch = "wasm32")]
+        register_ui_event_handler(&window.canvas(), &event_loop);
+    }
+
+    fn on_user_event(&mut self, event: &Self::UserEvent) {
+        match event {
+            UiEvent::LSystem(LSystemEvent::Iteration(iteration)) => {
+                log::info!("Got iteration event: {:?}", iteration);
+            }
+        }
+    }
+
     fn on_window_event(&mut self, _event: &WindowEvent) {}
 
     fn render(&mut self, view: &TextureView, input: &Input) {

@@ -20,7 +20,7 @@ use crate::framework::util::window::{Resize, WindowConfig};
 pub trait GpuApp {
     type UserEvent;
 
-    fn init(&mut self, event_loop: &EventLoop<Self::UserEvent>, context: &SurfaceContext);
+    fn init(&mut self, window: &Window, event_loop: &EventLoop<Self::UserEvent>, context: &SurfaceContext);
     fn on_user_event(&mut self, event: &Self::UserEvent);
     fn on_window_event(&mut self, event: &WindowEvent);
     fn render(&mut self, view: &TextureView, input: &Input);
@@ -60,7 +60,7 @@ impl<G: 'static + GpuApp + Resize + Update> AppRunner<G> {
 
         let event_loop = self.event_loop.take().unwrap();
 
-        app.init(&event_loop, &self.ctx());
+        app.init(&self.window, &event_loop, &self.ctx());
 
         log::debug!("Starting event loop");
         event_loop
