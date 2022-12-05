@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 use std::mem;
 use std::sync::Arc;
-use glam::Vec3;
+use glam::{Mat4, Vec3};
 use wgpu::{Backends, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType, BufferBindingType, BufferUsages, Color, ColorTargetState, CommandEncoder, CommandEncoderDescriptor, CompareFunction, DepthStencilState, DownlevelCapabilities, DownlevelFlags, Extent3d, FragmentState, Label, Limits, LoadOp, Operations, PipelineLayout, PipelineLayoutDescriptor, PrimitiveState, PrimitiveTopology, RenderPassColorAttachment, RenderPassDepthStencilAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, ShaderModel, ShaderModuleDescriptor, ShaderSource, ShaderStages, SurfaceConfiguration, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages, TextureView, TextureViewDescriptor, VertexState};
 use wgpu::Face::Back;
 use winit::event::WindowEvent;
@@ -64,6 +64,14 @@ impl App {
             BufferUsages::UNIFORM | BufferUsages::COPY_DST,
             ctx,
         );
+        let instances = vec![Mat4::IDENTITY, Mat4::from_translation(Vec3::X)];
+        let instances_buffer = Buffer::from_data(
+            "instances uniform",
+            &instances,
+            BufferUsages::STORAGE | BufferUsages::COPY_DST,
+            ctx
+        );
+
         let depth_format = TextureFormat::Depth32Float;
         let depth_texture = ctx.device().create_texture(&TextureDescriptor {
             label: Label::from("depth texture"),
@@ -85,18 +93,32 @@ impl App {
             ctx.device()
                 .create_bind_group_layout(&BindGroupLayoutDescriptor {
                     label: None,
-                    entries: &[BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: ShaderStages::VERTEX | ShaderStages::FRAGMENT,
-                        ty: BindingType::Buffer {
-                            ty: BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: wgpu::BufferSize::new(
-                                mem::size_of::<Uniforms>() as _,
-                            ),
+                    entries: &[
+                        BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: ShaderStages::VERTEX | ShaderStages::FRAGMENT,
+                            ty: BindingType::Buffer {
+                                ty: BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: wgpu::BufferSize::new(
+                                    mem::size_of::<Uniforms>() as _,
+                                ),
+                            },
+                            count: None
                         },
-                        count: None
-                    }],
+                        BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: ShaderStages::VERTEX | ShaderStages::FRAGMENT,
+                            ty: BindingType::Buffer {
+                                ty: BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: wgpu::BufferSize::new(
+                                    mem::size_of::<Mat4>() as _,
+                                ),
+                            },
+                            count: None
+                        }
+                    ],
                 });
         let vertex_buffer_layouts = vec![Vertex::buffer_layout()];
         let pipeline_layout = ctx.device().create_pipeline_layout(&PipelineLayoutDescriptor {
@@ -140,6 +162,10 @@ impl App {
                 BindGroupEntry {
                     binding: 0,
                     resource: camera_uniforms.buffer().as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: instances_buffer.buffer().as_entire_binding(),
                 }
             ]
         });
@@ -181,7 +207,7 @@ impl App {
         });
         render_pass.set_pipeline(&self.render_pipeline);
         render_pass.set_bind_group(0, &self.bind_group, &[]);
-        self.cylinder_mesh.draw_instanced(&mut render_pass, 1);
+        self.cylinder_mesh.draw_instanced(&mut render_pass, 2);
     }
 }
 

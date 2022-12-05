@@ -64,8 +64,8 @@ impl Update for OrbitCamera {
                             }
                         }
                         MouseEvent::Scroll(s) => {
-                            self.transform.move_forward(
-                                s.delta().abs().min(1.) * s.delta().signum() * self.speed
+                            self.transform.zoom_in(
+                                s.delta().abs().min(1.) * s.delta().signum()
                             );
                         }
                         _ => {}
