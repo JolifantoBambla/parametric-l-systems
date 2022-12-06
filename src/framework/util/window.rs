@@ -1,9 +1,5 @@
 use winit::dpi::PhysicalSize;
 
-pub trait Resize {
-    fn resize(&mut self, width: u32, height: u32);
-}
-
 pub struct WindowConfig {
     title: String,
     size: PhysicalSize<u32>,

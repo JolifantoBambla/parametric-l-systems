@@ -11,30 +11,27 @@ use winit::event_loop::EventLoopBuilder;
 use winit::platform::web::EventLoopExtWebSys;
 
 use crate::framework::context::{ContextDescriptor, Gpu, SurfaceContext, SurfaceTarget, WgpuContext};
+use crate::framework::event::listener::{OnResize, OnUserEvent, OnWindowEvent};
 use crate::framework::input::Input;
 use crate::framework::scene::Update;
 #[cfg(target_arch = "wasm32")]
 use crate::framework::util::web::{get_or_create_window};
-use crate::framework::util::window::{Resize, WindowConfig};
+use crate::framework::util::window::WindowConfig;
 
-pub trait GpuApp {
-    type UserEvent;
-
+pub trait GpuApp: OnUserEvent {
     fn init(&mut self, window: &Window, event_loop: &EventLoop<Self::UserEvent>, context: &SurfaceContext);
-    fn on_user_event(&mut self, event: &Self::UserEvent);
-    fn on_window_event(&mut self, event: &WindowEvent);
     fn render(&mut self, view: &TextureView, input: &Input);
     fn get_context_descriptor() -> ContextDescriptor<'static>;
 }
 
-pub struct AppRunner<G: 'static + GpuApp + Resize + Update> {
+pub struct AppRunner<G: 'static + GpuApp + OnResize + OnWindowEvent + Update> {
     ctx: WgpuContext,
     event_loop: Option<EventLoop<G::UserEvent>>,
     window: Window,
     phantom_data: PhantomData<G>,
 }
 
-impl<G: 'static + GpuApp + Resize + Update> AppRunner<G> {
+impl<G: 'static + GpuApp + OnResize + OnWindowEvent + Update> AppRunner<G> {
     #[cfg(target_arch = "wasm32")]
     pub async fn new(window_config: WindowConfig) -> Self {
         let event_loop = EventLoopBuilder::<G::UserEvent>::with_user_event().build();
@@ -86,9 +83,9 @@ impl<G: 'static + GpuApp + Resize + Update> AppRunner<G> {
                         log::debug!("Resizing to {:?}", size);
                         let width = size.width.max(1);
                         let height = size.height.max(1);
-                        self.ctx.surface_context_mut().resize(width, height);
-                        app.resize(width, height);
-                        input.resize(width, height);
+                        self.ctx.surface_context_mut().on_resize(width, height);
+                        app.on_resize(width, height);
+                        input.on_resize(width, height);
                     }
                     event::Event::WindowEvent { event, .. } => match event {
                         WindowEvent::KeyboardInput {

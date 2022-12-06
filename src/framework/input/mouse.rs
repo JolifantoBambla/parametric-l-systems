@@ -1,6 +1,6 @@
 use glam::Vec2;
 use winit::event::{ElementState, MouseButton, MouseScrollDelta, WindowEvent};
-use crate::framework::util::window::Resize;
+use crate::framework::event::listener::OnResize;
 
 #[derive(Copy, Clone, Debug, Default)]
 pub struct MouseState {
@@ -161,8 +161,8 @@ impl Mouse {
     }
 }
 
-impl Resize for Mouse {
-    fn resize(&mut self, width: u32, height: u32) {
+impl OnResize for Mouse {
+    fn on_resize(&mut self, width: u32, height: u32) {
         self.window_size = Vec2::new(width as f32, height as f32);
     }
 }

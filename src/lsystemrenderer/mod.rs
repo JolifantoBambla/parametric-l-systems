@@ -2,10 +2,6 @@ use std::borrow::Cow;
 use std::mem;
 use std::sync::Arc;
 use glam::{Mat4, Vec3};
-#[cfg(target_arch = "wasm32")]
-use wasm_bindgen::prelude::*;
-#[cfg(target_arch = "wasm32")]
-use wasm_bindgen::JsCast;
 use wgpu::{Backends, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType, BufferBindingType, BufferUsages, Color, ColorTargetState, CommandEncoder, CommandEncoderDescriptor, CompareFunction, DepthStencilState, DownlevelCapabilities, DownlevelFlags, Extent3d, FragmentState, Label, Limits, LoadOp, Operations, PipelineLayout, PipelineLayoutDescriptor, PrimitiveState, PrimitiveTopology, RenderPassColorAttachment, RenderPassDepthStencilAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, ShaderModel, ShaderModuleDescriptor, ShaderSource, ShaderStages, SurfaceConfiguration, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages, TextureView, TextureViewDescriptor, VertexState};
 use wgpu::Face::Back;
 use winit::event::WindowEvent;
@@ -16,13 +12,15 @@ use winit::window::Window;
 use crate::framework::app::GpuApp;
 use crate::framework::camera::{CameraView, Projection};
 use crate::framework::context::{ContextDescriptor, Gpu, SurfaceContext};
+use crate::framework::event::listener::{OnResize, OnUserEvent, OnWindowEvent};
+#[cfg(target_arch = "wasm32")]
+use crate::framework::event::listener::register_custom_canvas_event_dispatcher;
 use crate::framework::gpu::buffer::Buffer;
 use crate::framework::input::Input;
 use crate::framework::mesh::mesh::Mesh;
 use crate::framework::mesh::vertex::{Vertex, VertexType};
 use crate::framework::renderer::drawable::{Draw, GpuMesh};
 use crate::framework::scene::Update;
-use crate::framework::util::window::Resize;
 use crate::lindenmayer::LSystem;
 use crate::lsystemrenderer::camera::{OrbitCamera, Uniforms};
 use crate::lsystemrenderer::event::{UiEvent, register_ui_event_handler, LSystemEvent};
@@ -225,22 +223,10 @@ impl App {
 }
 
 impl GpuApp for App {
-    type UserEvent = UiEvent;
-
     fn init(&mut self, window: &Window, event_loop: &EventLoop<Self::UserEvent>, _context: &SurfaceContext) {
         #[cfg(target_arch = "wasm32")]
-        register_ui_event_handler(&window.canvas(), &event_loop);
+        register_custom_canvas_event_dispatcher("ui::lsystem::iteration", &window.canvas(), &event_loop);
     }
-
-    fn on_user_event(&mut self, event: &Self::UserEvent) {
-        match event {
-            UiEvent::LSystem(LSystemEvent::Iteration(iteration)) => {
-                log::info!("Got iteration event: {:?}", iteration);
-            }
-        }
-    }
-
-    fn on_window_event(&mut self, _event: &WindowEvent) {}
 
     fn render(&mut self, view: &TextureView, input: &Input) {
         let mut command_encoder = self.ctx.device().create_command_encoder(&CommandEncoderDescriptor {
@@ -263,14 +249,30 @@ impl GpuApp for App {
     }
 }
 
-impl Update for App {
-    fn update(&mut self, input: &Input) {
-        self.camera.update(input);
+impl OnResize for App {
+    fn on_resize(&mut self, width: u32, height: u32) {
+        self.camera.on_resize(width, height);
     }
 }
 
-impl Resize for App {
-    fn resize(&mut self, width: u32, height: u32) {
-        self.camera.resize(width, height);
+impl OnUserEvent for App {
+    type UserEvent = UiEvent;
+
+    fn on_user_event(&mut self, event: &Self::UserEvent) {
+        match event {
+            UiEvent::LSystem(LSystemEvent::Iteration(iteration)) => {
+                log::info!("Got iteration event: {:?}", iteration);
+            }
+        }
+    }
+}
+
+impl OnWindowEvent for App {
+    fn on_window_event(&mut self, _event: &WindowEvent) {}
+}
+
+impl Update for App {
+    fn update(&mut self, input: &Input) {
+        self.camera.update(input);
     }
 }

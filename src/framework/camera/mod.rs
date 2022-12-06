@@ -1,7 +1,7 @@
 use glam::{Mat3, Mat4, Vec2, Vec3};
+use crate::framework::event::listener::OnResize;
 use crate::framework::geometry::bounds::{Bounds, Bounds2, Bounds3};
 use crate::framework::util::math::is_close_to_zero;
-use crate::framework::util::window::Resize;
 
 pub trait Camera {
     fn view(&self) -> Mat4;
@@ -195,8 +195,8 @@ impl OrthographicProjection {
     }
 }
 
-impl Resize for OrthographicProjection {
-    fn resize(&mut self, width: u32, height: u32) {
+impl OnResize for OrthographicProjection {
+    fn on_resize(&mut self, width: u32, height: u32) {
         let width_half = (width / 2) as f32;
         let height_half = (height / 2) as f32;
         let xy_bounds = Bounds2::new(
@@ -290,10 +290,10 @@ impl Projection {
     }
 }
 
-impl Resize for Projection {
-    fn resize(&mut self, width: u32, height: u32) {
+impl OnResize for Projection {
+    fn on_resize(&mut self, width: u32, height: u32) {
         match self {
-            Self::Orthographic(o) => o.resize(width, height),
+            Self::Orthographic(o) => o.on_resize(width, height),
             Self::Perspective(p) => p.set_aspect_ratio(width as f32 / height as f32)
         }
     }

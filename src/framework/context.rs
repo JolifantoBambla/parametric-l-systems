@@ -3,7 +3,7 @@ use std::sync::Arc;
 use wgpu;
 use wgpu::{Adapter, Device, Instance, Queue, RequestAdapterOptions, Surface, SurfaceConfiguration, TextureUsages};
 use winit::window::Window;
-use crate::framework::util::window::Resize;
+use crate::framework::event::listener::OnResize;
 
 /// Helper struct for constructing a `GPUContext`.
 pub struct ContextDescriptor<'a> {
@@ -177,8 +177,8 @@ impl SurfaceContext {
     }
 }
 
-impl Resize for SurfaceContext {
-    fn resize(&mut self, width: u32, height: u32) {
+impl OnResize for SurfaceContext {
+    fn on_resize(&mut self, width: u32, height: u32) {
         self.surface_configuration.width = width;
         self.surface_configuration.height = height;
         self.configure_surface();

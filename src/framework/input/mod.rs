@@ -1,9 +1,8 @@
 use winit::event::WindowEvent;
-use winit::window::CursorIcon::Default;
+use crate::framework::event::listener::OnResize;
 use crate::framework::input::frame::Frame;
 use crate::framework::input::mouse::{Mouse, MouseEvent};
 use crate::framework::input::time::Time;
-use crate::framework::util::window::Resize;
 
 pub mod frame;
 pub mod keyboard;
@@ -60,8 +59,8 @@ impl Input {
     }
 }
 
-impl Resize for Input {
-    fn resize(&mut self, width: u32, height: u32) {
-        self.mouse.resize(width, height);
+impl OnResize for Input {
+    fn on_resize(&mut self, width: u32, height: u32) {
+        self.mouse.on_resize(width, height);
     }
 }
