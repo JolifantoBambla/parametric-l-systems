@@ -1,7 +1,6 @@
 use std::marker::PhantomData;
-use wgpu::{SurfaceConfiguration, TextureView};
+use wgpu::TextureView;
 use winit::{
-    dpi::PhysicalSize,
     event::{self, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
     window::Window,
@@ -10,7 +9,7 @@ use winit::event_loop::EventLoopBuilder;
 #[cfg(target_arch = "wasm32")]
 use winit::platform::web::EventLoopExtWebSys;
 
-use crate::framework::context::{ContextDescriptor, Gpu, SurfaceContext, SurfaceTarget, WgpuContext};
+use crate::framework::context::{ContextDescriptor, SurfaceContext, SurfaceTarget, WgpuContext};
 use crate::framework::event::listener::{OnResize, OnUserEvent, OnWindowEvent};
 use crate::framework::input::Input;
 use crate::framework::scene::Update;

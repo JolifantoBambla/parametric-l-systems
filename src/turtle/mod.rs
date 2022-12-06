@@ -117,17 +117,23 @@ pub enum TurtleCommand {
     Unknown,
 }
 
-pub fn execute_turtle_commands(commands: &Vec<TurtleCommand>) -> Vec<Mat4> {
-    let mut matrices = Vec::new();
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct Instance {
+    matrix: Mat4,
+}
+
+pub fn execute_turtle_commands(commands: &Vec<TurtleCommand>) -> Vec<Instance> {
+    let mut instances = Vec::new();
 
     let mut state = Mat4::IDENTITY;
     let mut stack = VecDeque::new();
     for c in commands {
         match c {
             TurtleCommand::AddCylinder(cylinder) => {
-                let mut instance = state.clone();
+                let mut matrix = state.clone();
                 // todo: scale instance by cylinders parameters
-                matrices.push(instance);
+                instances.push(Instance { matrix });
                 // todo: translate state by cylinder's length
             }
             TurtleCommand::Translate(t) => {
@@ -158,5 +164,5 @@ pub fn execute_turtle_commands(commands: &Vec<TurtleCommand>) -> Vec<Mat4> {
         }
     }
 
-    matrices
+    instances
 }

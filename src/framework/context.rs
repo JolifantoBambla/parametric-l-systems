@@ -1,7 +1,6 @@
-use std::rc::Rc;
 use std::sync::Arc;
 use wgpu;
-use wgpu::{Adapter, Device, Instance, Queue, RequestAdapterOptions, Surface, SurfaceConfiguration, TextureUsages};
+use wgpu::{Adapter, Device, Instance, Queue, Surface, SurfaceConfiguration, TextureUsages};
 use winit::window::Window;
 use crate::framework::event::listener::OnResize;
 

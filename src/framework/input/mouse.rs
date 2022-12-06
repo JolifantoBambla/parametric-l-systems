@@ -1,6 +1,6 @@
 use glam::Vec2;
 use winit::event::{ElementState, MouseButton, MouseScrollDelta, WindowEvent};
-use crate::framework::event::listener::{OnResize, OnWindowEvent};
+use crate::framework::event::listener::OnResize;
 
 #[derive(Copy, Clone, Debug, Default)]
 pub struct MouseState {

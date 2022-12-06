@@ -24,6 +24,8 @@ use crate::framework::scene::Update;
 use crate::lindenmayer::LSystem;
 use crate::lsystemrenderer::camera::{OrbitCamera, Uniforms};
 use crate::lsystemrenderer::event::{UiEvent, LSystemEvent};
+use crate::turtle;
+use crate::turtle::Instance;
 
 pub mod camera;
 pub mod event;
@@ -35,6 +37,9 @@ pub struct App {
     l_system: LSystem,
 
     cylinder_mesh: GpuMesh,
+
+
+    //instance_buffer: Buffer<Instance>,
 
     // render stuff
     camera_uniforms: Buffer<camera::Uniforms>,
@@ -268,6 +273,15 @@ impl OnUserEvent for App {
         match event {
             UiEvent::LSystem(LSystemEvent::Iteration(iteration)) => {
                 log::info!("Got iteration event: {:?}", iteration);
+                // todo: add option to store intermediate steps
+                // todo: fix and use nth
+                for i in 0..iteration-1 {
+                    self.l_system.next_raw();
+                }
+                let commands: Vec<turtle::TurtleCommand> = serde_wasm_bindgen::from_value(self.l_system.next_raw())
+                    .expect("Could not parse turtle commands");
+                let instances = turtle::execute_turtle_commands(&commands);
+
             }
         }
     }
