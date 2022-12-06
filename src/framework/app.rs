@@ -101,7 +101,7 @@ impl<G: 'static + GpuApp + OnResize + OnWindowEvent + Update> AppRunner<G> {
                             *control_flow = ControlFlow::Exit;
                         }
                         _ => {
-                            input.handle_event(&event);
+                            input.on_window_event(&event);
                             app.on_window_event(&event);
                         }
                     },

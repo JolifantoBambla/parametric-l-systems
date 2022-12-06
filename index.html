@@ -6,9 +6,24 @@
 </head>
 <body>
     <script type="module">
-        import { testLSystems } from "./js/l-system/module.js";
-
         import init, { main } from "./pkg/parametric_l_systems.js";
+
+        const mutationObserver = new MutationObserver(mutations => {
+            mutations.forEach(m => {
+                m.addedNodes.forEach(n => {
+                    if (n instanceof HTMLCanvasElement) {
+                        n.addEventListener("app::initialized", () => {
+                            // todo: build UI and dispatch events
+
+                            // todo: remove(debug)
+                            console.log('got app initialized');
+                            n.dispatchEvent(new CustomEvent("ui::lsystem::iteration", { detail: { lSystem: { iteration: 13 } } }))
+                        });
+                    }
+                });
+            });
+        });
+        mutationObserver.observe(document.body, { childList: true });
 
         async function run() {
             await init();
@@ -23,12 +38,9 @@
                     parameters: {r1: 7.0, r2: 7.1, a0: 7.2, a1: 7.3, d: 7.4, wr: 7.5},
                     alphabet: ['A(l,w)', 'B(l,w)', 'C(l,w)', 'F(l,w)', '[', ']', '+(a)', '&(a)', '/(d)', '$'],
                 }
-                //[{name: "F", parameters: [1.2,2.3]}]
             );
         }
-
         run();
-        console.log(testLSystems());
     </script>
 </body>
 </html>

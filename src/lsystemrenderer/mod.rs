@@ -14,7 +14,7 @@ use crate::framework::camera::{CameraView, Projection};
 use crate::framework::context::{ContextDescriptor, Gpu, SurfaceContext};
 use crate::framework::event::listener::{OnResize, OnUserEvent, OnWindowEvent};
 #[cfg(target_arch = "wasm32")]
-use crate::framework::event::listener::register_custom_canvas_event_dispatcher;
+use crate::framework::event::web::{dispatch_canvas_event, register_custom_canvas_event_dispatcher};
 use crate::framework::gpu::buffer::Buffer;
 use crate::framework::input::Input;
 use crate::framework::mesh::mesh::Mesh;
@@ -23,13 +23,13 @@ use crate::framework::renderer::drawable::{Draw, GpuMesh};
 use crate::framework::scene::Update;
 use crate::lindenmayer::LSystem;
 use crate::lsystemrenderer::camera::{OrbitCamera, Uniforms};
-use crate::lsystemrenderer::event::{UiEvent, register_ui_event_handler, LSystemEvent};
+use crate::lsystemrenderer::event::{UiEvent, LSystemEvent};
 
 pub mod camera;
 pub mod event;
 
 pub struct App {
-    ctx: Arc<Gpu>,
+    gpu: Arc<Gpu>,
     camera: OrbitCamera,
 
     l_system: LSystem,
@@ -44,7 +44,7 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(ctx: &Arc<Gpu>, surface_configuration: &SurfaceConfiguration, l_system: LSystem) -> Self {
+    pub fn new(gpu: &Arc<Gpu>, surface_configuration: &SurfaceConfiguration, l_system: LSystem) -> Self {
         let width = surface_configuration.width;
         let height = surface_configuration.height;
 
@@ -65,25 +65,25 @@ impl App {
 
         let cylinder_mesh = GpuMesh::from_mesh::<Vertex>(
             &Mesh::new_default_cylinder(false),
-            ctx.device()
+            gpu.device()
         );
 
         let camera_uniforms = Buffer::new_single_element(
             "camera uniforms",
             camera.as_uniforms(),
             BufferUsages::UNIFORM | BufferUsages::COPY_DST,
-            ctx,
+            gpu,
         );
         let instances = vec![Mat4::IDENTITY, Mat4::from_translation(Vec3::X)];
         let instances_buffer = Buffer::from_data(
             "instances uniform",
             &instances,
             BufferUsages::STORAGE | BufferUsages::COPY_DST,
-            ctx
+            gpu
         );
 
         let depth_format = TextureFormat::Depth32Float;
-        let depth_texture = ctx.device().create_texture(&TextureDescriptor {
+        let depth_texture = gpu.device().create_texture(&TextureDescriptor {
             label: Label::from("depth texture"),
             size: Extent3d { width, height, depth_or_array_layers: 1 },
             mip_level_count: 1,
@@ -94,13 +94,13 @@ impl App {
         });
         let depth_view = depth_texture.create_view(&TextureViewDescriptor::default());
 
-        let shader_module = ctx.device().create_shader_module(ShaderModuleDescriptor {
+        let shader_module = gpu.device().create_shader_module(ShaderModuleDescriptor {
                 label: Label::from("shader module"),
                 source: ShaderSource::Wgsl(Cow::Borrowed(include_str!("shader.wgsl"))),
         });
 
         let camera_uniforms_bind_group_layout =
-            ctx.device()
+            gpu.device()
                 .create_bind_group_layout(&BindGroupLayoutDescriptor {
                     label: None,
                     entries: &[
@@ -131,12 +131,12 @@ impl App {
                     ],
                 });
         let vertex_buffer_layouts = vec![Vertex::buffer_layout()];
-        let pipeline_layout = ctx.device().create_pipeline_layout(&PipelineLayoutDescriptor {
+        let pipeline_layout = gpu.device().create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Label::from("render pipeline layout"),
             bind_group_layouts: &[&camera_uniforms_bind_group_layout],
             push_constant_ranges: &[]
         });
-        let render_pipeline = ctx.device().create_render_pipeline(&RenderPipelineDescriptor {
+        let render_pipeline = gpu.device().create_render_pipeline(&RenderPipelineDescriptor {
             label: Label::from("render pipeline"),
             layout: Some(&pipeline_layout),
             vertex: VertexState {
@@ -165,7 +165,7 @@ impl App {
             multiview: None
         });
 
-        let bind_group = ctx.device().create_bind_group(&BindGroupDescriptor {
+        let bind_group = gpu.device().create_bind_group(&BindGroupDescriptor {
             label: Label::from("render pipeline bind group"),
             layout: &camera_uniforms_bind_group_layout,
             entries: &[
@@ -181,7 +181,7 @@ impl App {
         });
 
         Self {
-            ctx: ctx.clone(),
+            gpu: gpu.clone(),
             l_system,
             camera,
             cylinder_mesh,
@@ -225,15 +225,21 @@ impl App {
 impl GpuApp for App {
     fn init(&mut self, window: &Window, event_loop: &EventLoop<Self::UserEvent>, _context: &SurfaceContext) {
         #[cfg(target_arch = "wasm32")]
-        register_custom_canvas_event_dispatcher("ui::lsystem::iteration", &window.canvas(), &event_loop);
+        {
+            let canvas = window.canvas();
+            register_custom_canvas_event_dispatcher("ui::lsystem::iteration", &canvas, &event_loop);
+            if dispatch_canvas_event("app::initialized", &canvas).is_err() {
+                log::error!("Could not dispatch 'app::initialized' event");
+            }
+        }
     }
 
     fn render(&mut self, view: &TextureView, input: &Input) {
-        let mut command_encoder = self.ctx.device().create_command_encoder(&CommandEncoderDescriptor {
+        let mut command_encoder = self.gpu.device().create_command_encoder(&CommandEncoderDescriptor {
             label: Label::from("frame command encoder"),
         });
         self.render_inner(view, &mut command_encoder);
-        self.ctx.queue().submit(vec![command_encoder.finish()]);
+        self.gpu.queue().submit(vec![command_encoder.finish()]);
     }
 
     fn get_context_descriptor() -> ContextDescriptor<'static> {

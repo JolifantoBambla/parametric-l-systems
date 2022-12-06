@@ -1,5 +1,5 @@
 use winit::event::WindowEvent;
-use crate::framework::event::listener::OnResize;
+use crate::framework::event::listener::{OnResize, OnWindowEvent};
 use crate::framework::input::frame::Frame;
 use crate::framework::input::mouse::{Mouse, MouseEvent};
 use crate::framework::input::time::Time;
@@ -51,16 +51,18 @@ impl Input {
     pub fn events(&self) -> &Vec<Event> {
         &self.events
     }
-
-    pub fn handle_event(&mut self, event: &WindowEvent) {
-        if let Some(e) = self.mouse.handle_event(event) {
-            self.events.push(Event::Mouse(e));
-        }
-    }
 }
 
 impl OnResize for Input {
     fn on_resize(&mut self, width: u32, height: u32) {
         self.mouse.on_resize(width, height);
+    }
+}
+
+impl OnWindowEvent for Input {
+    fn on_window_event(&mut self, event: &WindowEvent) {
+        if let Some(e) = self.mouse.handle_event(event) {
+            self.events.push(Event::Mouse(e));
+        }
     }
 }
