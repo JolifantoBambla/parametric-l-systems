@@ -3,22 +3,47 @@
 <head>
     <meta charset="UTF-8">
     <title>Title</title>
+    <!-- import tweakpane for creating & managing the UI elements -->
+    <script src="js/external/tweakpane/tweakpane-3.1.1.min.js"></script>
+    <script src="js/external/tweakpane-plugin-essentials/tweakpane-plugin-essentials-0.1.5.min.js"></script>
 </head>
 <body>
     <script type="module">
         import init, { main } from "./pkg/parametric_l_systems.js";
 
+        const createUi = (event) => {
+            const eventTarget = event.currentTarget;
+
+            // todo: build UI and dispatch events
+            const pane = new Tweakpane.Pane({
+                title: 'Parametric L-Systems',
+                expanded: true,
+            });
+            pane.registerPlugin(TweakpaneEssentialsPlugin);
+
+            const settings = {
+                iteration: 0,
+            };
+
+            const iterationsSlider = pane.addInput(settings, 'iteration', {
+                label: 'Iteration',
+                min: 0, max: settings.maxIteration, step: 1,
+            });
+            iterationsSlider.on('change', e => {
+                eventTarget.dispatchEvent(new CustomEvent(
+                    'ui::lsystem::iteration',
+                    { detail: { lSystem: { iteration: e.value } } }
+                ));
+            });
+
+            console.debug('created UI');
+        }
+
         const mutationObserver = new MutationObserver(mutations => {
             mutations.forEach(m => {
                 m.addedNodes.forEach(n => {
                     if (n instanceof HTMLCanvasElement) {
-                        n.addEventListener("app::initialized", () => {
-                            // todo: build UI and dispatch events
-
-                            // todo: remove(debug)
-                            console.log('got app initialized');
-                            n.dispatchEvent(new CustomEvent("ui::lsystem::iteration", { detail: { lSystem: { iteration: 5 } } }))
-                        });
+                        n.addEventListener('app::initialized', createUi);
                     }
                 });
             });

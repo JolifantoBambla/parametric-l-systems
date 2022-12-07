@@ -2,8 +2,9 @@ use glam::Vec2;
 use winit::event::{ElementState, MouseButton, MouseScrollDelta, WindowEvent};
 use crate::framework::event::listener::OnResize;
 
-#[derive(Copy, Clone, Debug, Default)]
+#[derive(Copy, Clone, Debug)]
 pub struct MouseState {
+    cursor_in_window: bool,
     cursor_position: Vec2,
     left_button_pressed: bool,
     right_button_pressed: bool,
@@ -26,6 +27,22 @@ impl MouseState {
     }
     pub fn other_buttons_pressed(&self) -> bool {
         self.other_buttons_pressed
+    }
+    pub fn cursor_in_window(&self) -> bool {
+        self.cursor_in_window
+    }
+}
+
+impl Default for MouseState {
+    fn default() -> Self {
+        Self {
+            cursor_in_window: true,
+            cursor_position: Vec2::default(),
+            left_button_pressed: false,
+            right_button_pressed: false,
+            middle_button_pressed: false,
+            other_buttons_pressed: false
+        }
     }
 }
 
@@ -104,6 +121,10 @@ impl Mouse {
     pub fn handle_event(&mut self, event: &WindowEvent) -> Option<MouseEvent> {
         match event {
             WindowEvent::CursorMoved { position, .. } => {
+                // todo: handle new position after cursor re-entered differently
+                if !self.state.cursor_in_window {
+                    log::warn!("Cursor moved but cursor was not in window before")
+                }
                 let new_position = Vec2::new(position.x as f32, position.y as f32);
                 let delta = (new_position - self.state.cursor_position) / self.window_size;
                 self.state.cursor_position = new_position;
@@ -113,11 +134,11 @@ impl Mouse {
                 }))
             }
             WindowEvent::CursorEntered { .. } => {
-                log::warn!("cursor enter event not handled");
+                self.state.cursor_in_window = true;
                 None
             }
             WindowEvent::CursorLeft { .. } => {
-                log::warn!("cursor left event not handled");
+                self.state.cursor_in_window = false;
                 None
             }
             WindowEvent::MouseWheel {

@@ -10,7 +10,7 @@ pub struct Mesh<V: VertexType> {
 
 impl<V: VertexType> Mesh<V> {
     pub fn new_default_cylinder(centered: bool) -> Self {
-        Mesh::new_cylinder(8, 4, centered)
+        Mesh::new_cylinder(32, 1, centered)
     }
 
     // https://vorg.github.io/pex/docs/pex-gen/Cylinder.html

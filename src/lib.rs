@@ -1,6 +1,5 @@
 use wasm_bindgen::prelude::*;
 
-pub mod turtle;
 pub mod lindenmayer;
 pub mod framework;
 pub mod lsystemrenderer;
@@ -29,11 +28,6 @@ pub fn initialize() {
 #[wasm_bindgen()]
 pub fn main(l_system_definition: JsValue) {
     let l_system = lindenmayer::LSystem::new(l_system_definition);
-    for i in 0..5 {
-        let commands: Vec<turtle::TurtleCommand> = serde_wasm_bindgen::from_value(l_system.next_raw())
-            .expect("Could not parse turtle commands");
-        turtle::execute_turtle_commands(&commands);
-    }
     wasm_bindgen_futures::spawn_local(run(l_system));
 }
 

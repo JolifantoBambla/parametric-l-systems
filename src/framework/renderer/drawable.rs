@@ -3,11 +3,12 @@ use wgpu::{Buffer, BufferUsages, Device, IndexFormat, Label, RenderPass};
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use crate::framework::mesh::{mesh::Mesh, vertex::VertexType};
 
-pub trait Draw {
-    fn draw<'a>(&'a self, pass: &mut RenderPass<'a>) {
-        self.draw_instanced(pass, 1);
-    }
+pub trait DrawInstanced {
     fn draw_instanced<'a>(&'a self, pass: &mut RenderPass<'a>, num_instances: u32);
+}
+
+pub trait Draw {
+    fn draw<'a>(&'a self, pass: &mut RenderPass<'a>);
 }
 
 pub struct GpuMesh {
@@ -44,6 +45,15 @@ impl GpuMesh {
         GpuMesh::new(&String::from(mesh.name()), mesh.faces(), mesh.vertices(), device)
     }
 
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+    pub fn index_count(&self) -> u32 {
+        self.index_count
+    }
+    pub fn vertex_count(&self) -> u32 {
+        self.vertex_count
+    }
     pub fn index_buffer(&self) -> &Buffer {
         &self.index_buffer
     }
@@ -52,7 +62,7 @@ impl GpuMesh {
     }
 }
 
-impl Draw for GpuMesh {
+impl DrawInstanced for GpuMesh {
     fn draw_instanced<'a>(&'a self, pass: &mut RenderPass<'a>, num_instances: u32) {
         pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint32);
         pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
@@ -61,5 +71,11 @@ impl Draw for GpuMesh {
             0,
             0..num_instances
         );
+    }
+}
+
+impl Draw for GpuMesh {
+    fn draw<'a>(&'a self, pass: &mut RenderPass<'a>) {
+        self.draw_instanced(pass, 1);
     }
 }

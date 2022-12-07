@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::mem;
 use std::sync::Arc;
 use glam::{Mat4, Vec3};
-use wgpu::{Backends, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType, BufferBindingType, BufferUsages, Color, ColorTargetState, CommandEncoder, CommandEncoderDescriptor, CompareFunction, DepthStencilState, DownlevelCapabilities, DownlevelFlags, Extent3d, FragmentState, Label, Limits, LoadOp, Operations, PipelineLayout, PipelineLayoutDescriptor, PrimitiveState, PrimitiveTopology, RenderPassColorAttachment, RenderPassDepthStencilAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, ShaderModel, ShaderModuleDescriptor, ShaderSource, ShaderStages, SurfaceConfiguration, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages, TextureView, TextureViewDescriptor, VertexState};
+use wgpu::{Backends, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType, BufferBindingType, BufferUsages, Color, ColorTargetState, CommandEncoder, CommandEncoderDescriptor, CompareFunction, DepthStencilState, DownlevelCapabilities, DownlevelFlags, Extent3d, FragmentState, Label, Limits, LoadOp, Operations, PipelineLayout, PipelineLayoutDescriptor, PrimitiveState, PrimitiveTopology, RenderPassColorAttachment, RenderPassDepthStencilAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, ShaderModel, ShaderModuleDescriptor, ShaderSource, ShaderStages, SurfaceConfiguration, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages, TextureView, TextureViewDescriptor, VertexState};
 use wgpu::Face::Back;
 use winit::event::WindowEvent;
 use winit::event_loop::EventLoop;
@@ -24,68 +24,31 @@ use crate::framework::scene::Update;
 use crate::lindenmayer::LSystem;
 use crate::lsystemrenderer::camera::{OrbitCamera, Uniforms};
 use crate::lsystemrenderer::event::{UiEvent, LSystemEvent};
-use crate::turtle;
-use crate::turtle::Instance;
+use crate::lsystemrenderer::turtle::turtle::{Instance, LSystemManager};
 
 pub mod camera;
 pub mod event;
+pub mod turtle;
 
 pub struct App {
     gpu: Arc<Gpu>,
     camera: OrbitCamera,
 
-    l_system: LSystem,
-
-    cylinder_mesh: GpuMesh,
-
-
-    //instance_buffer: Buffer<Instance>,
+    l_system_manager: LSystemManager,
 
     // render stuff
-    camera_uniforms: Buffer<camera::Uniforms>,
+    camera_uniforms: Buffer<Uniforms>,
     depth_view: TextureView,
     render_pipeline: RenderPipeline,
-    bind_group: BindGroup,
+    uniforms_bind_group: BindGroup,
+
+    instances_bind_group_layout: Arc<BindGroupLayout>,
 }
 
 impl App {
     pub fn new(gpu: &Arc<Gpu>, surface_configuration: &SurfaceConfiguration, l_system: LSystem) -> Self {
         let width = surface_configuration.width;
         let height = surface_configuration.height;
-
-        let camera = OrbitCamera::new(
-            Projection::new_perspective(
-                f32::to_radians(45.),
-                width as f32 / height as f32,
-                0.0001,
-                1000.0
-            ),
-            CameraView::new(
-                Vec3::new(0., 0., -10.),
-                Vec3::ZERO,
-                Vec3::Y,
-            ),
-            5.0
-        );
-
-        let cylinder_mesh = GpuMesh::from_mesh::<Vertex>(
-            &Mesh::new_default_cylinder(false),
-            gpu.device()
-        );
-
-        let camera_uniforms = Buffer::new_single_element(
-            "camera uniforms",
-            camera.as_uniforms(),
-            BufferUsages::UNIFORM | BufferUsages::COPY_DST,
-            gpu,
-        );
-        let instances = vec![Mat4::IDENTITY, Mat4::from_translation(Vec3::X)];
-        let instances_buffer = Buffer::from_data(
-            "instances uniform",
-            &instances,
-            BufferUsages::STORAGE | BufferUsages::COPY_DST,
-            gpu
-        );
 
         let depth_format = TextureFormat::Depth32Float;
         let depth_texture = gpu.device().create_texture(&TextureDescriptor {
@@ -120,25 +83,33 @@ impl App {
                                 ),
                             },
                             count: None
-                        },
+                        }
+                    ],
+                });
+        let instances_bind_group_layout = Arc::new(
+            gpu.device()
+                .create_bind_group_layout(&BindGroupLayoutDescriptor {
+                    label: Label::from("Instance buffer bind group layout"),
+                    entries: &[
                         BindGroupLayoutEntry {
-                            binding: 1,
+                            binding: 0,
                             visibility: ShaderStages::VERTEX | ShaderStages::FRAGMENT,
                             ty: BindingType::Buffer {
                                 ty: BufferBindingType::Storage { read_only: true },
                                 has_dynamic_offset: false,
                                 min_binding_size: wgpu::BufferSize::new(
-                                    mem::size_of::<Mat4>() as _,
+                                    mem::size_of::<Instance>() as _,
                                 ),
                             },
                             count: None
                         }
                     ],
-                });
+                })
+        );
         let vertex_buffer_layouts = vec![Vertex::buffer_layout()];
         let pipeline_layout = gpu.device().create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Label::from("render pipeline layout"),
-            bind_group_layouts: &[&camera_uniforms_bind_group_layout],
+            bind_group_layouts: &[&camera_uniforms_bind_group_layout, &instances_bind_group_layout],
             push_constant_ranges: &[]
         });
         let render_pipeline = gpu.device().create_render_pipeline(&RenderPipelineDescriptor {
@@ -170,30 +141,55 @@ impl App {
             multiview: None
         });
 
-        let bind_group = gpu.device().create_bind_group(&BindGroupDescriptor {
-            label: Label::from("render pipeline bind group"),
+        let l_system_manager = LSystemManager::new(
+            l_system,
+            &instances_bind_group_layout,
+            1,
+            gpu
+        );
+
+        let camera = OrbitCamera::new(
+            Projection::new_perspective(
+                f32::to_radians(45.),
+                width as f32 / height as f32,
+                0.0001,
+                1000.0
+            ),
+            CameraView::new(
+                Vec3::new(0., 0., -10.),
+                Vec3::ZERO,
+                Vec3::Y,
+            ),
+            5.0
+        );
+
+        let camera_uniforms = Buffer::new_single_element(
+            "camera uniforms",
+            camera.as_uniforms(),
+            BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+            gpu,
+        );
+
+        let uniforms_bind_group = gpu.device().create_bind_group(&BindGroupDescriptor {
+            label: Label::from("uniforms bind group"),
             layout: &camera_uniforms_bind_group_layout,
             entries: &[
                 BindGroupEntry {
                     binding: 0,
                     resource: camera_uniforms.buffer().as_entire_binding(),
                 },
-                BindGroupEntry {
-                    binding: 1,
-                    resource: instances_buffer.buffer().as_entire_binding(),
-                }
             ]
         });
 
         Self {
             gpu: gpu.clone(),
-            l_system,
+            l_system_manager,
             camera,
-            cylinder_mesh,
             camera_uniforms,
             depth_view,
             render_pipeline,
-            bind_group,
+            uniforms_bind_group,
+            instances_bind_group_layout,
         }
     }
 
@@ -222,8 +218,8 @@ impl App {
             depth_stencil_attachment: Some(depth_attachment)
         });
         render_pass.set_pipeline(&self.render_pipeline);
-        render_pass.set_bind_group(0, &self.bind_group, &[]);
-        self.cylinder_mesh.draw_instanced(&mut render_pass, 2);
+        render_pass.set_bind_group(0, &self.uniforms_bind_group, &[]);
+        self.l_system_manager.draw(&mut render_pass);
     }
 }
 
@@ -272,16 +268,8 @@ impl OnUserEvent for App {
     fn on_user_event(&mut self, event: &Self::UserEvent) {
         match event {
             UiEvent::LSystem(LSystemEvent::Iteration(iteration)) => {
-                log::info!("Got iteration event: {:?}", iteration);
-                // todo: add option to store intermediate steps
-                // todo: fix and use nth
-                for i in 0..iteration-1 {
-                    self.l_system.next_raw();
-                }
-                let commands: Vec<turtle::TurtleCommand> = serde_wasm_bindgen::from_value(self.l_system.next_raw())
-                    .expect("Could not parse turtle commands");
-                let instances = turtle::execute_turtle_commands(&commands);
-
+                log::debug!("Got iteration event: {:?}", iteration);
+                self.l_system_manager.set_target_iteration(*iteration as u32);
             }
         }
     }
@@ -294,5 +282,6 @@ impl OnWindowEvent for App {
 impl Update for App {
     fn update(&mut self, input: &Input) {
         self.camera.update(input);
+        self.l_system_manager.update(input);
     }
 }

@@ -641,30 +641,19 @@ export class LSystem {
 export class LSystemIterator {
     #lSystem;
     #state;
-    #previousStates;
 
     constructor(lSystem) {
         this.#lSystem = lSystem;
         this.#state = new LSystemState({ axiom: lSystem.axiom, parameters: lSystem.parameters });
-        this.#previousStates = [];
+    }
+
+    current(asString = true) {
+        return asString ? this.#state.toString() : this.#state.toSerializable().axiom;
     }
 
     next(asString = true) {
-        this.#previousStates = this.#state.clone();
-        this.state = this.#lSystem.evaluate(this.#state);
-        return asString ? this.state.toString() : this.state.toSerializable().axiom;
-    }
-
-    // todo: this is an infinite loop?
-    nth(i, asString = true) {
-        if (this.#previousStates.length > i) {
-            const state = this.#previousStates[i];
-            return asString ? state.toString() : state.toSerializable().axiom;
-        }
-        while (i !== this.#previousStates.length) {
-            this.next();
-        }
-        return asString ? this.state.toString() : this.state.toSerializable().axiom;
+        this.#state = this.#lSystem.evaluate(this.#state);
+        return this.current(asString);
     }
 
     static createLSystemIterator({alphabet = undefined, parameters = {}, productions, axiom}) {

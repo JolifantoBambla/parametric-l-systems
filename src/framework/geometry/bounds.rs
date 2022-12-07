@@ -7,6 +7,7 @@ pub trait Bounds {
     fn max(&self) -> Self::VecN;
     fn contains(&self, point: Self::VecN) -> bool;
     fn grow(&mut self, point: Self::VecN);
+    fn corners(&self) -> Vec<Self::VecN>;
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -36,6 +37,14 @@ impl Bounds for Bounds2 {
     fn grow(&mut self, point: Self::VecN) {
         self.min = self.min.min(point);
         self.max = self.max.max(point);
+    }
+    fn corners(&self) -> Vec<Self::VecN> {
+        vec![
+            self.min(),
+            Vec2::new(self.min.x, self.max.y),
+            Vec2::new(self.max.x, self.min.y),
+            self.max(),
+        ]
     }
 }
 
@@ -70,5 +79,17 @@ impl Bounds for Bounds3 {
     fn grow(&mut self, point: Self::VecN) {
         self.min = self.min.min(point);
         self.max = self.max.max(point);
+    }
+    fn corners(&self) -> Vec<Self::VecN> {
+        vec![
+            self.min(),
+            Vec3::new(self.min.x, self.max.y, self.min.z),
+            Vec3::new(self.min.x, self.min.y, self.max.z),
+            Vec3::new(self.min.x, self.max.y, self.max.z),
+            Vec3::new(self.max.x, self.min.y, self.min.z),
+            Vec3::new(self.max.x, self.max.y, self.min.z),
+            Vec3::new(self.max.x, self.min.y, self.max.z),
+            self.max(),
+        ]
     }
 }
