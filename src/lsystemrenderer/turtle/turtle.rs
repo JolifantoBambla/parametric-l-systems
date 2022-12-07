@@ -37,6 +37,17 @@ impl LSystemModel {
 
         let mut state = CoordinateFrame::default();
         let mut stack = VecDeque::new();
+
+        log::info!("state initial {:?}", state);
+        //state.pitch_degree(90.);
+
+        log::info!("state rotated {:?}", state);
+
+        cylinder_instances.push(Instance {
+            matrix: Mat4::IDENTITY,
+            color: Vec4::ONE,
+        });
+
         for c in commands {
             match c {
                 TurtleCommand::AddCylinder(cylinder) => {
