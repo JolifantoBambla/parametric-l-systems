@@ -1,8 +1,8 @@
-use winit::event::WindowEvent;
 use crate::framework::event::listener::{OnResize, OnWindowEvent};
 use crate::framework::input::frame::Frame;
 use crate::framework::input::mouse::{Mouse, MouseEvent};
 use crate::framework::input::time::Time;
+use winit::event::WindowEvent;
 
 pub mod frame;
 pub mod keyboard;
@@ -11,7 +11,7 @@ pub mod time;
 
 #[derive(Clone, Debug)]
 pub enum Event {
-    Mouse(MouseEvent)
+    Mouse(MouseEvent),
 }
 
 #[derive(Clone, Debug)]

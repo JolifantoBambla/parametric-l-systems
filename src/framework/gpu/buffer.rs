@@ -1,26 +1,36 @@
+use crate::framework::context::Gpu;
 use std::marker::PhantomData;
 use std::mem;
 use std::mem::size_of;
 use std::sync::Arc;
-use wgpu::{BufferAddress, BufferDescriptor, BufferUsages, Label};
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
-use crate::framework::context::Gpu;
+use wgpu::{BufferAddress, BufferDescriptor, BufferUsages, Label};
 
 pub struct Buffer<T: bytemuck::Pod> {
     ctx: Arc<Gpu>,
     label: String,
     buffer: wgpu::Buffer,
     num_elements: usize,
-    phantom_data: PhantomData<T>
+    phantom_data: PhantomData<T>,
 }
 
 impl<T: bytemuck::Pod> Buffer<T> {
-    pub fn new_zeroed(label: &str, num_elements: usize, usage: BufferUsages, ctx: &Arc<Gpu>) -> Self {
+    pub fn new_zeroed(
+        label: &str,
+        num_elements: usize,
+        usage: BufferUsages,
+        ctx: &Arc<Gpu>,
+    ) -> Self {
         let data = vec![unsafe { mem::zeroed() }; num_elements];
         Buffer::from_data(label, &data, usage, ctx)
     }
 
-    pub fn new_single_element(label: &str, element: T, usage: BufferUsages, ctx: &Arc<Gpu>) -> Self {
+    pub fn new_single_element(
+        label: &str,
+        element: T,
+        usage: BufferUsages,
+        ctx: &Arc<Gpu>,
+    ) -> Self {
         let data = vec![element];
         Buffer::from_data(label, &data, usage, ctx)
     }
@@ -29,7 +39,7 @@ impl<T: bytemuck::Pod> Buffer<T> {
         let buffer = ctx.device().create_buffer_init(&BufferInitDescriptor {
             label: Label::from(label),
             contents: bytemuck::cast_slice(data),
-            usage
+            usage,
         });
         Self {
             ctx: ctx.clone(),
@@ -47,7 +57,7 @@ impl<T: bytemuck::Pod> Buffer<T> {
             label: Label::from(label.as_str()),
             size: self.size(),
             usage: BufferUsages::MAP_READ | BufferUsages::COPY_DST,
-            mapped_at_creation: false
+            mapped_at_creation: false,
         });
         Self {
             ctx: ctx.clone(),
@@ -59,11 +69,9 @@ impl<T: bytemuck::Pod> Buffer<T> {
     }
 
     pub fn write_buffer(&self, data: &Vec<T>) {
-        self.ctx.queue().write_buffer(
-            self.buffer(),
-            0,
-            bytemuck::cast_slice(data.as_slice()),
-        );
+        self.ctx
+            .queue()
+            .write_buffer(self.buffer(), 0, bytemuck::cast_slice(data.as_slice()));
     }
 
     pub fn buffer(&self) -> &wgpu::Buffer {

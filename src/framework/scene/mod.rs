@@ -6,6 +6,4 @@ pub trait Update {
     fn update(&mut self, input: &Input);
 }
 
-pub struct Scene {
-
-}
+pub struct Scene {}

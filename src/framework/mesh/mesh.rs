@@ -1,6 +1,6 @@
-use glam::{Vec2, Vec3};
 use crate::framework::mesh::vertex::VertexType;
 use crate::framework::util::math::PI_2;
+use glam::{Vec2, Vec3};
 
 pub struct Mesh<V: VertexType> {
     name: String,
@@ -31,11 +31,7 @@ impl<V: VertexType> Mesh<V> {
 
         let mut index = 0;
 
-        let offset_y = if centered {
-            0.0
-        } else {
-            - height / 2.
-        };
+        let offset_y = if centered { 0.0 } else { -height / 2. };
 
         for j in 0..num_segments + 1 {
             for i in 0..num_sides + 1 {
@@ -111,7 +107,10 @@ impl<V: VertexType> Mesh<V> {
         }
 
         Self {
-            name: String::from(format!("Cylinder (r={}, h={}, centered={})", radius, height, centered)),
+            name: format!(
+                "Cylinder (r={}, h={}, centered={})",
+                radius, height, centered
+            ),
             faces,
             vertices,
         }
@@ -121,13 +120,13 @@ impl<V: VertexType> Mesh<V> {
         let vertices = vec![
             // top (0, 0, 1)
             V::from_pos_normal_tex_coords(Vec3::new(-1.0, -1.0, 1.0), Vec3::Z, Vec2::ZERO),
-            V::from_pos_normal_tex_coords(Vec3::new( 1.0, -1.0, 1.0), Vec3::Z, Vec2::ZERO),
-            V::from_pos_normal_tex_coords(Vec3::new( 1.0, 1.0, 1.0), Vec3::Z, Vec2::ZERO),
+            V::from_pos_normal_tex_coords(Vec3::new(1.0, -1.0, 1.0), Vec3::Z, Vec2::ZERO),
+            V::from_pos_normal_tex_coords(Vec3::new(1.0, 1.0, 1.0), Vec3::Z, Vec2::ZERO),
             V::from_pos_normal_tex_coords(Vec3::new(-1.0, 1.0, 1.0), Vec3::Z, Vec2::ZERO),
             // bottom (0, 0, -1)
             V::from_pos_normal_tex_coords(Vec3::new(-1.0, 1.0, -1.0), Vec3::Z * -1., Vec2::ZERO),
-            V::from_pos_normal_tex_coords(Vec3::new( 1.0, 1.0, -1.0), Vec3::Z * -1., Vec2::ZERO),
-            V::from_pos_normal_tex_coords(Vec3::new( 1.0, -1.0, -1.0), Vec3::Z * -1., Vec2::ZERO),
+            V::from_pos_normal_tex_coords(Vec3::new(1.0, 1.0, -1.0), Vec3::Z * -1., Vec2::ZERO),
+            V::from_pos_normal_tex_coords(Vec3::new(1.0, -1.0, -1.0), Vec3::Z * -1., Vec2::ZERO),
             V::from_pos_normal_tex_coords(Vec3::new(-1.0, -1.0, -1.0), Vec3::Z * -1., Vec2::ZERO),
             // right (1, 0, 0)
             V::from_pos_normal_tex_coords(Vec3::new(1.0, -1.0, -1.0), Vec3::X, Vec2::ZERO),
@@ -140,23 +139,29 @@ impl<V: VertexType> Mesh<V> {
             V::from_pos_normal_tex_coords(Vec3::new(-1.0, 1.0, -1.0), Vec3::X * -1., Vec2::ZERO),
             V::from_pos_normal_tex_coords(Vec3::new(-1.0, -1.0, -1.0), Vec3::X * -1., Vec2::ZERO),
             // front (0, 1, 0)
-            V::from_pos_normal_tex_coords(Vec3::new( 1.0, 1.0, -1.0), Vec3::Y, Vec2::ZERO),
+            V::from_pos_normal_tex_coords(Vec3::new(1.0, 1.0, -1.0), Vec3::Y, Vec2::ZERO),
             V::from_pos_normal_tex_coords(Vec3::new(-1.0, 1.0, -1.0), Vec3::Y, Vec2::ZERO),
             V::from_pos_normal_tex_coords(Vec3::new(-1.0, 1.0, 1.0), Vec3::Y, Vec2::ZERO),
-            V::from_pos_normal_tex_coords(Vec3::new( 1.0, 1.0, 1.0), Vec3::Y, Vec2::ZERO),
+            V::from_pos_normal_tex_coords(Vec3::new(1.0, 1.0, 1.0), Vec3::Y, Vec2::ZERO),
             // back (0, -1, 0)
-            V::from_pos_normal_tex_coords(Vec3::new( 1.0, -1.0, 1.0), Vec3::Y * -1., Vec2::ZERO),
+            V::from_pos_normal_tex_coords(Vec3::new(1.0, -1.0, 1.0), Vec3::Y * -1., Vec2::ZERO),
             V::from_pos_normal_tex_coords(Vec3::new(-1.0, -1.0, 1.0), Vec3::Y * -1., Vec2::ZERO),
             V::from_pos_normal_tex_coords(Vec3::new(-1.0, -1.0, -1.0), Vec3::Y * -1., Vec2::ZERO),
-            V::from_pos_normal_tex_coords(Vec3::new( 1.0, -1.0, -1.0), Vec3::Y * -1., Vec2::ZERO),
+            V::from_pos_normal_tex_coords(Vec3::new(1.0, -1.0, -1.0), Vec3::Y * -1., Vec2::ZERO),
         ];
         let faces: Vec<[u32; 3]> = vec![
-            [0, 1, 2], [2, 3, 0], // top
-            [4, 5, 6], [6, 7, 4], // bottom
-            [8, 9, 10], [10, 11, 8], // right
-            [12, 13, 14], [14, 15, 12], // left
-            [16, 17, 18], [18, 19, 16], // front
-            [20, 21, 22], [22, 23, 20], // back
+            [0, 1, 2],
+            [2, 3, 0], // top
+            [4, 5, 6],
+            [6, 7, 4], // bottom
+            [8, 9, 10],
+            [10, 11, 8], // right
+            [12, 13, 14],
+            [14, 15, 12], // left
+            [16, 17, 18],
+            [18, 19, 16], // front
+            [20, 21, 22],
+            [22, 23, 20], // back
         ];
         Self {
             name: "Cube".to_string(),

@@ -1,7 +1,5 @@
-use std::collections::VecDeque;
 use glam::{Mat3, Mat4, Vec3};
-use serde::{Deserialize};
-use crate::framework::geometry::bounds::{Bounds, Bounds3};
+use serde::Deserialize;
 
 // todo: move Orientation & CoordinateFrame to framework
 
@@ -110,7 +108,8 @@ impl CoordinateFrame {
     }
 
     pub fn zoom_in(&mut self, delta: f32) {
-        self.distance_to_target = (self.distance_to_target - delta).max(self.min_distance_to_target);
+        self.distance_to_target =
+            (self.distance_to_target - delta).max(self.min_distance_to_target);
     }
 
     pub fn zoom_out(&mut self, delta: f32) {
@@ -147,10 +146,10 @@ impl CoordinateFrame {
 
     pub fn as_mat4(&self) -> Mat4 {
         //Mat4::from_translation(self.origin)
-            //.mul_mat4(&self.orientation.as_mat4())
-            //.mul_mat4(&Mat4::from_mat3(self.orientation.as_mat3().inverse()))
+        //.mul_mat4(&self.orientation.as_mat4())
+        //.mul_mat4(&Mat4::from_mat3(self.orientation.as_mat3().inverse()))
         //self.orientation.as_mat4()
-            //.mul_mat4(&Mat4::from_translation(self.origin))
+        //.mul_mat4(&Mat4::from_translation(self.origin))
         //Mat4::look_at_rh(self.origin, self.target(), self.orientation.up)
 
         /*
@@ -163,7 +162,11 @@ impl CoordinateFrame {
         );
          */
 
-        let rotation = Mat4::look_at_rh(Vec3::ZERO, self.orientation.up(), self.orientation.forward());
+        let rotation = Mat4::look_at_rh(
+            Vec3::ZERO,
+            self.orientation.up(),
+            self.orientation.forward(),
+        );
 
         let translation = Mat4::from_translation(self.origin);
 
@@ -304,7 +307,6 @@ pub enum TurtleCommand {
     PopFromStack,
 
     // every command below this line is not needed for the exercise
-
     #[serde(rename = "$")]
     ToHorizontal,
 
@@ -314,31 +316,67 @@ pub enum TurtleCommand {
 
 pub fn test_commands() -> Vec<TurtleCommand> {
     vec![
-        TurtleCommand::AddCylinder(AddCylinder { parameters: [0.5, 0.25,] }),
-        TurtleCommand::AddCylinder(AddCylinder { parameters: [0.5, 0.25,] }),
-        TurtleCommand::RotateYaw(RotateYaw { parameters: [90.,] }),
-        TurtleCommand::AddCylinder(AddCylinder { parameters: [0.5, 0.25,] }),
-        TurtleCommand::AddCylinder(AddCylinder { parameters: [0.5, 0.25,] }),
-        TurtleCommand::RotateYaw(RotateYaw { parameters: [45.,] }),
-        TurtleCommand::AddCylinder(AddCylinder { parameters: [0.5, 0.25,] }),
-        TurtleCommand::AddCylinder(AddCylinder { parameters: [0.5, 0.25,] }),
-        TurtleCommand::RotatePitch(RotatePitch { parameters: [90.,] }),
-        TurtleCommand::AddCylinder(AddCylinder { parameters: [0.5, 0.25,] }),
-        TurtleCommand::AddCylinder(AddCylinder { parameters: [0.5, 0.25,] }),
-        TurtleCommand::RotateRoll(RotateRoll { parameters: [90.,] }),
-        TurtleCommand::AddCylinder(AddCylinder { parameters: [0.5, 0.25,] }),
-        TurtleCommand::AddCylinder(AddCylinder { parameters: [0.5, 0.25,] }),
+        TurtleCommand::AddCylinder(AddCylinder {
+            parameters: [0.5, 0.25],
+        }),
+        TurtleCommand::AddCylinder(AddCylinder {
+            parameters: [0.5, 0.25],
+        }),
+        TurtleCommand::RotateYaw(RotateYaw { parameters: [90.] }),
+        TurtleCommand::AddCylinder(AddCylinder {
+            parameters: [0.5, 0.25],
+        }),
+        TurtleCommand::AddCylinder(AddCylinder {
+            parameters: [0.5, 0.25],
+        }),
+        TurtleCommand::RotateYaw(RotateYaw { parameters: [45.] }),
+        TurtleCommand::AddCylinder(AddCylinder {
+            parameters: [0.5, 0.25],
+        }),
+        TurtleCommand::AddCylinder(AddCylinder {
+            parameters: [0.5, 0.25],
+        }),
+        TurtleCommand::RotatePitch(RotatePitch { parameters: [90.] }),
+        TurtleCommand::AddCylinder(AddCylinder {
+            parameters: [0.5, 0.25],
+        }),
+        TurtleCommand::AddCylinder(AddCylinder {
+            parameters: [0.5, 0.25],
+        }),
+        TurtleCommand::RotateRoll(RotateRoll { parameters: [90.] }),
+        TurtleCommand::AddCylinder(AddCylinder {
+            parameters: [0.5, 0.25],
+        }),
+        TurtleCommand::AddCylinder(AddCylinder {
+            parameters: [0.5, 0.25],
+        }),
         TurtleCommand::ToHorizontal,
-        TurtleCommand::AddCylinder(AddCylinder { parameters: [0.5, 0.25,] }),
-        TurtleCommand::AddCylinder(AddCylinder { parameters: [0.5, 0.25,] }),
-        TurtleCommand::RotatePitch(RotatePitch { parameters: [90.,] }),
-        TurtleCommand::AddCylinder(AddCylinder { parameters: [0.5, 0.25,] }),
-        TurtleCommand::AddCylinder(AddCylinder { parameters: [0.5, 0.25,] }),
-        TurtleCommand::RotatePitch(RotatePitch { parameters: [-90.,] }),
-        TurtleCommand::AddCylinder(AddCylinder { parameters: [0.5, 0.25,] }),
-        TurtleCommand::AddCylinder(AddCylinder { parameters: [0.5, 0.25,] }),
-        TurtleCommand::RotateYaw(RotateYaw { parameters: [90.,] }),
-        TurtleCommand::AddCylinder(AddCylinder { parameters: [0.5, 0.25,] }),
-        TurtleCommand::AddCylinder(AddCylinder { parameters: [0.5, 0.25,] }),
+        TurtleCommand::AddCylinder(AddCylinder {
+            parameters: [0.5, 0.25],
+        }),
+        TurtleCommand::AddCylinder(AddCylinder {
+            parameters: [0.5, 0.25],
+        }),
+        TurtleCommand::RotatePitch(RotatePitch { parameters: [90.] }),
+        TurtleCommand::AddCylinder(AddCylinder {
+            parameters: [0.5, 0.25],
+        }),
+        TurtleCommand::AddCylinder(AddCylinder {
+            parameters: [0.5, 0.25],
+        }),
+        TurtleCommand::RotatePitch(RotatePitch { parameters: [-90.] }),
+        TurtleCommand::AddCylinder(AddCylinder {
+            parameters: [0.5, 0.25],
+        }),
+        TurtleCommand::AddCylinder(AddCylinder {
+            parameters: [0.5, 0.25],
+        }),
+        TurtleCommand::RotateYaw(RotateYaw { parameters: [90.] }),
+        TurtleCommand::AddCylinder(AddCylinder {
+            parameters: [0.5, 0.25],
+        }),
+        TurtleCommand::AddCylinder(AddCylinder {
+            parameters: [0.5, 0.25],
+        }),
     ]
 }

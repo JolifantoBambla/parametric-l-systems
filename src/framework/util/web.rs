@@ -2,17 +2,10 @@ use std::path::PathBuf;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::JsCast;
 #[cfg(target_arch = "wasm32")]
-use web_sys::{
-    Document, Element, HtmlCanvasElement, HtmlElement, HtmlInputElement, Performance, Window,
-};
-use winit::{
-    dpi::PhysicalSize,
-    event_loop::{ControlFlow, EventLoop},
-    window,
-    window::WindowBuilder,
-};
+use web_sys::{Document, Element, HtmlCanvasElement, HtmlElement, HtmlInputElement, Window};
 #[cfg(target_arch = "wasm32")]
 use winit::platform::web::{WindowBuilderExtWebSys, WindowExtWebSys};
+use winit::{dpi::PhysicalSize, event_loop::EventLoop, window, window::WindowBuilder};
 
 use crate::framework::util::window::WindowConfig;
 
@@ -93,7 +86,10 @@ pub fn base_path() -> PathBuf {
     }
 }
 
-pub fn get_or_create_window<T>(window_config: &WindowConfig, event_loop: &EventLoop<T>) -> window::Window {
+pub fn get_or_create_window<T>(
+    window_config: &WindowConfig,
+    event_loop: &EventLoop<T>,
+) -> window::Window {
     let mut builder = WindowBuilder::new()
         .with_title(window_config.title())
         .with_inner_size(window_config.size());
@@ -108,7 +104,7 @@ pub fn get_or_create_window<T>(window_config: &WindowConfig, event_loop: &EventL
             .with_inner_size(canvas_size);
     }
 
-    let window = builder.build(&event_loop).unwrap();
+    let window = builder.build(event_loop).unwrap();
 
     if window_config.canvas_id().is_none() {
         attach_canvas(window.canvas(), window_config.parent_id());

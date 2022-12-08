@@ -1,13 +1,12 @@
 use wasm_bindgen::prelude::*;
 
-pub mod lindenmayer;
 pub mod framework;
+pub mod lindenmayer;
 pub mod lsystemrenderer;
 
-use crate::lsystemrenderer::App;
 use crate::framework::app::AppRunner;
 use crate::framework::util::window::WindowConfig;
-
+use crate::lsystemrenderer::App;
 
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
 // allocator.
@@ -34,8 +33,11 @@ pub fn main(l_system_definition: JsValue) {
 #[cfg(target_arch = "wasm32")]
 async fn run(l_system: lindenmayer::LSystem) {
     let window_config = WindowConfig::default();
-    let app_runner = AppRunner::<App>::new(window_config)
-        .await;
-    let app = App::new(&app_runner.ctx().gpu(), &app_runner.ctx().surface_configuration(), l_system);
+    let app_runner = AppRunner::<App>::new(window_config).await;
+    let app = App::new(
+        app_runner.ctx().gpu(),
+        app_runner.ctx().surface_configuration(),
+        l_system,
+    );
     app_runner.run(app);
 }

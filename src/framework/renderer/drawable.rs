@@ -1,7 +1,6 @@
-use js_sys::ReferenceError;
-use wgpu::{Buffer, BufferUsages, Device, IndexFormat, Label, RenderPass};
-use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use crate::framework::mesh::{mesh::Mesh, vertex::VertexType};
+use wgpu::util::{BufferInitDescriptor, DeviceExt};
+use wgpu::{Buffer, BufferUsages, Device, IndexFormat, Label, RenderPass};
 
 pub trait DrawInstanced {
     fn draw_instanced<'a>(&'a self, pass: &mut RenderPass<'a>, num_instances: u32);
@@ -20,7 +19,12 @@ pub struct GpuMesh {
 }
 
 impl GpuMesh {
-    pub fn new<V: VertexType>(name: &String, faces: &Vec<[u32; 3]>, vertices: &Vec<V>, device: &Device) -> Self {
+    pub fn new<V: VertexType>(
+        name: &String,
+        faces: &[[u32; 3]],
+        vertices: &Vec<V>,
+        device: &Device,
+    ) -> Self {
         let indices: Vec<u32> = faces.iter().flatten().cloned().collect();
         let index_buffer = device.create_buffer_init(&BufferInitDescriptor {
             label: Label::from(format!("Index buffer [{}]", name).as_str()),
@@ -42,7 +46,12 @@ impl GpuMesh {
     }
 
     pub fn from_mesh<V: VertexType>(mesh: &Mesh<V>, device: &Device) -> Self {
-        GpuMesh::new(&String::from(mesh.name()), mesh.faces(), mesh.vertices(), device)
+        GpuMesh::new(
+            &String::from(mesh.name()),
+            mesh.faces(),
+            mesh.vertices(),
+            device,
+        )
     }
 
     pub fn name(&self) -> &str {
@@ -66,11 +75,7 @@ impl DrawInstanced for GpuMesh {
     fn draw_instanced<'a>(&'a self, pass: &mut RenderPass<'a>, num_instances: u32) {
         pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint32);
         pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-        pass.draw_indexed(
-            0..self.index_count as u32,
-            0,
-            0..num_instances
-        );
+        pass.draw_indexed(0..self.index_count as u32, 0, 0..num_instances);
     }
 }
 

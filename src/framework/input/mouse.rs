@@ -1,6 +1,6 @@
+use crate::framework::event::listener::OnResize;
 use glam::Vec2;
 use winit::event::{ElementState, MouseButton, MouseScrollDelta, WindowEvent};
-use crate::framework::event::listener::OnResize;
 
 #[derive(Copy, Clone, Debug)]
 pub struct MouseState {
@@ -41,7 +41,7 @@ impl Default for MouseState {
             left_button_pressed: false,
             right_button_pressed: false,
             middle_button_pressed: false,
-            other_buttons_pressed: false
+            other_buttons_pressed: false,
         }
     }
 }
@@ -113,8 +113,8 @@ impl Mouse {
 
     pub fn next(&self) -> Self {
         Self {
-            window_size: self.window_size.clone(),
-            state: self.state.clone(),
+            window_size: self.window_size,
+            state: self.state,
         }
     }
 
@@ -129,8 +129,8 @@ impl Mouse {
                 let delta = (new_position - self.state.cursor_position) / self.window_size;
                 self.state.cursor_position = new_position;
                 Some(MouseEvent::Move(MouseMove {
-                    state: self.state.clone(),
-                    delta
+                    state: self.state,
+                    delta,
                 }))
             }
             WindowEvent::CursorEntered { .. } => {
@@ -144,9 +144,9 @@ impl Mouse {
             WindowEvent::MouseWheel {
                 delta: MouseScrollDelta::PixelDelta(delta),
                 ..
-            } => {
-                Some(MouseEvent::Scroll(MouseScroll { delta: delta.y as f32 }))
-            }
+            } => Some(MouseEvent::Scroll(MouseScroll {
+                delta: delta.y as f32,
+            })),
             WindowEvent::MouseInput { state, button, .. } => {
                 let state = match state {
                     ElementState::Pressed => ElementState::Pressed,
@@ -167,13 +167,11 @@ impl Mouse {
                     }
                 }
                 Some(MouseEvent::Button(MouseButtonEvent {
-                    button: button.clone(),
-                    state: state.clone(),
+                    button: *button,
+                    state,
                 }))
             }
-            _ => {
-                None
-            }
+            _ => None,
         }
     }
 

@@ -1,10 +1,10 @@
-use glam::Mat4;
 use crate::framework::camera;
 use crate::framework::camera::{Camera, CameraView, Projection};
 use crate::framework::event::listener::OnResize;
-use crate::framework::input::{Event, Input};
 use crate::framework::input::mouse::MouseEvent;
+use crate::framework::input::{Event, Input};
 use crate::framework::scene::Update;
+use glam::Mat4;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -22,7 +22,11 @@ pub struct OrbitCamera {
 
 impl OrbitCamera {
     pub fn new(projection: Projection, transform: CameraView, speed: f32) -> Self {
-        Self { projection, transform, speed }
+        Self {
+            projection,
+            transform,
+            speed,
+        }
     }
 
     pub fn as_uniforms(&self) -> Uniforms {
@@ -52,25 +56,22 @@ impl Update for OrbitCamera {
     fn update(&mut self, input: &Input) {
         for e in input.events() {
             match e {
-                Event::Mouse(m) => {
-                    match m {
-                        MouseEvent::Move(m) => {
-                            if m.state().left_button_pressed() {
-                                self.transform.orbit(m.delta(), false);
-                            } else if m.state().right_button_pressed() {
-                                let translation = m.delta() * self.speed * 20.;
-                                self.transform.move_right(translation.x);
-                                self.transform.move_down(translation.y);
-                            }
+                Event::Mouse(m) => match m {
+                    MouseEvent::Move(m) => {
+                        if m.state().left_button_pressed() {
+                            self.transform.orbit(m.delta(), false);
+                        } else if m.state().right_button_pressed() {
+                            let translation = m.delta() * self.speed * 20.;
+                            self.transform.move_right(translation.x);
+                            self.transform.move_down(translation.y);
                         }
-                        MouseEvent::Scroll(s) => {
-                            self.transform.zoom_in(
-                                s.delta().abs().min(1.) * s.delta().signum()
-                            );
-                        }
-                        _ => {}
                     }
-                }
+                    MouseEvent::Scroll(s) => {
+                        self.transform
+                            .zoom_in(s.delta().abs().min(1.) * s.delta().signum());
+                    }
+                    _ => {}
+                },
             }
         }
     }

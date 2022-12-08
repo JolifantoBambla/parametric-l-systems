@@ -1,7 +1,7 @@
-use glam::{Mat3, Mat4, Vec2, Vec3};
 use crate::framework::event::listener::OnResize;
 use crate::framework::geometry::bounds::{Bounds, Bounds2, Bounds3};
 use crate::framework::util::math::is_close_to_zero;
+use glam::{Mat3, Mat4, Vec2, Vec3};
 
 pub trait Camera {
     fn view(&self) -> Mat4;
@@ -98,8 +98,8 @@ impl CameraView {
 
     pub fn zoom_in(&mut self, delta: f32) {
         let distance = self.position.distance(self.center_of_projection);
-        let movement = self.forward() *
-            if distance <= delta {
+        let movement = self.forward()
+            * if distance <= delta {
                 distance - f32::EPSILON
             } else {
                 delta
@@ -145,10 +145,10 @@ impl CameraView {
 
             let new_position = origin
                 + (if rotated_x.x.signum() == rotated_y.x.signum() {
-                rotated_x
-            } else {
-                rotated_y
-            } * radius);
+                    rotated_x
+                } else {
+                    rotated_y
+                } * radius);
             if invert {
                 self.center_of_projection = new_position;
             } else {
@@ -184,7 +184,10 @@ impl OrthographicProjection {
             frustum.min().z,
             frustum.max().z,
         );
-        Self { projection, frustum }
+        Self {
+            projection,
+            frustum,
+        }
     }
 
     pub fn projection(&self) -> Mat4 {
@@ -227,10 +230,17 @@ pub struct PerspectiveProjection {
 impl PerspectiveProjection {
     pub fn new(fov_y: f32, aspect_ratio: f32, z_near: f32, z_far: f32) -> Self {
         let projection = Mat4::perspective_rh(fov_y, aspect_ratio, z_near, z_far);
-        Self { projection, fov_y, aspect_ratio, z_near, z_far }
+        Self {
+            projection,
+            fov_y,
+            aspect_ratio,
+            z_near,
+            z_far,
+        }
     }
     fn update_projection(&mut self) {
-        self.projection = Mat4::perspective_rh(self.fov_y, self.aspect_ratio, self.z_near, self.z_far);
+        self.projection =
+            Mat4::perspective_rh(self.fov_y, self.aspect_ratio, self.z_near, self.z_far);
     }
 
     pub fn projection(&self) -> Mat4 {
@@ -280,12 +290,17 @@ impl Projection {
         Self::Orthographic(OrthographicProjection::new(frustum))
     }
     pub fn new_perspective(fov_y: f32, aspect_ratio: f32, z_near: f32, z_far: f32) -> Self {
-        Self::Perspective(PerspectiveProjection::new(fov_y, aspect_ratio, z_near, z_far))
+        Self::Perspective(PerspectiveProjection::new(
+            fov_y,
+            aspect_ratio,
+            z_near,
+            z_far,
+        ))
     }
     pub fn projection(&self) -> Mat4 {
         match self {
             Self::Orthographic(o) => o.projection(),
-            Self::Perspective(p) => p.projection()
+            Self::Perspective(p) => p.projection(),
         }
     }
 }
@@ -294,7 +309,7 @@ impl OnResize for Projection {
     fn on_resize(&mut self, width: u32, height: u32) {
         match self {
             Self::Orthographic(o) => o.on_resize(width, height),
-            Self::Perspective(p) => p.set_aspect_ratio(width as f32 / height as f32)
+            Self::Perspective(p) => p.set_aspect_ratio(width as f32 / height as f32),
         }
     }
 }

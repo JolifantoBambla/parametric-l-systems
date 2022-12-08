@@ -1,6 +1,6 @@
+use glam::{Vec2, Vec3};
 use std::mem;
-use glam::{Vec2, Vec3, Vec4, Vec4Swizzles};
-use wgpu::{BufferAddress, VertexAttribute, VertexBufferLayout, VertexFormat, VertexStepMode};
+use wgpu::{BufferAddress, VertexAttribute, VertexBufferLayout, VertexStepMode};
 
 pub trait VertexType: bytemuck::Pod {
     fn from_pos_normal_tex_coords(position: Vec3, normal: Vec3, texture_coordinates: Vec2) -> Self;
@@ -50,7 +50,7 @@ impl VertexType for Vertex {
         VertexBufferLayout {
             array_stride: mem::size_of::<Vertex>() as BufferAddress,
             step_mode: VertexStepMode::Vertex,
-            attributes: &VERTEX_ATTRIBUTES
+            attributes: &VERTEX_ATTRIBUTES,
         }
     }
 

@@ -1,19 +1,22 @@
-use std::collections::HashMap;
-use std::sync::Arc;
 use crate::framework::context::Gpu;
 use crate::framework::gpu::buffer::Buffer;
 use crate::framework::input::Input;
 use crate::framework::renderer::drawable::{Draw, DrawInstanced, GpuMesh};
 use crate::framework::scene::Update;
 use crate::lindenmayer::LSystem;
-use crate::lsystemrenderer::turtle::command::{CoordinateFrame, test_commands, TurtleCommand};
+use crate::lsystemrenderer::turtle::command::{test_commands, CoordinateFrame, TurtleCommand};
+use std::collections::HashMap;
+use std::sync::Arc;
 
-use std::collections::VecDeque;
-use glam::{Mat4, Vec3, Vec4};
-use wgpu::{BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BufferUsages, Device, Label, RenderPass};
 use crate::framework::geometry::bounds::{Bounds, Bounds3};
 use crate::framework::mesh::mesh::Mesh;
 use crate::framework::mesh::vertex::Vertex;
+use glam::{Mat4, Vec3, Vec4};
+use std::collections::VecDeque;
+use wgpu::{
+    BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BufferUsages, Device, Label,
+    RenderPass,
+};
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -30,7 +33,11 @@ pub struct LSystemModel {
 }
 
 impl LSystemModel {
-    pub fn from_turtle_commands(commands: &Vec<TurtleCommand>, bind_group_layout: &Arc<BindGroupLayout>, gpu: &Arc<Gpu>) -> Self {
+    pub fn from_turtle_commands(
+        commands: &Vec<TurtleCommand>,
+        bind_group_layout: &Arc<BindGroupLayout>,
+        gpu: &Arc<Gpu>,
+    ) -> Self {
         let mut aabb = Bounds3::new(Vec3::ZERO, Vec3::ZERO);
 
         let mut cylinder_instances: Vec<Instance> = Vec::new();
@@ -51,12 +58,11 @@ impl LSystemModel {
         for c in commands {
             match c {
                 TurtleCommand::AddCylinder(cylinder) => {
-                    let scale = Mat4::from_scale(
-                        Vec3::new(
-                            cylinder.radius(),
-                            cylinder.length(),
-                            cylinder.radius())
-                    );
+                    let scale = Mat4::from_scale(Vec3::new(
+                        cylinder.radius(),
+                        cylinder.length(),
+                        cylinder.radius(),
+                    ));
                     let matrix = state.as_mat4().mul_mat4(&scale);
 
                     let color = Vec3::new(
@@ -95,7 +101,8 @@ impl LSystemModel {
                     stack.push_front(state.clone());
                 }
                 TurtleCommand::PopFromStack => {
-                    state = stack.pop_front()
+                    state = stack
+                        .pop_front()
                         .expect("Invalid PopFromStack command: empty stack");
                 }
                 TurtleCommand::ToHorizontal => {
@@ -108,24 +115,17 @@ impl LSystemModel {
             log::info!("state {:?}", state);
         }
 
-        let instances_buffer = Buffer::from_data(
-            "",
-            &cylinder_instances,
-            BufferUsages::STORAGE,
-            gpu
-        );
+        let instances_buffer =
+            Buffer::from_data("", &cylinder_instances, BufferUsages::STORAGE, gpu);
 
         let cylinder_instances_bind_group = gpu.device().create_bind_group(&BindGroupDescriptor {
             label: Label::from("instances bind group"),
             layout: &bind_group_layout,
-            entries: &[
-                BindGroupEntry {
-                    binding: 0,
-                    resource: instances_buffer.buffer().as_entire_binding(),
-                },
-            ]
+            entries: &[BindGroupEntry {
+                binding: 0,
+                resource: instances_buffer.buffer().as_entire_binding(),
+            }],
         });
-
 
         Self {
             aabb,
@@ -156,10 +156,15 @@ pub struct LSystemManager {
 }
 
 impl LSystemManager {
-    pub fn new(l_system: LSystem, instance_buffer_bind_group_layout: &Arc<BindGroupLayout>, instance_buffer_bind_group_index: u32, gpu: &Arc<Gpu>) -> Self {
+    pub fn new(
+        l_system: LSystem,
+        instance_buffer_bind_group_layout: &Arc<BindGroupLayout>,
+        instance_buffer_bind_group_index: u32,
+        gpu: &Arc<Gpu>,
+    ) -> Self {
         let cylinder_mesh = Arc::new(GpuMesh::from_mesh::<Vertex>(
             &Mesh::new_default_cylinder(true),
-            gpu.device()
+            gpu.device(),
         ));
 
         let mut iterations = Vec::new();
@@ -168,7 +173,11 @@ impl LSystemManager {
 
         let commands = test_commands();
 
-        iterations.push(LSystemModel::from_turtle_commands(&commands, instance_buffer_bind_group_layout, gpu));
+        iterations.push(LSystemModel::from_turtle_commands(
+            &commands,
+            instance_buffer_bind_group_layout,
+            gpu,
+        ));
 
         Self {
             gpu: gpu.clone(),
@@ -191,12 +200,13 @@ impl LSystemManager {
 impl Update for LSystemManager {
     fn update(&mut self, input: &Input) {
         while self.target_iteration > self.active_iteration {
-            let commands: Vec<TurtleCommand> = serde_wasm_bindgen::from_value(self.l_system.next_raw())
-                .expect("Could not parse turtle commands");
+            let commands: Vec<TurtleCommand> =
+                serde_wasm_bindgen::from_value(self.l_system.next_raw())
+                    .expect("Could not parse turtle commands");
             self.iterations.push(LSystemModel::from_turtle_commands(
                 &commands,
                 &self.instance_buffer_bind_group_layout,
-                &self.gpu
+                &self.gpu,
             ));
             self.active_iteration = self.iterations.len() as u32 - 1;
             if instant::now() as f32 - input.time().now() >= self.max_time_to_iterate {
@@ -208,13 +218,16 @@ impl Update for LSystemManager {
 
 impl Draw for LSystemManager {
     fn draw<'a>(&'a self, pass: &mut RenderPass<'a>) {
-        let iteration = self.iterations.get(self.active_iteration as usize)
+        let iteration = self
+            .iterations
+            .get(self.active_iteration as usize)
             .expect("could not access active iteration");
         pass.set_bind_group(
             self.instance_buffer_bind_group_index,
             &iteration.cylinder_instances_bind_group,
-            &[]
+            &[],
         );
-        self.cylinder_mesh.draw_instanced(pass, iteration.num_instances);
+        self.cylinder_mesh
+            .draw_instanced(pass, iteration.num_instances);
     }
 }

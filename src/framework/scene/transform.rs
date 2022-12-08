@@ -7,7 +7,10 @@ pub struct StaticTransform {
 
 impl StaticTransform {
     pub fn new(object_to_world: Mat4, world_to_object: Mat4) -> Self {
-        Self { object_to_world, world_to_object }
+        Self {
+            object_to_world,
+            world_to_object,
+        }
     }
 }
 
@@ -21,9 +24,7 @@ pub enum Transform {
 impl Transform {
     fn object_to_world(&self) -> Mat4 {
         match self {
-            Transform::Static(t) => {
-                t.object_to_world
-            }
+            Transform::Static(t) => t.object_to_world,
             Transform::Dynamic(t) => {
                 todo!("implement dynamic transform")
             }
@@ -32,9 +33,7 @@ impl Transform {
 
     fn world_to_object(&self) -> Mat4 {
         match self {
-            Transform::Static(t) => {
-                t.world_to_object
-            }
+            Transform::Static(t) => t.world_to_object,
             Transform::Dynamic(t) => {
                 todo!("implement dynamic transform")
             }

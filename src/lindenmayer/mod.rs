@@ -36,7 +36,8 @@ impl LSystem {
 
     #[cfg(target_arch = "wasm32")]
     pub fn next(&self) -> String {
-        self.l_system_iterator.next(true)
+        self.l_system_iterator
+            .next(true)
             .as_string()
             .expect("L-System state was no String")
     }
@@ -48,7 +49,8 @@ impl LSystem {
 
     #[cfg(target_arch = "wasm32")]
     pub fn current(&self) -> String {
-        self.l_system_iterator.current(true)
+        self.l_system_iterator
+            .current(true)
             .as_string()
             .expect("L-System state was no String")
     }

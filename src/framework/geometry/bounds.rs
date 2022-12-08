@@ -1,5 +1,5 @@
-use std::ops::{Add, AddAssign};
 use glam::{Vec2, Vec3};
+use std::ops::{Add, AddAssign};
 
 pub trait Bounds {
     type VecN: Add + AddAssign<Self::VecN> + PartialEq;
@@ -18,7 +18,10 @@ pub struct Bounds2 {
 
 impl Bounds2 {
     pub fn new(min: Vec2, max: Vec2) -> Self {
-        Self { min: min.min(max), max: max.max(min) }
+        Self {
+            min: min.min(max),
+            max: max.max(min),
+        }
     }
 }
 
@@ -56,7 +59,10 @@ pub struct Bounds3 {
 
 impl Bounds3 {
     pub fn new(min: Vec3, max: Vec3) -> Self {
-        Self { min: min.min(max), max: max.max(min) }
+        Self {
+            min: min.min(max),
+            max: max.max(min),
+        }
     }
 
     pub fn adjust_xy(&mut self, other: Bounds2) {

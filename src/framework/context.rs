@@ -1,8 +1,8 @@
+use crate::framework::event::listener::OnResize;
 use std::sync::Arc;
 use wgpu;
 use wgpu::{Adapter, Device, Instance, Queue, Surface, SurfaceConfiguration, TextureUsages};
 use winit::window::Window;
-use crate::framework::event::listener::OnResize;
 
 /// Helper struct for constructing a `GPUContext`.
 pub struct ContextDescriptor<'a> {
@@ -62,51 +62,32 @@ pub enum SurfaceTarget<'a> {
 
 impl<'a> SurfaceTarget<'a> {
     pub fn create_surface(&self, instance: &Instance) -> Surface {
-        let surface = match self {
-            SurfaceTarget::Window(w) => {
-                unsafe { instance.create_surface(w) }
-            }
+        match self {
+            SurfaceTarget::Window(w) => unsafe { instance.create_surface(w) },
             #[cfg(all(target_arch = "wasm32", not(feature = "emscripten")))]
-            SurfaceTarget::Canvas(c) => {
-                instance.create_surface_from_canvas(c)
-            }
+            SurfaceTarget::Canvas(c) => instance.create_surface_from_canvas(c),
             #[cfg(all(target_arch = "wasm32", not(feature = "emscripten")))]
-            SurfaceTarget::OffscreenCanvas(c) => {
-                instance.create_surface_from_offscreen_canvas(c)
-            }
-        };
-        surface
+            SurfaceTarget::OffscreenCanvas(c) => instance.create_surface_from_offscreen_canvas(c),
+        }
     }
 
     pub fn width(&self) -> u32 {
         match self {
-            SurfaceTarget::Window(w) => {
-                w.inner_size().width
-            }
+            SurfaceTarget::Window(w) => w.inner_size().width,
             #[cfg(all(target_arch = "wasm32", not(feature = "emscripten")))]
-            SurfaceTarget::Canvas(c) => {
-                c.width()
-            }
+            SurfaceTarget::Canvas(c) => c.width(),
             #[cfg(all(target_arch = "wasm32", not(feature = "emscripten")))]
-            SurfaceTarget::OffscreenCanvas(c) => {
-                c.width()
-            }
+            SurfaceTarget::OffscreenCanvas(c) => c.width(),
         }
     }
 
     pub fn height(&self) -> u32 {
         match self {
-            SurfaceTarget::Window(w) => {
-                w.inner_size().height
-            }
+            SurfaceTarget::Window(w) => w.inner_size().height,
             #[cfg(all(target_arch = "wasm32", not(feature = "emscripten")))]
-            SurfaceTarget::Canvas(c) => {
-                c.height()
-            }
+            SurfaceTarget::Canvas(c) => c.height(),
             #[cfg(all(target_arch = "wasm32", not(feature = "emscripten")))]
-            SurfaceTarget::OffscreenCanvas(c) => {
-                c.height()
-            }
+            SurfaceTarget::OffscreenCanvas(c) => c.height(),
         }
     }
 }
@@ -190,15 +171,16 @@ pub enum WgpuContext {
 }
 
 impl WgpuContext {
-    pub async fn new<'a>(context_descriptor: &ContextDescriptor<'a>, surface_target: Option<SurfaceTarget<'a>>) -> Self {
+    pub async fn new<'a>(
+        context_descriptor: &ContextDescriptor<'a>,
+        surface_target: Option<SurfaceTarget<'a>>,
+    ) -> Self {
         // Instantiates instance of WebGPU
         let instance = wgpu::Instance::new(context_descriptor.backends);
 
-        let surface = if let Some(surface_target) = surface_target.as_ref() {
-            Some(surface_target.create_surface(&instance))
-        } else {
-            None
-        };
+        let surface = surface_target
+            .as_ref()
+            .map(|surface_target| surface_target.create_surface(&instance));
 
         let mut request_adapter_options = context_descriptor.request_adapter_options.clone();
         request_adapter_options.compatible_surface = if let Some(surface) = surface.as_ref() {
@@ -224,8 +206,8 @@ impl WgpuContext {
         assert!(
             downlevel_capabilities.shader_model
                 >= context_descriptor
-                .required_downlevel_capabilities
-                .shader_model,
+                    .required_downlevel_capabilities
+                    .shader_model,
             "Adapter does not support the minimum shader model required: {:?}",
             context_descriptor
                 .required_downlevel_capabilities
@@ -285,7 +267,7 @@ impl WgpuContext {
             Self::Headless(HeadlessContext {
                 instance,
                 adapter,
-                device_context: gpu
+                device_context: gpu,
             })
         }
     }
