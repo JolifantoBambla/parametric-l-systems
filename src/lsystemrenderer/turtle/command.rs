@@ -1,32 +1,50 @@
-use glam::{Mat3, Mat4, Vec3};
+use glam::{Affine3A, Mat3, Mat4, Vec3};
 use serde::Deserialize;
 
 // todo: move Orientation & CoordinateFrame to framework
 
 #[derive(Copy, Clone, Debug)]
 pub struct Orientation {
-    forward: Vec3,
-    right: Vec3,
-    up: Vec3,
+    orientation: Mat3,
 }
 
 impl Orientation {
+    pub fn new(forward: Vec3, up: Vec3) -> Self {
+        log::error!("{:?}", Mat4::look_at_rh(
+                    Vec3::ZERO,
+                    -forward.normalize(),
+                    up.normalize(),
+                ));
+        Self {
+            orientation: Mat3::from_mat4(
+                Mat4::look_at_rh(
+                    Vec3::ZERO,
+                    -forward.normalize(),
+                    up.normalize(),
+                )
+            ),
+        }
+    }
+
+    pub fn rotate(&mut self, rotation: Mat3) {
+        self.orientation = rotation.mul_mat3(&self.orientation);
+        self.orientation = Mat3::from_cols(
+            self.orientation.x_axis.normalize(),
+            self.orientation.y_axis.normalize(),
+            self.orientation.z_axis.normalize(),
+        );
+    }
+
     pub fn yaw(&mut self, angle: f32) {
-        let rotation = Mat3::from_axis_angle(self.up, angle);
-        self.forward = rotation.mul_vec3(self.forward);
-        self.right = rotation.mul_vec3(self.right);
+        self.rotate(Mat3::from_axis_angle(self.orientation.y_axis, angle));
     }
 
     pub fn pitch(&mut self, angle: f32) {
-        let rotation = Mat3::from_axis_angle(self.right, angle);
-        self.forward = rotation.mul_vec3(self.forward);
-        self.up = rotation.mul_vec3(self.up);
+        self.rotate(Mat3::from_axis_angle(self.orientation.x_axis, angle));
     }
 
     pub fn roll(&mut self, angle: f32) {
-        let rotation = Mat3::from_axis_angle(self.forward, angle);
-        self.right = rotation.mul_vec3(self.right);
-        self.up = rotation.mul_vec3(self.up);
+        self.rotate(Mat3::from_axis_angle(self.orientation.z_axis, angle));
     }
 
     pub fn yaw_degree(&mut self, angle: f32) {
@@ -42,30 +60,22 @@ impl Orientation {
     }
 
     pub fn forward(&self) -> Vec3 {
-        self.forward
+        self.orientation.z_axis
     }
     pub fn right(&self) -> Vec3 {
-        self.right
+        self.orientation.x_axis
     }
     pub fn up(&self) -> Vec3 {
-        self.up
+        self.orientation.y_axis
     }
     pub fn as_mat3(&self) -> Mat3 {
-        //Mat3::from_cols(self.right, self.up, -self.forward)
-        Mat3::from_cols(self.up, self.forward, -self.right)
-    }
-    pub fn as_mat4(&self) -> Mat4 {
-        Mat4::look_at_rh(Vec3::ZERO, self.forward, self.up)
+        self.orientation
     }
 }
 
 impl Default for Orientation {
     fn default() -> Self {
-        Self {
-            forward: -Vec3::Z,
-            right: Vec3::X,
-            up: Vec3::Y,
-        }
+        Self::new(-Vec3::Z, Vec3::Y)
     }
 }
 
@@ -79,6 +89,18 @@ pub struct CoordinateFrame {
 }
 
 impl CoordinateFrame {
+    pub fn new(origin: Vec3, target: Vec3, up: Vec3) -> Self {
+        let forward = (target - origin).normalize();
+        let orientation = Orientation::new(forward, up);
+        Self {
+            origin,
+            distance_to_target: origin.distance(target),
+            orientation,
+            original_orientation: orientation,
+            ..Default::default()
+        }
+    }
+
     pub fn translate(&mut self, translation: Vec3) {
         self.origin += translation;
     }
@@ -150,7 +172,6 @@ impl CoordinateFrame {
         //.mul_mat4(&Mat4::from_mat3(self.orientation.as_mat3().inverse()))
         //self.orientation.as_mat4()
         //.mul_mat4(&Mat4::from_translation(self.origin))
-        //Mat4::look_at_rh(self.origin, self.target(), self.orientation.up)
 
         /*
         let rotation = Mat4::from_mat3(
@@ -162,17 +183,32 @@ impl CoordinateFrame {
         );
          */
 
+        /*
         let rotation = Mat4::look_at_rh(
             Vec3::ZERO,
             self.orientation.up(),
             self.orientation.forward(),
         );
+        */
+        /*
+        let rotation = Mat4::look_at_rh(
+            Vec3::ZERO,
+            self.orientation.forward(),
+            self.orientation.up()
+        );
+
+         */
+        let base_rotation = Mat4::from_rotation_x((90. as f32).to_radians());
+
+        let rotation = Mat4::from_mat3(
+            self.orientation.orientation
+        ).mul_mat4(&base_rotation);
 
         let translation = Mat4::from_translation(self.origin);
 
         translation.mul_mat4(&rotation)
-        //rotation.mul_mat4(&translation)
-        //translation
+        //Mat4::look_at_rh(self.origin, self.target(), self.orientation.up)
+
     }
 
     pub fn origin(&self) -> Vec3 {
@@ -316,12 +352,20 @@ pub enum TurtleCommand {
 
 pub fn test_commands() -> Vec<TurtleCommand> {
     vec![
+        // should be going in Y
         TurtleCommand::AddCylinder(AddCylinder {
             parameters: [0.5, 0.25],
         }),
         TurtleCommand::AddCylinder(AddCylinder {
             parameters: [0.5, 0.25],
         }),
+        TurtleCommand::AddCylinder(AddCylinder {
+            parameters: [0.5, 0.25],
+        }),
+        TurtleCommand::AddCylinder(AddCylinder {
+            parameters: [0.5, 0.25],
+        }),
+        // should be going in -X
         TurtleCommand::RotateYaw(RotateYaw { parameters: [90.] }),
         TurtleCommand::AddCylinder(AddCylinder {
             parameters: [0.5, 0.25],
@@ -329,21 +373,90 @@ pub fn test_commands() -> Vec<TurtleCommand> {
         TurtleCommand::AddCylinder(AddCylinder {
             parameters: [0.5, 0.25],
         }),
-        TurtleCommand::RotateYaw(RotateYaw { parameters: [45.] }),
         TurtleCommand::AddCylinder(AddCylinder {
             parameters: [0.5, 0.25],
         }),
         TurtleCommand::AddCylinder(AddCylinder {
             parameters: [0.5, 0.25],
         }),
-        TurtleCommand::RotatePitch(RotatePitch { parameters: [90.] }),
+        // should be going in -Y
+        TurtleCommand::RotateYaw(RotateYaw { parameters: [90.] }),
         TurtleCommand::AddCylinder(AddCylinder {
             parameters: [0.5, 0.25],
         }),
         TurtleCommand::AddCylinder(AddCylinder {
             parameters: [0.5, 0.25],
         }),
-        TurtleCommand::RotateRoll(RotateRoll { parameters: [90.] }),
+        TurtleCommand::AddCylinder(AddCylinder {
+            parameters: [0.5, 0.25],
+        }),
+        TurtleCommand::AddCylinder(AddCylinder {
+            parameters: [0.5, 0.25],
+        }),
+        // should be going in -X
+        TurtleCommand::RotateYaw(RotateYaw { parameters: [-90.] }),
+        TurtleCommand::AddCylinder(AddCylinder {
+            parameters: [0.5, 0.25],
+        }),
+        TurtleCommand::AddCylinder(AddCylinder {
+            parameters: [0.5, 0.25],
+        }),
+        TurtleCommand::AddCylinder(AddCylinder {
+            parameters: [0.5, 0.25],
+        }),
+        TurtleCommand::AddCylinder(AddCylinder {
+            parameters: [0.5, 0.25],
+        }),
+        // should be going in -Z
+        TurtleCommand::RotatePitch(RotatePitch { parameters: [-90.] }),
+        TurtleCommand::AddCylinder(AddCylinder {
+            parameters: [0.5, 0.25],
+        }),
+        TurtleCommand::AddCylinder(AddCylinder {
+            parameters: [0.5, 0.25],
+        }),
+        TurtleCommand::AddCylinder(AddCylinder {
+            parameters: [0.5, 0.25],
+        }),
+        TurtleCommand::AddCylinder(AddCylinder {
+            parameters: [0.5, 0.25],
+        }),
+        // should be going in -Z
+        TurtleCommand::RotateRoll(RotateRoll { parameters: [-90.] }),
+        TurtleCommand::AddCylinder(AddCylinder {
+            parameters: [0.5, 0.25],
+        }),
+        TurtleCommand::AddCylinder(AddCylinder {
+            parameters: [0.5, 0.25],
+        }),
+        TurtleCommand::AddCylinder(AddCylinder {
+            parameters: [0.5, 0.25],
+        }),
+        TurtleCommand::AddCylinder(AddCylinder {
+            parameters: [0.5, 0.25],
+        }),
+        // should be going in -Z
+        TurtleCommand::RotateRoll(RotateRoll { parameters: [-90.] }),
+        TurtleCommand::AddCylinder(AddCylinder {
+            parameters: [0.5, 0.25],
+        }),
+        TurtleCommand::AddCylinder(AddCylinder {
+            parameters: [0.5, 0.25],
+        }),
+        TurtleCommand::AddCylinder(AddCylinder {
+            parameters: [0.5, 0.25],
+        }),
+        TurtleCommand::AddCylinder(AddCylinder {
+            parameters: [0.5, 0.25],
+        }),
+        // should be going in Y
+        TurtleCommand::RotatePitch(RotatePitch { parameters: [-90.] }),
+        TurtleCommand::AddCylinder(AddCylinder {
+            parameters: [0.5, 0.25],
+        }),
+        TurtleCommand::AddCylinder(AddCylinder {
+            parameters: [0.5, 0.25],
+        }),
         TurtleCommand::AddCylinder(AddCylinder {
             parameters: [0.5, 0.25],
         }),

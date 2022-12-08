@@ -11,7 +11,7 @@ use std::sync::Arc;
 use crate::framework::geometry::bounds::{Bounds, Bounds3};
 use crate::framework::mesh::mesh::Mesh;
 use crate::framework::mesh::vertex::Vertex;
-use glam::{Mat4, Vec3, Vec4};
+use glam::{Mat3, Mat4, Vec3, Vec4};
 use std::collections::VecDeque;
 use wgpu::{
     BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BufferUsages, Device, Label,
@@ -42,18 +42,17 @@ impl LSystemModel {
 
         let mut cylinder_instances: Vec<Instance> = Vec::new();
 
-        let mut state = CoordinateFrame::default();
+        let mut state = CoordinateFrame::new(Vec3::ZERO, Vec3::Y, Vec3::Z);
+        //let mut state = CoordinateFrame::default();
+        //let mut state = CoordinateFrame::new(Vec3::ZERO, -Vec3::Z, Vec3::Y);
+
         let mut stack = VecDeque::new();
 
-        log::info!("state initial {:?}", state);
-        //state.pitch_degree(90.);
-
-        log::info!("state rotated {:?}", state);
-
-        cylinder_instances.push(Instance {
-            matrix: Mat4::IDENTITY,
-            color: Vec4::ONE,
-        });
+        log::warn!("initial:\n f {:?}\n u {:?}\n r {:?}",
+            state.orientation().forward(),
+            state.orientation().up(),
+            state.orientation().right()
+        );
 
         for c in commands {
             match c {
@@ -63,8 +62,15 @@ impl LSystemModel {
                         cylinder.length(),
                         cylinder.radius(),
                     ));
-                    let matrix = state.as_mat4().mul_mat4(&scale);
 
+                    /*
+                        cylinder_instances.push(Instance {
+                            matrix: Mat4::from_translation(state.origin())
+                                .mul_mat4(&scale),
+                            color: Vec4::ONE,
+                    });*/
+
+                    let matrix = state.as_mat4().mul_mat4(&scale);
                     let color = Vec3::new(
                         js_sys::Math::random() as f32,
                         js_sys::Math::random() as f32,
@@ -85,14 +91,31 @@ impl LSystemModel {
                     state.move_forward(t.length());
                 }
                 TurtleCommand::RotateYaw(yaw) => {
-                    log::info!("yaw!!");
                     state.yaw_degree(yaw.angle());
+                    log::warn!("yaw   {}:\n f {:?}\n u {:?}\n r {:?}",
+                        yaw.angle(),
+                        state.orientation().forward(),
+                        state.orientation().up(),
+                        state.orientation().right()
+                    );
                 }
                 TurtleCommand::RotatePitch(pitch) => {
                     state.pitch_degree(pitch.angle());
+                    log::warn!("pitch {}:\n f {:?}\n u {:?}\n r {:?}",
+                        pitch.angle(),
+                        state.orientation().forward(),
+                        state.orientation().up(),
+                        state.orientation().right()
+                    );
                 }
                 TurtleCommand::RotateRoll(roll) => {
                     state.roll_degree(roll.angle());
+                    log::warn!("roll  {}:\n f {:?}\n u {:?}\n r {:?}",
+                        roll.angle(),
+                        state.orientation().forward(),
+                        state.orientation().up(),
+                        state.orientation().right()
+                    );
                 }
                 TurtleCommand::Yaw180 => {
                     state.yaw_degree(180.);
@@ -112,7 +135,7 @@ impl LSystemModel {
                     log::warn!("encountered unknown command {:?}", c);
                 }
             }
-            log::info!("state {:?}", state);
+            //log::info!("state {:?}", state);
         }
 
         let instances_buffer =
@@ -168,10 +191,9 @@ impl LSystemManager {
         ));
 
         let mut iterations = Vec::new();
-        //let commands: Vec<TurtleCommand> = serde_wasm_bindgen::from_value(l_system.next_raw())
-        //    .expect("Could not parse turtle commands");
-
-        let commands = test_commands();
+        let commands: Vec<TurtleCommand> = serde_wasm_bindgen::from_value(l_system.next_raw())
+            .expect("Could not parse turtle commands");
+        //let commands = test_commands();
 
         iterations.push(LSystemModel::from_turtle_commands(
             &commands,
