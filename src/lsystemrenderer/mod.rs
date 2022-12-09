@@ -1,7 +1,19 @@
+use glam::Vec3;
+use std::borrow::Cow;
+use std::mem;
+use std::sync::Arc;
+use wgpu::Face::Back;
+use wgpu::{BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType, BufferBindingType, BufferUsages, Color, CommandEncoder, CommandEncoderDescriptor, CompareFunction, DepthStencilState, DownlevelCapabilities, DownlevelFlags, Extent3d, FragmentState, Label, Limits, LoadOp, Operations, PipelineLayoutDescriptor, PrimitiveState, RenderPassColorAttachment, RenderPassDepthStencilAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, ShaderModel, ShaderModuleDescriptor, ShaderSource, ShaderStages, SubmissionIndex, SurfaceConfiguration, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages, TextureView, TextureViewDescriptor, VertexState};
+use winit::event::WindowEvent;
+use winit::event_loop::EventLoop;
+#[cfg(target_arch = "wasm32")]
+use winit::platform::web::WindowExtWebSys;
+use winit::window::Window;
 use crate::framework::app::GpuApp;
 use crate::framework::camera::{CameraView, Projection};
 use crate::framework::context::{ContextDescriptor, Gpu, SurfaceContext};
-use crate::framework::event::listener::{OnResize, OnUserEvent, OnWindowEvent};
+use crate::framework::event::lifecycle::{OnCommandsSubmitted, OnUpdate};
+use crate::framework::event::window::{OnResize, OnUserEvent, OnWindowEvent};
 #[cfg(target_arch = "wasm32")]
 use crate::framework::event::web::{
     dispatch_canvas_event, register_custom_canvas_event_dispatcher,
@@ -10,32 +22,10 @@ use crate::framework::gpu::buffer::Buffer;
 use crate::framework::input::Input;
 use crate::framework::mesh::vertex::{Vertex, VertexType};
 use crate::framework::renderer::drawable::Draw;
-use crate::framework::scene::Update;
 use crate::lindenmayer::LSystem;
 use crate::lsystemrenderer::camera::{OrbitCamera, Uniforms};
 use crate::lsystemrenderer::event::{LSystemEvent, UiEvent};
 use crate::lsystemrenderer::turtle::turtle::{Instance, LSystemManager};
-use glam::Vec3;
-use std::borrow::Cow;
-use std::mem;
-use std::sync::Arc;
-use wgpu::Face::Back;
-use wgpu::{
-    BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
-    BindGroupLayoutEntry, BindingType, BufferBindingType, BufferUsages, Color, CommandEncoder,
-    CommandEncoderDescriptor, CompareFunction, DepthStencilState, DownlevelCapabilities,
-    DownlevelFlags, Extent3d, FragmentState, Label, Limits, LoadOp, Operations,
-    PipelineLayoutDescriptor, PrimitiveState, RenderPassColorAttachment,
-    RenderPassDepthStencilAttachment, RenderPassDescriptor, RenderPipeline,
-    RenderPipelineDescriptor, ShaderModel, ShaderModuleDescriptor, ShaderSource, ShaderStages,
-    SurfaceConfiguration, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages,
-    TextureView, TextureViewDescriptor, VertexState,
-};
-use winit::event::WindowEvent;
-use winit::event_loop::EventLoop;
-#[cfg(target_arch = "wasm32")]
-use winit::platform::web::WindowExtWebSys;
-use winit::window::Window;
 
 pub mod camera;
 pub mod event;
@@ -252,7 +242,7 @@ impl GpuApp for App {
         }
     }
 
-    fn render(&mut self, view: &TextureView, _input: &Input) {
+    fn render(&mut self, view: &TextureView, _input: &Input) -> SubmissionIndex {
         let mut command_encoder =
             self.gpu
                 .device()
@@ -260,7 +250,7 @@ impl GpuApp for App {
                     label: Label::from("frame command encoder"),
                 });
         self.render_inner(view, &mut command_encoder);
-        self.gpu.queue().submit(vec![command_encoder.finish()]);
+        self.gpu.queue().submit(vec![command_encoder.finish()])
     }
 
     fn get_context_descriptor() -> ContextDescriptor<'static> {
@@ -300,9 +290,13 @@ impl OnWindowEvent for App {
     fn on_window_event(&mut self, _event: &WindowEvent) {}
 }
 
-impl Update for App {
-    fn update(&mut self, input: &Input) {
-        self.camera.update(input);
-        self.l_system_manager.update(input);
+impl OnUpdate for App {
+    fn on_update(&mut self, input: &Input) {
+        self.camera.on_update(input);
+        self.l_system_manager.on_update(input);
     }
+}
+
+impl OnCommandsSubmitted for App {
+    fn on_commands_submitted(&mut self, _input: &Input, _submission_index: &SubmissionIndex) {}
 }

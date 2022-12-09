@@ -1,4 +1,4 @@
-use crate::framework::event::listener::{OnResize, OnWindowEvent};
+use crate::framework::event::window::{OnResize, OnWindowEvent};
 use crate::framework::input::frame::Frame;
 use crate::framework::input::mouse::{Mouse, MouseEvent};
 use crate::framework::input::time::Time;

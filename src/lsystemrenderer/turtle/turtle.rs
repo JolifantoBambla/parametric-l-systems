@@ -1,23 +1,22 @@
-use crate::framework::context::Gpu;
-use crate::framework::gpu::buffer::Buffer;
-use crate::framework::input::Input;
-use crate::framework::renderer::drawable::{Draw, DrawInstanced, GpuMesh};
-use crate::framework::scene::{Update, transform::Transform};
-use crate::lindenmayer::LSystem;
-use crate::lsystemrenderer::turtle::command::TurtleCommand;
-use std::collections::HashMap;
-use std::sync::Arc;
-
-use crate::framework::geometry::bounds::{Bounds, Bounds3};
-use crate::framework::mesh::mesh::Mesh;
-use crate::framework::mesh::vertex::Vertex;
 use glam::{Mat3, Mat4, Quat, Vec3, Vec4};
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
+use std::sync::Arc;
 use wgpu::{
     BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BufferUsages, Device, Label,
     RenderPass,
 };
-use crate::framework::scene::transform::Orientation;
+use crate::framework::context::Gpu;
+use crate::framework::geometry::bounds::{Bounds, Bounds3};
+use crate::framework::gpu::buffer::Buffer;
+use crate::framework::input::Input;
+use crate::framework::event::lifecycle::OnUpdate;
+use crate::framework::mesh::mesh::Mesh;
+use crate::framework::mesh::vertex::Vertex;
+use crate::framework::renderer::drawable::{Draw, DrawInstanced, GpuMesh};
+use crate::framework::scene::transform::{Orientation, Transform};
+
+use crate::lindenmayer::LSystem;
+use crate::lsystemrenderer::turtle::command::TurtleCommand;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -204,8 +203,8 @@ impl LSystemManager {
     }
 }
 
-impl Update for LSystemManager {
-    fn update(&mut self, input: &Input) {
+impl OnUpdate for LSystemManager {
+    fn on_update(&mut self, input: &Input) {
         while self.target_iteration >= self.iterations.len() as u32 {
             let commands: Vec<TurtleCommand> =
                 serde_wasm_bindgen::from_value(self.l_system.next_raw())

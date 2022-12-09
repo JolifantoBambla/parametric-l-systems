@@ -1,10 +1,10 @@
+use glam::Mat4;
 use crate::framework::camera;
 use crate::framework::camera::{Camera, CameraView, Projection};
-use crate::framework::event::listener::OnResize;
+use crate::framework::event::window::OnResize;
 use crate::framework::input::mouse::MouseEvent;
 use crate::framework::input::{Event, Input};
-use crate::framework::scene::Update;
-use glam::Mat4;
+use crate::framework::event::lifecycle::OnUpdate;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -52,8 +52,8 @@ impl OnResize for OrbitCamera {
     }
 }
 
-impl Update for OrbitCamera {
-    fn update(&mut self, input: &Input) {
+impl OnUpdate for OrbitCamera {
+    fn on_update(&mut self, input: &Input) {
         for e in input.events() {
             match e {
                 Event::Mouse(m) => match m {

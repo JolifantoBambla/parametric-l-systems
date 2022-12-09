@@ -1,5 +1,5 @@
 use std::marker::PhantomData;
-use wgpu::TextureView;
+use wgpu::{SubmissionIndex, TextureView};
 use winit::event_loop::EventLoopBuilder;
 #[cfg(target_arch = "wasm32")]
 use winit::platform::web::EventLoopExtWebSys;
@@ -10,9 +10,9 @@ use winit::{
 };
 
 use crate::framework::context::{ContextDescriptor, SurfaceContext, SurfaceTarget, WgpuContext};
-use crate::framework::event::listener::{OnResize, OnUserEvent, OnWindowEvent};
+use crate::framework::event::lifecycle::{OnCommandsSubmitted, OnUpdate};
+use crate::framework::event::window::{OnResize, OnUserEvent, OnWindowEvent};
 use crate::framework::input::Input;
-use crate::framework::scene::Update;
 #[cfg(target_arch = "wasm32")]
 use crate::framework::util::web::get_or_create_window;
 use crate::framework::util::window::WindowConfig;
@@ -24,18 +24,18 @@ pub trait GpuApp: OnUserEvent {
         event_loop: &EventLoop<Self::UserEvent>,
         context: &SurfaceContext,
     );
-    fn render(&mut self, view: &TextureView, input: &Input);
+    fn render(&mut self, view: &TextureView, input: &Input) -> SubmissionIndex;
     fn get_context_descriptor() -> ContextDescriptor<'static>;
 }
 
-pub struct AppRunner<G: 'static + GpuApp + OnResize + OnWindowEvent + Update> {
+pub struct AppRunner<G: 'static + GpuApp + OnResize + OnWindowEvent + OnUpdate + OnCommandsSubmitted> {
     ctx: WgpuContext,
     event_loop: Option<EventLoop<G::UserEvent>>,
     window: Window,
     phantom_data: PhantomData<G>,
 }
 
-impl<G: 'static + GpuApp + OnResize + OnWindowEvent + Update> AppRunner<G> {
+impl<G: 'static + GpuApp + OnResize + OnWindowEvent + OnUpdate + OnCommandsSubmitted> AppRunner<G> {
     #[cfg(target_arch = "wasm32")]
     pub async fn new(window_config: WindowConfig) -> Self {
         let event_loop = EventLoopBuilder::<G::UserEvent>::with_user_event().build();
@@ -116,7 +116,7 @@ impl<G: 'static + GpuApp + OnResize + OnWindowEvent + Update> AppRunner<G> {
                 }
                 event::Event::RedrawRequested(_) => {
                     let frame_input = input.prepare_next();
-                    app.update(&frame_input);
+                    app.on_update(&frame_input);
 
                     let frame = match self.ctx().surface().get_current_texture() {
                         Ok(frame) => frame,
@@ -132,7 +132,8 @@ impl<G: 'static + GpuApp + OnResize + OnWindowEvent + Update> AppRunner<G> {
                         .texture
                         .create_view(&wgpu::TextureViewDescriptor::default());
 
-                    app.render(&view, &frame_input);
+                    let submission_index = app.render(&view, &frame_input);
+                    app.on_commands_submitted(&frame_input, &submission_index);
 
                     frame.present();
                 }

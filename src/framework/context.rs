@@ -1,4 +1,4 @@
-use crate::framework::event::listener::OnResize;
+use crate::framework::event::window::OnResize;
 use std::sync::Arc;
 use wgpu;
 use wgpu::{Adapter, Device, Instance, Queue, Surface, SurfaceConfiguration, TextureUsages};

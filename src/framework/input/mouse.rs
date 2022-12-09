@@ -1,4 +1,4 @@
-use crate::framework::event::listener::OnResize;
+use crate::framework::event::window::OnResize;
 use glam::Vec2;
 use winit::event::{ElementState, MouseButton, MouseScrollDelta, WindowEvent};
 
