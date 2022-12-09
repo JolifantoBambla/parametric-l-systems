@@ -1,5 +1,6 @@
 use glam::{Affine3A, Mat3, Mat4, Quat, Vec3};
 
+#[derive(Copy, Clone, Debug)]
 pub struct Orientation {
     forward: Vec3,
     right: Vec3,
@@ -82,6 +83,7 @@ impl From<Quat> for Orientation {
     }
 }
 
+#[derive(Copy, Clone, Debug)]
 pub struct Transform {
     position: Vec3,
     orientation: Orientation,

@@ -27,7 +27,7 @@
 
             const iterationsSlider = pane.addInput(settings, 'iteration', {
                 label: 'Iteration',
-                min: 0, max: settings.maxIteration, step: 1,
+                min: 0, max: 5, step: 1,
             });
             iterationsSlider.on('change', e => {
                 eventTarget.dispatchEvent(new CustomEvent(
@@ -50,20 +50,37 @@
         });
         mutationObserver.observe(document.body, { childList: true });
 
+        // https://math.stackexchange.com/questions/123642/representing-a-3d-hilbert-curve-as-an-l-system
+        // + Yaw(90)  +
+        // - Yaw(-90)
+        // ^ Pitch(90)  &
+        // & Pitch(-90)
+        // > Roll(90)  /
+        // < Roll(-90)
+        // ^ < X F ^ < X F X - F ^ > > X F X & F + > > X F X - F > X - >;
+        let hilbertCurve3d = {
+            axiom: 'X',
+            productions: [
+                'X -> &(90)/(-90)XF(0.5,0.25)&(90)/(-90)XF(0.5,0.25)X+(-90)F(0.5,0.25)&(90)/(90)/(90)XF(0.5,0.25)X&(-90)F(0.5,0.25)+(90)/(90)/(90)XF(0.5,0.25)X+(-90)F(0.5,0.25)/(90)X+(-90)/(90)'
+            ],
+            parameters: {},
+            alphabet: ['X', 'F(x,y)', '+(x)', '&(x)', '/(x)']
+        };
+
+        let treeModel = {
+            axiom: 'A(1,10)',
+            productions: [
+                'A(l,w) -> F(l,w)[&(a0)B(l*r2,w*wr)]/(d)A(l*r1,w*wr)',
+                'B(l,w) -> F(l,w)[+(-a1)$C(l*r2,w*wr)]C(l*r1,w*wr)',
+                'C(l,w) -> F(l,w)[+(a1)$B(l*r2,w*wr)]B(l*r1,w*wr)'
+            ],
+            parameters: {r1: 7.0, r2: 7.1, a0: 7.2, a1: 7.3, d: 7.4, wr: 7.5},
+            alphabet: ['A(l,w)', 'B(l,w)', 'C(l,w)', 'F(l,w)', '[', ']', '+(a)', '&(a)', '/(d)', '$'],
+        }
+
         async function run() {
             await init();
-            main(
-                {
-                    axiom: 'A(1,10)',
-                    productions: [
-                        'A(l,w) -> F(l,w)[&(a0)B(l*r2,w*wr)]/(d)A(l*r1,w*wr)',
-                        'B(l,w) -> F(l,w)[+(-a1)$C(l*r2,w*wr)]C(l*r1,w*wr)',
-                        'C(l,w) -> F(l,w)[+(a1)$B(l*r2,w*wr)]B(l*r1,w*wr)'
-                    ],
-                    parameters: {r1: 7.0, r2: 7.1, a0: 7.2, a1: 7.3, d: 7.4, wr: 7.5},
-                    alphabet: ['A(l,w)', 'B(l,w)', 'C(l,w)', 'F(l,w)', '[', ']', '+(a)', '&(a)', '/(d)', '$'],
-                }
-            );
+            main(hilbertCurve3d);
         }
         run();
     </script>

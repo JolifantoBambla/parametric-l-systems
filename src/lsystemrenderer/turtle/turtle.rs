@@ -4,7 +4,7 @@ use crate::framework::input::Input;
 use crate::framework::renderer::drawable::{Draw, DrawInstanced, GpuMesh};
 use crate::framework::scene::{Update, transform::Transform};
 use crate::lindenmayer::LSystem;
-use crate::lsystemrenderer::turtle::command::{test_commands, CoordinateFrame, TurtleCommand};
+use crate::lsystemrenderer::turtle::command::TurtleCommand;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -33,9 +33,19 @@ pub struct LSystemModel {
     cylinder_instances_bind_group: BindGroup,
 }
 
+#[derive(Copy, Clone, Debug, Default)]
 struct TurtleState {
     transform: Transform,
-    original_orientation: Orientation,
+    initial_orientation: Orientation,
+}
+
+impl TurtleState {
+    pub fn reset_orientation(&mut self) {
+        self.transform.set_orientation(self.initial_orientation);
+    }
+    pub fn transform(&self) -> Transform {
+        self.transform
+    }
 }
 
 impl LSystemModel {
@@ -45,27 +55,15 @@ impl LSystemModel {
         gpu: &Arc<Gpu>,
     ) -> Self {
         let mut aabb = Bounds3::new(Vec3::ZERO, Vec3::ZERO);
-
         let mut cylinder_instances: Vec<Instance> = Vec::new();
 
-        let mut state = CoordinateFrame::new(Vec3::ZERO, Vec3::Y, Vec3::Z);
-        //let mut state = CoordinateFrame::default();
-        //let mut state = CoordinateFrame::new(Vec3::ZERO, -Vec3::Z, Vec3::Y);
-
         let mut stack = VecDeque::new();
+        let mut state = TurtleState::default();
 
-        let mut state2 = Transform::default();
-
-        log::warn!("initial:\n f {:?}\n u {:?}\n r {:?}",
-            state.orientation().forward(),
-            state.orientation().up(),
-            state.orientation().right()
-        );
-
+        let base_rotation = Quat::from_rotation_x((-90. as f32).to_radians());
         for c in commands {
             match c {
                 TurtleCommand::AddCylinder(cylinder) => {
-                    let base_rotation = Quat::from_rotation_x((-90. as f32).to_radians());
                     let scale_vec = Vec3::new(
                         cylinder.radius(),
                         cylinder.length(),
@@ -76,63 +74,35 @@ impl LSystemModel {
                         base_rotation
                     );
 
-                    let scale = Mat4::from_scale(scale_vec);
-                    let matrix = state.as_mat4().mul_mat4(&scale);
-
                     let color = Vec3::new(
                         js_sys::Math::random() as f32,
                         js_sys::Math::random() as f32,
                         js_sys::Math::random() as f32,
                     );
                     cylinder_instances.push(Instance {
-                        matrix: state2.as_mat4_with_child(&cylinder_transform),//matrix,
+                        matrix: state.transform().as_mat4_with_child(&cylinder_transform),//matrix,
                         color: color.extend(1.0),
                     });
 
-                    // todo: move a little less than cylinder.length()
-                    state.move_forward(cylinder.length());
-                    state2.move_forward(cylinder.length());
+                    state.transform.move_forward(cylinder.length());
 
                     // todo: take cylinder into account
-                    aabb.grow(state.origin());
+                    aabb.grow(state.transform().position());
                 }
-                TurtleCommand::Translate(t) => {
-                    state2.move_forward(t.length());
-                    state.move_forward(t.length());
+                TurtleCommand::MoveForward(t) => {
+                    state.transform.move_forward(t.length());
                 }
                 TurtleCommand::RotateYaw(yaw) => {
-                    state2.yaw_deg(yaw.angle());
-                    state.yaw_degree(yaw.angle());
-                    log::warn!("yaw   {}:\n f {:?}\n u {:?}\n r {:?}",
-                        yaw.angle(),
-                        state.orientation().forward(),
-                        state.orientation().up(),
-                        state.orientation().right()
-                    );
+                    state.transform.yaw_deg(yaw.angle());
                 }
                 TurtleCommand::RotatePitch(pitch) => {
-                    state2.pitch_deg(pitch.angle());
-                    state.pitch_degree(pitch.angle());
-                    log::warn!("pitch {}:\n f {:?}\n u {:?}\n r {:?}",
-                        pitch.angle(),
-                        state.orientation().forward(),
-                        state.orientation().up(),
-                        state.orientation().right()
-                    );
+                    state.transform.pitch_deg(pitch.angle());
                 }
                 TurtleCommand::RotateRoll(roll) => {
-                    state2.roll_deg(roll.angle());
-                    state.roll_degree(roll.angle());
-                    log::warn!("roll  {}:\n f {:?}\n u {:?}\n r {:?}",
-                        roll.angle(),
-                        state.orientation().forward(),
-                        state.orientation().up(),
-                        state.orientation().right()
-                    );
+                    state.transform.roll_deg(roll.angle());
                 }
                 TurtleCommand::Yaw180 => {
-                    state2.yaw_deg(180.);
-                    state.yaw_degree(180.);
+                    state.transform.yaw_deg(180.);
                 }
                 TurtleCommand::PushToStack => {
                     stack.push_front(state.clone());
@@ -146,10 +116,9 @@ impl LSystemModel {
                     state.reset_orientation();
                 }
                 _ => {
-                    log::warn!("encountered unknown command {:?}", c);
+                    log::debug!("encountered unknown command {:?}", c);
                 }
             }
-            //log::info!("state {:?}", state);
         }
 
         let instances_buffer =
@@ -207,7 +176,6 @@ impl LSystemManager {
         let mut iterations = Vec::new();
         let commands: Vec<TurtleCommand> = serde_wasm_bindgen::from_value(l_system.next_raw())
             .expect("Could not parse turtle commands");
-        //let commands = test_commands();
 
         iterations.push(LSystemModel::from_turtle_commands(
             &commands,
@@ -230,12 +198,15 @@ impl LSystemManager {
 
     pub fn set_target_iteration(&mut self, target_iteration: u32) {
         self.target_iteration = target_iteration;
+        if self.target_iteration < self.iterations.len() as u32 {
+            self.active_iteration = self.target_iteration
+        }
     }
 }
 
 impl Update for LSystemManager {
     fn update(&mut self, input: &Input) {
-        while self.target_iteration > self.active_iteration {
+        while self.target_iteration >= self.iterations.len() as u32 {
             let commands: Vec<TurtleCommand> =
                 serde_wasm_bindgen::from_value(self.l_system.next_raw())
                     .expect("Could not parse turtle commands");
@@ -248,9 +219,6 @@ impl Update for LSystemManager {
             if instant::now() as f32 - input.time().now() >= self.max_time_to_iterate {
                 break;
             }
-        }
-        if self.target_iteration < self.active_iteration {
-            self.active_iteration = self.target_iteration;
         }
     }
 }
