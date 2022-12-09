@@ -1,3 +1,12 @@
+use crate::framework::context::Gpu;
+use crate::framework::event::lifecycle::OnUpdate;
+use crate::framework::geometry::bounds::{Bounds, Bounds3};
+use crate::framework::gpu::buffer::Buffer;
+use crate::framework::input::Input;
+use crate::framework::mesh::mesh::Mesh;
+use crate::framework::mesh::vertex::Vertex;
+use crate::framework::renderer::drawable::{Draw, DrawInstanced, GpuMesh};
+use crate::framework::scene::transform::{Orientation, Transform, Transformable};
 use glam::{Mat3, Mat4, Quat, Vec3, Vec4};
 use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
@@ -5,15 +14,6 @@ use wgpu::{
     BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BufferUsages, Device, Label,
     RenderPass,
 };
-use crate::framework::context::Gpu;
-use crate::framework::geometry::bounds::{Bounds, Bounds3};
-use crate::framework::gpu::buffer::Buffer;
-use crate::framework::input::Input;
-use crate::framework::event::lifecycle::OnUpdate;
-use crate::framework::mesh::mesh::Mesh;
-use crate::framework::mesh::vertex::Vertex;
-use crate::framework::renderer::drawable::{Draw, DrawInstanced, GpuMesh};
-use crate::framework::scene::transform::{Orientation, Transform};
 
 use crate::lindenmayer::LSystem;
 use crate::lsystemrenderer::turtle::command::TurtleCommand;
@@ -63,15 +63,10 @@ impl LSystemModel {
         for c in commands {
             match c {
                 TurtleCommand::AddCylinder(cylinder) => {
-                    let scale_vec = Vec3::new(
-                        cylinder.radius(),
-                        cylinder.length(),
-                        cylinder.radius(),
-                    );
-                    let cylinder_transform = Transform::from_scale_rotation(
-                        scale_vec,
-                        base_rotation
-                    );
+                    let scale_vec =
+                        Vec3::new(cylinder.radius(), cylinder.length(), cylinder.radius());
+                    let cylinder_transform =
+                        Transform::from_scale_rotation(scale_vec, base_rotation);
 
                     let color = Vec3::new(
                         js_sys::Math::random() as f32,
@@ -79,13 +74,13 @@ impl LSystemModel {
                         js_sys::Math::random() as f32,
                     );
                     cylinder_instances.push(Instance {
-                        matrix: state.transform().as_mat4_with_child(&cylinder_transform),//matrix,
+                        matrix: state.transform().as_mat4_with_child(&cylinder_transform), //matrix,
                         color: color.extend(1.0),
                     });
 
                     state.transform.move_forward(cylinder.length());
 
-                    // todo: take cylinder into account
+                    // the bounding box is only approximated by the turtle's position
                     aabb.grow(state.transform().position());
                 }
                 TurtleCommand::MoveForward(t) => {
@@ -120,14 +115,16 @@ impl LSystemModel {
             }
         }
 
-        let model_translation = -aabb.center();
-        let model_scale = 1. / aabb.diagonal();
-        let model_transform = Transform::from_scale_translation(
-            model_scale,
-            model_translation,
-        );
 
-        // todo: transform all instances using model_transform
+        let scale_value = 1. / aabb.diagonal().max_element();
+        let model_translation = Mat4::from_translation(-aabb.center());
+        let model_scale = Mat4::from_scale(Vec3::new(scale_value, scale_value, scale_value));
+
+        cylinder_instances.iter_mut()
+            .for_each(|c| {
+                c.matrix = model_scale.mul_mat4(&model_translation)
+                    .mul_mat4(&c.matrix);
+            });
 
         let instances_buffer =
             Buffer::from_data("", &cylinder_instances, BufferUsages::STORAGE, gpu);

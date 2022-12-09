@@ -1,5 +1,54 @@
 use glam::{Affine3A, Mat3, Mat4, Quat, Vec3};
 
+pub trait Transformable {
+    #[inline]
+    fn transform(&self) -> &Transform;
+    #[inline]
+    fn transform_mut(&mut self) -> &mut Transform;
+    fn translate(&mut self, translation: Vec3) {
+        self.transform_mut().position += translation;
+    }
+    fn move_forward(&mut self, delta: f32) {
+        self.translate(self.transform().forward() * delta)
+    }
+    fn move_backward(&mut self, delta: f32) {
+        self.move_forward(-delta);
+    }
+    fn move_right(&mut self, delta: f32) {
+        self.translate(self.transform().right() * delta);
+    }
+    fn move_left(&mut self, delta: f32) {
+        self.move_right(-delta);
+    }
+    fn move_up(&mut self, delta: f32) {
+        self.translate(self.transform().up() * delta);
+    }
+    fn move_down(&mut self, delta: f32) {
+        self.move_up(-delta);
+    }
+    fn rotate(&mut self, rotation: Quat) {
+        self.transform_mut().orientation.rotate(rotation);
+    }
+    fn yaw(&mut self, angle: f32) {
+        self.transform_mut().orientation.yaw(angle);
+    }
+    fn pitch(&mut self, angle: f32) {
+        self.transform_mut().orientation.pitch(angle);
+    }
+    fn roll(&mut self, angle: f32) {
+        self.transform_mut().orientation.roll(angle);
+    }
+    fn yaw_deg(&mut self, angle: f32) {
+        self.transform_mut().orientation.yaw_deg(angle);
+    }
+    fn pitch_deg(&mut self, angle: f32) {
+        self.transform_mut().orientation.pitch_deg(angle);
+    }
+    fn roll_deg(&mut self, angle: f32) {
+        self.transform_mut().orientation.roll_deg(angle);
+    }
+}
+
 #[derive(Copy, Clone, Debug)]
 pub struct Orientation {
     forward: Vec3,
@@ -42,11 +91,7 @@ impl Orientation {
         self.roll(angle.to_radians());
     }
     pub fn as_mat3(&self) -> Mat3 {
-        Mat3::from_cols(
-            self.right,
-            self.up,
-            -self.forward
-        )
+        Mat3::from_cols(self.right, self.up, -self.forward)
     }
     pub fn as_affine3a(&self) -> Affine3A {
         Affine3A::from_mat3(self.as_mat3())
@@ -92,7 +137,11 @@ pub struct Transform {
 
 impl Transform {
     pub fn new(position: Vec3, orientation: Orientation, scale: Vec3) -> Self {
-        Self { position, orientation, scale }
+        Self {
+            position,
+            orientation,
+            scale,
+        }
     }
     pub fn from_translation(translation: Vec3) -> Self {
         Self {
@@ -140,9 +189,8 @@ impl Transform {
             scale,
         }
     }
-
     pub fn from_look_at(position: Vec3, target: Vec3, up: Vec3) -> Self {
-        let forward = (target - position);
+        let forward = target - position;
         Self {
             position,
             orientation: Orientation::new(forward, up),
@@ -150,58 +198,11 @@ impl Transform {
         }
     }
 
-    pub fn translate(&mut self, translation: Vec3) {
-        self.position += translation;
-    }
-    pub fn move_forward(&mut self, delta: f32) {
-        self.translate(self.orientation.forward() * delta)
-    }
-    pub fn move_backward(&mut self, delta: f32) {
-        self.move_forward(-delta);
-    }
-    pub fn move_right(&mut self, delta: f32) {
-        self.translate(self.orientation.right() * delta);
-    }
-    pub fn move_left(&mut self, delta: f32) {
-        self.move_right(-delta);
-    }
-    pub fn move_up(&mut self, delta: f32) {
-        self.translate(self.orientation.up() * delta);
-    }
-    pub fn move_down(&mut self, delta: f32) {
-        self.move_up(-delta);
-    }
-
-    pub fn rotate(&mut self, rotation: Quat) {
-        self.orientation.rotate(rotation);
-    }
-    pub fn yaw(&mut self, angle: f32) {
-        self.orientation.yaw(angle);
-    }
-    pub fn pitch(&mut self, angle: f32) {
-        self.orientation.pitch(angle);
-    }
-    pub fn roll(&mut self, angle: f32) {
-        self.orientation.roll(angle);
-    }
-    pub fn yaw_deg(&mut self, angle: f32) {
-        self.orientation.yaw_deg(angle);
-    }
-    pub fn pitch_deg(&mut self, angle: f32) {
-        self.orientation.pitch_deg(angle);
-    }
-    pub fn roll_deg(&mut self, angle: f32) {
-        self.orientation.roll_deg(angle);
-    }
     pub fn as_mat4_with_child(&self, other: &Self) -> Mat4 {
         self.as_mat4().mul_mat4(&other.as_mat4())
     }
     pub fn as_mat4(&self) -> Mat4 {
-        Mat4::from_scale_rotation_translation(
-            self.scale,
-            self.orientation.as_quat(),
-            self.position
-        )
+        Mat4::from_scale_rotation_translation(self.scale, self.orientation.as_quat(), self.position)
     }
     pub fn forward(&self) -> Vec3 {
         self.orientation.forward()
@@ -239,5 +240,14 @@ impl Default for Transform {
             orientation: Orientation::default(),
             scale: Vec3::ONE,
         }
+    }
+}
+
+impl Transformable for Transform {
+    fn transform(&self) -> &Transform {
+        self
+    }
+    fn transform_mut(&mut self) -> &mut Transform {
+        self
     }
 }

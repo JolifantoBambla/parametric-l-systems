@@ -1,69 +1,68 @@
-use crate::framework::app::GpuApp;
-use crate::framework::camera::{CameraView, Projection};
-use crate::framework::context::{ContextDescriptor, Gpu, SurfaceContext};
-use crate::framework::event::lifecycle::{OnCommandsSubmitted, OnUpdate};
-#[cfg(target_arch = "wasm32")]
-use crate::framework::event::web::{
-    dispatch_canvas_event, register_custom_canvas_event_dispatcher,
-};
-use crate::framework::event::window::{OnResize, OnUserEvent, OnWindowEvent};
-use crate::framework::gpu::buffer::Buffer;
-use crate::framework::input::Input;
-use crate::framework::mesh::vertex::{Vertex, VertexType};
-use crate::framework::renderer::drawable::Draw;
-use crate::lindenmayer::LSystem;
-use crate::lsystemrenderer::camera::{OrbitCamera, Uniforms};
-use crate::lsystemrenderer::event::{LSystemEvent, UiEvent};
-use crate::lsystemrenderer::turtle::turtle::{Instance, LSystemManager};
-use glam::Vec3;
 use std::borrow::Cow;
 use std::mem;
 use std::sync::Arc;
+use glam::{Mat4, Vec4};
+use wgpu::{BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType, BufferBindingType, BufferUsages, Color, CompareFunction, DepthStencilState, Extent3d, FragmentState, Label, LoadOp, Operations, PipelineLayoutDescriptor, PrimitiveState, RenderPassColorAttachment, RenderPassDepthStencilAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, ShaderModuleDescriptor, ShaderSource, ShaderStages, SurfaceConfiguration, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages, TextureView, TextureViewDescriptor, VertexState};
 use wgpu::Face::Back;
-use wgpu::{
-    BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
-    BindGroupLayoutEntry, BindingType, BufferBindingType, BufferUsages, Color, CommandEncoder,
-    CommandEncoderDescriptor, CompareFunction, DepthStencilState, DownlevelCapabilities,
-    DownlevelFlags, Extent3d, FragmentState, Label, Limits, LoadOp, Operations,
-    PipelineLayoutDescriptor, PrimitiveState, RenderPassColorAttachment,
-    RenderPassDepthStencilAttachment, RenderPassDescriptor, RenderPipeline,
-    RenderPipelineDescriptor, ShaderModel, ShaderModuleDescriptor, ShaderSource, ShaderStages,
-    SubmissionIndex, SurfaceConfiguration, TextureDescriptor, TextureDimension, TextureFormat,
-    TextureUsages, TextureView, TextureViewDescriptor, VertexState,
-};
-use winit::event::WindowEvent;
-use winit::event_loop::EventLoop;
-#[cfg(target_arch = "wasm32")]
-use winit::platform::web::WindowExtWebSys;
-use winit::window::Window;
+use crate::framework::camera::Camera;
+use crate::framework::context::Gpu;
+use crate::framework::gpu::buffer::Buffer;
+use crate::framework::mesh::vertex::{Vertex, VertexType};
+use crate::framework::renderer::drawable::Draw;
+use crate::framework::scene::light::{Light, LightSource, LightSourceType};
+use crate::lsystemrenderer::camera::{OrbitCamera, Uniforms};
+use crate::lsystemrenderer::scene::LSystemScene;
+use crate::lsystemrenderer::turtle::turtle::Instance;
 
-pub mod camera;
-pub mod event;
-//pub mod renderer;
-pub mod scene;
-pub mod turtle;
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+struct CameraUniforms {
+    view: Mat4,
+    projection: Mat4,
+}
 
-pub struct App {
-    gpu: Arc<Gpu>,
-    camera: OrbitCamera,
+impl From<&OrbitCamera> for CameraUniforms {
+    fn from(camera: &OrbitCamera) -> Self {
+        Self {
+            view: camera.view(),
+            projection: camera.projection(),
+        }
+    }
+}
 
-    l_system_manager: LSystemManager,
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+struct PointLightSourceUniforms {
+    light: Light,
+    position: Vec4,
+}
 
-    // render stuff
-    camera_uniforms: Buffer<Uniforms>,
+impl From<&LightSource> for PointLightSourceUniforms {
+    fn from(light_source: &LightSource) -> Self {
+        Self {
+            light: light_source.light(),
+            position: match light_source.source() {
+                LightSourceType::Directional(d) => {
+                    panic!("Can not convert directional light source to point light source uniform");
+                }
+                LightSourceType::Point(p) => {
+                    p.position().extend(1.)
+                }
+            }
+        }
+    }
+}
+
+pub struct Renderer {
+    camera_uniforms: Buffer<CameraUniforms>,
     depth_view: TextureView,
     render_pipeline: RenderPipeline,
     uniforms_bind_group: BindGroup,
-
     instances_bind_group_layout: Arc<BindGroupLayout>,
 }
 
-impl App {
-    pub fn new(
-        gpu: &Arc<Gpu>,
-        surface_configuration: &SurfaceConfiguration,
-        l_system: LSystem,
-    ) -> Self {
+impl Renderer {
+    pub fn new(gpu: &Arc<Gpu>, surface_configuration: &SurfaceConfiguration) -> Self {
         let width = surface_configuration.width;
         let height = surface_configuration.height;
 
@@ -160,22 +159,9 @@ impl App {
                 multiview: None,
             });
 
-        let l_system_manager = LSystemManager::new(l_system, &instances_bind_group_layout, 1, gpu);
-
-        let camera = OrbitCamera::new(
-            Projection::new_perspective(
-                f32::to_radians(45.),
-                width as f32 / height as f32,
-                0.0001,
-                1000.0,
-            ),
-            CameraView::new(Vec3::new(0., 0., -10.), Vec3::ZERO, Vec3::Y),
-            5.0,
-        );
-
-        let camera_uniforms = Buffer::new_single_element(
+        let camera_uniforms = Buffer::new_zeroed(
             "camera uniforms",
-            camera.as_uniforms(),
+            1,
             BufferUsages::UNIFORM | BufferUsages::COPY_DST,
             gpu,
         );
@@ -190,9 +176,6 @@ impl App {
         });
 
         Self {
-            gpu: gpu.clone(),
-            l_system_manager,
-            camera,
             camera_uniforms,
             depth_view,
             render_pipeline,
@@ -201,12 +184,12 @@ impl App {
         }
     }
 
-    fn render_inner(&self, view: &TextureView, command_encoder: &mut CommandEncoder) {
+    pub fn render(&self, render_target: &TextureView, scene: &LSystemScene) {
         self.camera_uniforms
-            .write_buffer(&vec![self.camera.as_uniforms()]);
+            .write_buffer(&vec![CameraUniforms::from(&scene.camera())]);
 
         let color_attachment = RenderPassColorAttachment {
-            view,
+            view: render_target,
             resolve_target: None,
             ops: Operations {
                 load: LoadOp::Clear(Color {
@@ -233,82 +216,8 @@ impl App {
         });
         render_pass.set_pipeline(&self.render_pipeline);
         render_pass.set_bind_group(0, &self.uniforms_bind_group, &[]);
-        self.l_system_manager.draw(&mut render_pass);
+
+        // todo: get instances from cached bind groups? shouldn't create instance buffer every frame...
+        scene.model().draw(&mut render_pass);
     }
-}
-
-impl GpuApp for App {
-    fn init(
-        &mut self,
-        window: &Window,
-        event_loop: &EventLoop<Self::UserEvent>,
-        _context: &SurfaceContext,
-    ) {
-        #[cfg(target_arch = "wasm32")]
-        {
-            let canvas = window.canvas();
-            register_custom_canvas_event_dispatcher("ui::lsystem::iteration", &canvas, event_loop);
-            if dispatch_canvas_event("app::initialized", &canvas).is_err() {
-                log::error!("Could not dispatch 'app::initialized' event");
-            }
-        }
-    }
-
-    fn render(&mut self, view: &TextureView, _input: &Input) -> SubmissionIndex {
-        let mut command_encoder =
-            self.gpu
-                .device()
-                .create_command_encoder(&CommandEncoderDescriptor {
-                    label: Label::from("frame command encoder"),
-                });
-        self.render_inner(view, &mut command_encoder);
-        self.gpu.queue().submit(vec![command_encoder.finish()])
-    }
-
-    fn get_context_descriptor() -> ContextDescriptor<'static> {
-        ContextDescriptor {
-            required_limits: Limits::downlevel_webgl2_defaults(),
-            required_downlevel_capabilities: DownlevelCapabilities {
-                flags: DownlevelFlags::empty(),
-                shader_model: ShaderModel::Sm5,
-                ..Default::default()
-            },
-            ..Default::default()
-        }
-    }
-}
-
-impl OnResize for App {
-    fn on_resize(&mut self, width: u32, height: u32) {
-        self.camera.on_resize(width, height);
-    }
-}
-
-impl OnUserEvent for App {
-    type UserEvent = UiEvent;
-
-    fn on_user_event(&mut self, event: &Self::UserEvent) {
-        match event {
-            UiEvent::LSystem(LSystemEvent::Iteration(iteration)) => {
-                log::debug!("Got iteration event: {:?}", iteration);
-                self.l_system_manager
-                    .set_target_iteration(*iteration as u32);
-            }
-        }
-    }
-}
-
-impl OnWindowEvent for App {
-    fn on_window_event(&mut self, _event: &WindowEvent) {}
-}
-
-impl OnUpdate for App {
-    fn on_update(&mut self, input: &Input) {
-        self.camera.on_update(input);
-        self.l_system_manager.on_update(input);
-    }
-}
-
-impl OnCommandsSubmitted for App {
-    fn on_commands_submitted(&mut self, _input: &Input, _submission_index: &SubmissionIndex) {}
 }

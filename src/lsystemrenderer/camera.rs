@@ -1,10 +1,10 @@
-use glam::Mat4;
 use crate::framework::camera;
 use crate::framework::camera::{Camera, CameraView, Projection};
+use crate::framework::event::lifecycle::OnUpdate;
 use crate::framework::event::window::OnResize;
 use crate::framework::input::mouse::MouseEvent;
 use crate::framework::input::{Event, Input};
-use crate::framework::event::lifecycle::OnUpdate;
+use glam::Mat4;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]

@@ -28,7 +28,9 @@ pub trait GpuApp: OnUserEvent {
     fn get_context_descriptor() -> ContextDescriptor<'static>;
 }
 
-pub struct AppRunner<G: 'static + GpuApp + OnResize + OnWindowEvent + OnUpdate + OnCommandsSubmitted> {
+pub struct AppRunner<
+    G: 'static + GpuApp + OnResize + OnWindowEvent + OnUpdate + OnCommandsSubmitted,
+> {
     ctx: WgpuContext,
     event_loop: Option<EventLoop<G::UserEvent>>,
     window: Window,

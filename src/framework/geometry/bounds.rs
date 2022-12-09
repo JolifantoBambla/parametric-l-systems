@@ -2,7 +2,7 @@ use glam::{Vec2, Vec3};
 use std::ops::{Add, Mul, Sub};
 
 pub trait Bounds {
-    type VecN: Add<Output=Self::VecN> + Sub<Output=Self::VecN> + Mul<f32, Output=Self::VecN>;
+    type VecN: Add<Output = Self::VecN> + Sub<Output = Self::VecN> + Mul<f32, Output = Self::VecN>;
     fn min(&self) -> Self::VecN;
     fn max(&self) -> Self::VecN;
     fn contains(&self, point: Self::VecN) -> bool;
