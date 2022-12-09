@@ -120,6 +120,15 @@ impl LSystemModel {
             }
         }
 
+        let model_translation = -aabb.center();
+        let model_scale = 1. / aabb.diagonal();
+        let model_transform = Transform::from_scale_translation(
+            model_scale,
+            model_translation,
+        );
+
+        // todo: transform all instances using model_transform
+
         let instances_buffer =
             Buffer::from_data("", &cylinder_instances, BufferUsages::STORAGE, gpu);
 

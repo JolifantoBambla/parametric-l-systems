@@ -1,13 +1,19 @@
 use glam::{Vec2, Vec3};
-use std::ops::{Add, AddAssign};
+use std::ops::{Add, Mul, Sub};
 
 pub trait Bounds {
-    type VecN: Add + AddAssign<Self::VecN> + PartialEq;
+    type VecN: Add<Output=Self::VecN> + Sub<Output=Self::VecN> + Mul<f32, Output=Self::VecN>;
     fn min(&self) -> Self::VecN;
     fn max(&self) -> Self::VecN;
     fn contains(&self, point: Self::VecN) -> bool;
     fn grow(&mut self, point: Self::VecN);
     fn corners(&self) -> Vec<Self::VecN>;
+    fn diagonal(&self) -> Self::VecN {
+        self.max() - self.min()
+    }
+    fn center(&self) -> Self::VecN {
+        self.min() + self.diagonal() * 0.5
+    }
 }
 
 #[derive(Copy, Clone, Debug)]
