@@ -15,6 +15,25 @@ function findClosingParenthesis(str, pos = 0) {
     return -1;
 }
 
+function findNextCharacterIgnoringParentheses(str, character) {
+    if (!str.includes(character)) {
+        return -1;
+    }
+    const firstOpenIdx = str.indexOf('(');
+    const firstCharacterIdx = str.indexOf(character);
+    if (!str.includes('(') || firstCharacterIdx < firstOpenIdx) {
+        return firstCharacterIdx;
+    }
+    for (let i = findClosingParenthesis(str, firstOpenIdx); i < str.length; ++i) {
+        if (str[i] === character) {
+            return i;
+        } else if (str[i] === '(') {
+            i = findClosingParenthesis(str, i);
+        }
+    }
+    return -1;
+}
+
 class ToSerializable {
     toSerializable() {
         return {};
@@ -74,9 +93,27 @@ export class Symbol extends Clone {
     static fromString(str) {
         if (str.includes('(')) {
             const openIdx = str.indexOf('(');
+            let parameterDefinition = str.slice(openIdx + 1, findClosingParenthesis(str, openIdx));
+            let parameters = [];
+            if (parameterDefinition.includes('(')) {
+                let i = 0;
+                while (parameterDefinition.length !== 0) {
+                    i += 1;
+                    const separatorIdx = findNextCharacterIgnoringParentheses(parameterDefinition, ',');
+                    if (separatorIdx === -1) {
+                        parameters.push(parameterDefinition);
+                        break;
+                    } else {
+                        parameters.push(parameterDefinition.slice(0, separatorIdx));
+                        parameterDefinition = parameterDefinition.slice(separatorIdx + 1);
+                    }
+                }
+            } else {
+                parameters = parameterDefinition.split(',');
+            }
             return new Symbol({
                 name: str.slice(0, openIdx),
-                parameters: str.slice(openIdx + 1, findClosingParenthesis(str, openIdx)).split(','),
+                parameters,
             });
         } else {
             return new Symbol({name: str});
@@ -427,7 +464,7 @@ export class LSystemParser {
         }
         const systemParamsString = `{${
             requiredSystemParameters.map(p => `${p}=${systemParameters[p]}`)
-        }`;
+        }}`;
         const funcArgs = [...moduleParameters];
         if (Object.keys(requiredSystemParameters).length) {
             funcArgs.push(systemParamsString);
@@ -487,7 +524,7 @@ export class LSystemParser {
                 }
             }
             if (!found) {
-                throw Error(`Incomplete alphabet ${symbols.map(s => s.toString())} for modules ${originalAxiom}`);
+                throw Error(`Incomplete alphabet ${symbols.map(s => s.toString())} for modules ${moduleDefinitions}; axiom: ${originalAxiom}`);
             }
         }
         return parsedSymbols;
