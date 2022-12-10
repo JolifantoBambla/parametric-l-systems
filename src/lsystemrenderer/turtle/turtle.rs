@@ -1,5 +1,5 @@
 use crate::framework::context::Gpu;
-use crate::framework::event::lifecycle::OnUpdate;
+use crate::framework::event::lifecycle::Update;
 use crate::framework::geometry::bounds::{Bounds, Bounds3};
 use crate::framework::gpu::buffer::Buffer;
 use crate::framework::input::Input;
@@ -16,6 +16,7 @@ use wgpu::{
 };
 
 use crate::lindenmayer::LSystem;
+use crate::lsystemrenderer::renderer::{RenderObject, RenderObjectCreator};
 use crate::lsystemrenderer::turtle::command::TurtleCommand;
 
 #[repr(C)]
@@ -25,11 +26,9 @@ pub struct Instance {
     color: Vec4,
 }
 
-#[derive(Debug)]
 pub struct LSystemModel {
     aabb: Bounds3,
-    num_instances: u32,
-    cylinder_instances_bind_group: BindGroup,
+    cylinder_instances_buffer: Buffer<Instance>,
 }
 
 #[derive(Copy, Clone, Debug, Default)]
@@ -50,7 +49,6 @@ impl TurtleState {
 impl LSystemModel {
     pub fn from_turtle_commands(
         commands: &Vec<TurtleCommand>,
-        bind_group_layout: &Arc<BindGroupLayout>,
         gpu: &Arc<Gpu>,
     ) -> Self {
         let mut aabb = Bounds3::new(Vec3::ZERO, Vec3::ZERO);
@@ -115,7 +113,6 @@ impl LSystemModel {
             }
         }
 
-
         let scale_value = 1. / aabb.diagonal().max_element();
         let model_translation = Mat4::from_translation(-aabb.center());
         let model_scale = Mat4::from_scale(Vec3::new(scale_value, scale_value, scale_value));
@@ -129,19 +126,9 @@ impl LSystemModel {
         let instances_buffer =
             Buffer::from_data("", &cylinder_instances, BufferUsages::STORAGE, gpu);
 
-        let cylinder_instances_bind_group = gpu.device().create_bind_group(&BindGroupDescriptor {
-            label: Label::from("instances bind group"),
-            layout: &bind_group_layout,
-            entries: &[BindGroupEntry {
-                binding: 0,
-                resource: instances_buffer.buffer().as_entire_binding(),
-            }],
-        });
-
         Self {
             aabb,
-            num_instances: cylinder_instances.len() as u32,
-            cylinder_instances_bind_group,
+            cylinder_instances_buffer: instances_buffer,
         }
     }
 
@@ -149,30 +136,24 @@ impl LSystemModel {
         self.aabb
     }
 
-    pub fn cylinder_instances_bind_group(&self) -> &BindGroup {
-        &self.cylinder_instances_bind_group
+    pub fn cylinder_instances_buffer(&self) -> &Buffer<Instance> {
+        &self.cylinder_instances_buffer
     }
 }
 
 pub struct LSystemManager {
     gpu: Arc<Gpu>,
-    instance_buffer_bind_group_index: u32,
-    instance_buffer_bind_group_layout: Arc<BindGroupLayout>,
     max_time_to_iterate: f32,
     cylinder_mesh: Arc<GpuMesh>,
     l_system: LSystem,
     target_iteration: u32,
     active_iteration: u32,
     iterations: Vec<LSystemModel>,
+    render_objects: Vec<Vec<RenderObject>>,
 }
 
 impl LSystemManager {
-    pub fn new(
-        l_system: LSystem,
-        instance_buffer_bind_group_layout: &Arc<BindGroupLayout>,
-        instance_buffer_bind_group_index: u32,
-        gpu: &Arc<Gpu>,
-    ) -> Self {
+    pub fn new(l_system: LSystem, gpu: &Arc<Gpu>) -> Self {
         let cylinder_mesh = Arc::new(GpuMesh::from_mesh::<Vertex>(
             &Mesh::new_default_cylinder(true),
             gpu.device(),
@@ -184,20 +165,18 @@ impl LSystemManager {
 
         iterations.push(LSystemModel::from_turtle_commands(
             &commands,
-            instance_buffer_bind_group_layout,
             gpu,
         ));
 
         Self {
             gpu: gpu.clone(),
-            instance_buffer_bind_group_index,
-            instance_buffer_bind_group_layout: instance_buffer_bind_group_layout.clone(),
             max_time_to_iterate: 50.,
             cylinder_mesh,
             l_system,
             target_iteration: 0,
             active_iteration: 0,
             iterations,
+            render_objects: Vec::new(),
         }
     }
 
@@ -207,17 +186,32 @@ impl LSystemManager {
             self.active_iteration = self.target_iteration
         }
     }
+
+    pub fn prepare_render(&mut self, render_object_creator: &RenderObjectCreator) {
+        if self.render_objects.len() <= self.active_iteration as usize {
+            let active_iteration = self.iterations.get(self.active_iteration as usize)
+                .expect("Active iteration does not exist");
+            self.render_objects.push(vec![render_object_creator.create_render_object(
+                &self.cylinder_mesh,
+                &active_iteration.cylinder_instances_buffer
+            )]);
+        }
+    }
+
+    pub fn get_render_objects(&self) -> &Vec<RenderObject> {
+        self.render_objects.get(self.active_iteration as usize)
+            .expect("Active render objects do not exist")
+    }
 }
 
-impl OnUpdate for LSystemManager {
-    fn on_update(&mut self, input: &Input) {
+impl Update for LSystemManager {
+    fn update(&mut self, input: &Input) {
         while self.target_iteration >= self.iterations.len() as u32 {
             let commands: Vec<TurtleCommand> =
                 serde_wasm_bindgen::from_value(self.l_system.next_raw())
                     .expect("Could not parse turtle commands");
             self.iterations.push(LSystemModel::from_turtle_commands(
                 &commands,
-                &self.instance_buffer_bind_group_layout,
                 &self.gpu,
             ));
             self.active_iteration = self.iterations.len() as u32 - 1;
@@ -225,21 +219,5 @@ impl OnUpdate for LSystemManager {
                 break;
             }
         }
-    }
-}
-
-impl Draw for LSystemManager {
-    fn draw<'a>(&'a self, pass: &mut RenderPass<'a>) {
-        let iteration = self
-            .iterations
-            .get(self.active_iteration as usize)
-            .expect("could not access active iteration");
-        pass.set_bind_group(
-            self.instance_buffer_bind_group_index,
-            &iteration.cylinder_instances_bind_group,
-            &[],
-        );
-        self.cylinder_mesh
-            .draw_instanced(pass, iteration.num_instances);
     }
 }

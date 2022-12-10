@@ -1,6 +1,6 @@
 use crate::framework::camera;
 use crate::framework::camera::{Camera, CameraView, Projection};
-use crate::framework::event::lifecycle::OnUpdate;
+use crate::framework::event::lifecycle::Update;
 use crate::framework::event::window::OnResize;
 use crate::framework::input::mouse::MouseEvent;
 use crate::framework::input::{Event, Input};
@@ -52,8 +52,8 @@ impl OnResize for OrbitCamera {
     }
 }
 
-impl OnUpdate for OrbitCamera {
-    fn on_update(&mut self, input: &Input) {
+impl Update for OrbitCamera {
+    fn update(&mut self, input: &Input) {
         for e in input.events() {
             match e {
                 Event::Mouse(m) => match m {

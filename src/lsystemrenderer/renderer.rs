@@ -2,17 +2,57 @@ use std::borrow::Cow;
 use std::mem;
 use std::sync::Arc;
 use glam::{Mat4, Vec4};
-use wgpu::{BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType, BufferBindingType, BufferUsages, Color, CompareFunction, DepthStencilState, Extent3d, FragmentState, Label, LoadOp, Operations, PipelineLayoutDescriptor, PrimitiveState, RenderPassColorAttachment, RenderPassDepthStencilAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, ShaderModuleDescriptor, ShaderSource, ShaderStages, SurfaceConfiguration, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages, TextureView, TextureViewDescriptor, VertexState};
+use wgpu::{BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingType, BufferBindingType, BufferUsages, Color, CommandEncoder, CompareFunction, DepthStencilState, Extent3d, FragmentState, Label, LoadOp, Operations, PipelineLayoutDescriptor, PrimitiveState, RenderPass, RenderPassColorAttachment, RenderPassDepthStencilAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor, ShaderModuleDescriptor, ShaderSource, ShaderStages, SurfaceConfiguration, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages, TextureView, TextureViewDescriptor, VertexState};
 use wgpu::Face::Back;
 use crate::framework::camera::Camera;
 use crate::framework::context::Gpu;
+use crate::framework::event::window::OnResize;
 use crate::framework::gpu::buffer::Buffer;
 use crate::framework::mesh::vertex::{Vertex, VertexType};
-use crate::framework::renderer::drawable::Draw;
+use crate::framework::renderer::drawable::{Draw, DrawInstanced, GpuMesh};
 use crate::framework::scene::light::{Light, LightSource, LightSourceType};
 use crate::lsystemrenderer::camera::{OrbitCamera, Uniforms};
 use crate::lsystemrenderer::scene::LSystemScene;
 use crate::lsystemrenderer::turtle::turtle::Instance;
+
+pub struct RenderObject {
+    gpu_mesh: Arc<GpuMesh>,
+    num_instances: u32,
+    bind_group_index: u32,
+    bind_group: BindGroup,
+}
+
+impl Draw for RenderObject {
+    fn draw<'a>(&'a self, pass: &mut RenderPass<'a>) {
+        pass.set_bind_group(self.bind_group_index, &self.bind_group, &[]);
+        self.gpu_mesh.draw_instanced(pass, self.num_instances);
+    }
+}
+
+pub struct RenderObjectCreator {
+    gpu: Arc<Gpu>,
+    bind_group_index: u32,
+    bind_group_layout: BindGroupLayout,
+}
+
+impl RenderObjectCreator {
+    pub fn create_render_object(&self, mesh: &Arc<GpuMesh>, instances: &Buffer<Instance>) -> RenderObject {
+        let bind_group = self.gpu.device().create_bind_group(&BindGroupDescriptor {
+            label: Label::from("instances bind group"),
+            layout: &self.bind_group_layout,
+            entries: &[BindGroupEntry {
+                binding: 0,
+                resource: instances.buffer().as_entire_binding(),
+            }],
+        });
+        RenderObject {
+            gpu_mesh: mesh.clone(),
+            num_instances: instances.num_elements() as u32,
+            bind_group_index: self.bind_group_index,
+            bind_group,
+        }
+    }
+}
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -58,7 +98,7 @@ pub struct Renderer {
     depth_view: TextureView,
     render_pipeline: RenderPipeline,
     uniforms_bind_group: BindGroup,
-    instances_bind_group_layout: Arc<BindGroupLayout>,
+    render_object_creator: RenderObjectCreator,
 }
 
 impl Renderer {
@@ -102,7 +142,7 @@ impl Renderer {
                 }],
             },
         );
-        let instances_bind_group_layout = Arc::new(gpu.device().create_bind_group_layout(
+        let instances_bind_group_layout = gpu.device().create_bind_group_layout(
             &BindGroupLayoutDescriptor {
                 label: Label::from("Instance buffer bind group layout"),
                 entries: &[BindGroupLayoutEntry {
@@ -116,7 +156,7 @@ impl Renderer {
                     count: None,
                 }],
             },
-        ));
+        );
         let vertex_buffer_layouts = vec![Vertex::buffer_layout()];
         let pipeline_layout = gpu
             .device()
@@ -180,11 +220,15 @@ impl Renderer {
             depth_view,
             render_pipeline,
             uniforms_bind_group,
-            instances_bind_group_layout,
+            render_object_creator: RenderObjectCreator {
+                gpu: gpu.clone(),
+                bind_group_index: 1,
+                bind_group_layout: instances_bind_group_layout,
+            },
         }
     }
 
-    pub fn render(&self, render_target: &TextureView, scene: &LSystemScene) {
+    pub fn render(&self, render_target: &TextureView, scene: &LSystemScene, command_encoder: &mut CommandEncoder) {
         self.camera_uniforms
             .write_buffer(&vec![CameraUniforms::from(&scene.camera())]);
 
@@ -217,7 +261,19 @@ impl Renderer {
         render_pass.set_pipeline(&self.render_pipeline);
         render_pass.set_bind_group(0, &self.uniforms_bind_group, &[]);
 
-        // todo: get instances from cached bind groups? shouldn't create instance buffer every frame...
-        scene.model().draw(&mut render_pass);
+        for render_object in scene.get_active_render_objects() {
+            render_object.draw(&mut render_pass);
+        }
+    }
+
+    pub fn render_object_creator(&self) -> &RenderObjectCreator {
+        &self.render_object_creator
+    }
+}
+
+impl OnResize for Renderer {
+    fn on_resize(&mut self, width: u32, height: u32) {
+        // todo: recreate depth texture
+        log::error!("resize not implemented for renderer yet");
     }
 }
