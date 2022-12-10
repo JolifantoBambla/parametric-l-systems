@@ -10,7 +10,7 @@ use winit::{
 };
 
 use crate::framework::context::{ContextDescriptor, SurfaceContext, SurfaceTarget, WgpuContext};
-use crate::framework::event::lifecycle::{OnCommandsSubmitted, OnUpdate};
+use crate::framework::event::lifecycle::{OnCommandsSubmitted, PrepareRender, Update};
 use crate::framework::event::window::{OnResize, OnUserEvent, OnWindowEvent};
 use crate::framework::input::Input;
 #[cfg(target_arch = "wasm32")]
@@ -28,14 +28,19 @@ pub trait GpuApp: OnUserEvent {
     fn get_context_descriptor() -> ContextDescriptor<'static>;
 }
 
-pub struct AppRunner<G: 'static + GpuApp + OnResize + OnWindowEvent + OnUpdate + OnCommandsSubmitted> {
+pub struct AppRunner<
+    G: 'static + GpuApp + OnResize + OnWindowEvent + Update + PrepareRender + OnCommandsSubmitted,
+> {
     ctx: WgpuContext,
     event_loop: Option<EventLoop<G::UserEvent>>,
     window: Window,
     phantom_data: PhantomData<G>,
 }
 
-impl<G: 'static + GpuApp + OnResize + OnWindowEvent + OnUpdate + OnCommandsSubmitted> AppRunner<G> {
+impl<
+        G: 'static + GpuApp + OnResize + OnWindowEvent + Update + PrepareRender + OnCommandsSubmitted,
+    > AppRunner<G>
+{
     #[cfg(target_arch = "wasm32")]
     pub async fn new(window_config: WindowConfig) -> Self {
         let event_loop = EventLoopBuilder::<G::UserEvent>::with_user_event().build();
@@ -116,7 +121,9 @@ impl<G: 'static + GpuApp + OnResize + OnWindowEvent + OnUpdate + OnCommandsSubmi
                 }
                 event::Event::RedrawRequested(_) => {
                     let frame_input = input.prepare_next();
-                    app.on_update(&frame_input);
+                    app.update(&frame_input);
+
+                    app.prepare_render(&frame_input);
 
                     let frame = match self.ctx().surface().get_current_texture() {
                         Ok(frame) => frame,

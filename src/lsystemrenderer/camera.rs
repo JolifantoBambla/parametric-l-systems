@@ -1,17 +1,10 @@
-use glam::Mat4;
 use crate::framework::camera;
 use crate::framework::camera::{Camera, CameraView, Projection};
+use crate::framework::event::lifecycle::Update;
 use crate::framework::event::window::OnResize;
 use crate::framework::input::mouse::MouseEvent;
 use crate::framework::input::{Event, Input};
-use crate::framework::event::lifecycle::OnUpdate;
-
-#[repr(C)]
-#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct Uniforms {
-    view: Mat4,
-    projection: Mat4,
-}
+use glam::Mat4;
 
 #[derive(Copy, Clone, Debug)]
 pub struct OrbitCamera {
@@ -28,16 +21,9 @@ impl OrbitCamera {
             speed,
         }
     }
-
-    pub fn as_uniforms(&self) -> Uniforms {
-        Uniforms {
-            view: self.view(),
-            projection: self.projection(),
-        }
-    }
 }
 
-impl camera::Camera for OrbitCamera {
+impl Camera for OrbitCamera {
     fn view(&self) -> Mat4 {
         self.transform.view()
     }
@@ -52,8 +38,8 @@ impl OnResize for OrbitCamera {
     }
 }
 
-impl OnUpdate for OrbitCamera {
-    fn on_update(&mut self, input: &Input) {
+impl Update for OrbitCamera {
+    fn update(&mut self, input: &Input) {
         for e in input.events() {
             match e {
                 Event::Mouse(m) => match m {

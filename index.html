@@ -10,6 +10,7 @@
 <body>
     <script type="module">
         import init, { main } from "./pkg/parametric_l_systems.js";
+        import {LSystemParser} from "./js/l-system/module.js";
 
         const createUi = (event) => {
             const eventTarget = event.currentTarget;
@@ -50,6 +51,54 @@
         });
         mutationObserver.observe(document.body, { childList: true });
 
+        const lightSources = [
+            {
+                light: {
+                    color: [0.0, 0.0, 0.5],
+                    intensity: 1.0,
+                },
+                source: {
+                    point: {
+                        position: [1.0, 0.0, 0.0]
+                    }
+                }
+            },
+            {
+                light: {
+                    color: [0.5, 0.0, 0.0],
+                    intensity: 1.0,
+                },
+                source: {
+                    point: {
+                        position: [-1.0, 0.0, 0.0]
+                    }
+                }
+            }
+        ];
+
+
+        const otherTreeModel = {
+            // todo: axiom may use system parameters
+            axiom: 'A(100,30)',
+            productions: [
+                'A(l,w): l >= min -> F(l,w)[+(a1)/(g1)A(l*r1,w*Math.pow(q,e))][+(a2)/(g2)A(l*r2,w*Math.pow(1.0-q,e))]'
+            ],
+            parameters: {
+                a1: 30.0,
+                a2: -30.0,
+                r1: 0.8,
+                r2: 0.8,
+                g1: 137.0,
+                g2: 137.0,
+                q: 0.5,
+                e: 0.5,
+                min: 0.0,
+                w0: 30.0
+            },
+            alphabet: ['A(l,w)', 'F(l,w)', '[', ']', '+(a)', '/(d)'],
+        }
+        console.log(new LSystemParser({}).parseLSystem(otherTreeModel));
+
         // https://math.stackexchange.com/questions/123642/representing-a-3d-hilbert-curve-as-an-l-system
         // + Yaw(90)  +
         // - Yaw(-90)
@@ -58,7 +107,7 @@
         // > Roll(90)  /
         // < Roll(-90)
         // ^ < X F ^ < X F X - F ^ > > X F X & F + > > X F X - F > X - >;
-        let hilbertCurve3d = {
+        const hilbertCurve3d = {
             axiom: 'X',
             productions: [
                 'X -> &(90)/(-90)XF(0.5,0.25)&(90)/(-90)XF(0.5,0.25)X+(-90)F(0.5,0.25)&(90)/(90)/(90)XF(0.5,0.25)X&(-90)F(0.5,0.25)+(90)/(90)/(90)XF(0.5,0.25)X+(-90)F(0.5,0.25)/(90)X+(-90)/(90)'
@@ -67,7 +116,7 @@
             alphabet: ['X', 'F(x,y)', '+(x)', '&(x)', '/(x)']
         };
 
-        let treeModel = {
+        const treeModel = {
             axiom: 'A(1,10)',
             productions: [
                 'A(l,w) -> F(l,w)[&(a0)B(l*r2,w*wr)]/(d)A(l*r1,w*wr)',
@@ -80,7 +129,7 @@
 
         async function run() {
             await init();
-            main(hilbertCurve3d);
+            main(lightSources, otherTreeModel);
         }
         run();
     </script>
