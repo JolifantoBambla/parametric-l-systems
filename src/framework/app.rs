@@ -37,7 +37,10 @@ pub struct AppRunner<
     phantom_data: PhantomData<G>,
 }
 
-impl<G: 'static + GpuApp + OnResize + OnWindowEvent + Update + PrepareRender + OnCommandsSubmitted> AppRunner<G> {
+impl<
+        G: 'static + GpuApp + OnResize + OnWindowEvent + Update + PrepareRender + OnCommandsSubmitted,
+    > AppRunner<G>
+{
     #[cfg(target_arch = "wasm32")]
     pub async fn new(window_config: WindowConfig) -> Self {
         let event_loop = EventLoopBuilder::<G::UserEvent>::with_user_event().build();

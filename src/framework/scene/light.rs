@@ -1,6 +1,6 @@
+use crate::framework::scene::transform::{Transform, Transformable};
 use glam::Vec3;
 use serde::Deserialize;
-use crate::framework::scene::transform::{Transform, Transformable};
 
 /// The light emitted by a `LightSource`.
 #[repr(C)]
@@ -51,7 +51,9 @@ impl DirectionalLight {
     /// Constructs a new `DirectionalLight` emitting light in the given direction.
     /// The given direction gets normalized.
     pub fn new(direction: Vec3) -> Self {
-        Self { direction: direction.normalize() }
+        Self {
+            direction: direction.normalize(),
+        }
     }
     pub fn direction(&self) -> Vec3 {
         self.direction
@@ -74,8 +76,10 @@ impl PointLight {
 
 #[derive(Copy, Clone, Debug, Deserialize)]
 pub enum LightSourceType {
+    #[serde(rename = "directional")]
     Directional(DirectionalLight),
-    Point(PointLight)
+    #[serde(rename = "point")]
+    Point(PointLight),
 }
 
 #[derive(Copy, Clone, Debug, Deserialize)]
@@ -92,13 +96,13 @@ impl LightSource {
     pub fn new_directional(direction: Vec3, color: Vec3, intensity: f32) -> Self {
         Self::new(
             Light::new(color, intensity),
-            LightSourceType::Directional(DirectionalLight::new(direction))
+            LightSourceType::Directional(DirectionalLight::new(direction)),
         )
     }
     pub fn new_point(position: Vec3, color: Vec3, intensity: f32) -> Self {
         Self::new(
             Light::new(color, intensity),
-            LightSourceType::Point(PointLight::new(position))
+            LightSourceType::Point(PointLight::new(position)),
         )
     }
     pub fn light(&self) -> Light {

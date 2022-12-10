@@ -50,6 +50,31 @@
         });
         mutationObserver.observe(document.body, { childList: true });
 
+        const lightSources = [
+            {
+                light: {
+                    color: [0.0, 0.0, 0.5],
+                    intensity: 1.0,
+                },
+                source: {
+                    point: {
+                        position: [1.0, 0.0, 0.0]
+                    }
+                }
+            },
+            {
+                light: {
+                    color: [0.5, 0.0, 0.0],
+                    intensity: 1.0,
+                },
+                source: {
+                    point: {
+                        position: [-1.0, 0.0, 0.0]
+                    }
+                }
+            }
+        ];
+
         // https://math.stackexchange.com/questions/123642/representing-a-3d-hilbert-curve-as-an-l-system
         // + Yaw(90)  +
         // - Yaw(-90)
@@ -58,7 +83,7 @@
         // > Roll(90)  /
         // < Roll(-90)
         // ^ < X F ^ < X F X - F ^ > > X F X & F + > > X F X - F > X - >;
-        let hilbertCurve3d = {
+        const hilbertCurve3d = {
             axiom: 'X',
             productions: [
                 'X -> &(90)/(-90)XF(0.5,0.25)&(90)/(-90)XF(0.5,0.25)X+(-90)F(0.5,0.25)&(90)/(90)/(90)XF(0.5,0.25)X&(-90)F(0.5,0.25)+(90)/(90)/(90)XF(0.5,0.25)X+(-90)F(0.5,0.25)/(90)X+(-90)/(90)'
@@ -67,7 +92,7 @@
             alphabet: ['X', 'F(x,y)', '+(x)', '&(x)', '/(x)']
         };
 
-        let treeModel = {
+        const treeModel = {
             axiom: 'A(1,10)',
             productions: [
                 'A(l,w) -> F(l,w)[&(a0)B(l*r2,w*wr)]/(d)A(l*r1,w*wr)',
@@ -80,7 +105,7 @@
 
         async function run() {
             await init();
-            main(hilbertCurve3d);
+            main(lightSources, hilbertCurve3d);
         }
         run();
     </script>

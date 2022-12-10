@@ -47,10 +47,7 @@ impl TurtleState {
 }
 
 impl LSystemModel {
-    pub fn from_turtle_commands(
-        commands: &Vec<TurtleCommand>,
-        gpu: &Arc<Gpu>,
-    ) -> Self {
+    pub fn from_turtle_commands(commands: &Vec<TurtleCommand>, gpu: &Arc<Gpu>) -> Self {
         let mut aabb = Bounds3::new(Vec3::ZERO, Vec3::ZERO);
         let mut cylinder_instances: Vec<Instance> = Vec::new();
 
@@ -117,11 +114,9 @@ impl LSystemModel {
         let model_translation = Mat4::from_translation(-aabb.center());
         let model_scale = Mat4::from_scale(Vec3::new(scale_value, scale_value, scale_value));
 
-        cylinder_instances.iter_mut()
-            .for_each(|c| {
-                c.matrix = model_scale.mul_mat4(&model_translation)
-                    .mul_mat4(&c.matrix);
-            });
+        cylinder_instances.iter_mut().for_each(|c| {
+            c.matrix = model_scale.mul_mat4(&model_translation).mul_mat4(&c.matrix);
+        });
 
         let instances_buffer =
             Buffer::from_data("", &cylinder_instances, BufferUsages::STORAGE, gpu);
@@ -163,10 +158,7 @@ impl LSystemManager {
         let commands: Vec<TurtleCommand> = serde_wasm_bindgen::from_value(l_system.next_raw())
             .expect("Could not parse turtle commands");
 
-        iterations.push(LSystemModel::from_turtle_commands(
-            &commands,
-            gpu,
-        ));
+        iterations.push(LSystemModel::from_turtle_commands(&commands, gpu));
 
         Self {
             gpu: gpu.clone(),
@@ -189,17 +181,21 @@ impl LSystemManager {
 
     pub fn prepare_render(&mut self, render_object_creator: &RenderObjectCreator) {
         if self.render_objects.len() <= self.active_iteration as usize {
-            let active_iteration = self.iterations.get(self.active_iteration as usize)
+            let active_iteration = self
+                .iterations
+                .get(self.active_iteration as usize)
                 .expect("Active iteration does not exist");
-            self.render_objects.push(vec![render_object_creator.create_render_object(
-                &self.cylinder_mesh,
-                &active_iteration.cylinder_instances_buffer
-            )]);
+            self.render_objects
+                .push(vec![render_object_creator.create_render_object(
+                    &self.cylinder_mesh,
+                    &active_iteration.cylinder_instances_buffer,
+                )]);
         }
     }
 
     pub fn get_render_objects(&self) -> &Vec<RenderObject> {
-        self.render_objects.get(self.active_iteration as usize)
+        self.render_objects
+            .get(self.active_iteration as usize)
             .expect("Active render objects do not exist")
     }
 }
@@ -210,10 +206,8 @@ impl Update for LSystemManager {
             let commands: Vec<TurtleCommand> =
                 serde_wasm_bindgen::from_value(self.l_system.next_raw())
                     .expect("Could not parse turtle commands");
-            self.iterations.push(LSystemModel::from_turtle_commands(
-                &commands,
-                &self.gpu,
-            ));
+            self.iterations
+                .push(LSystemModel::from_turtle_commands(&commands, &self.gpu));
             self.active_iteration = self.iterations.len() as u32 - 1;
             if instant::now() as f32 - input.time().now() >= self.max_time_to_iterate {
                 break;

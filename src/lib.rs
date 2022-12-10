@@ -5,6 +5,7 @@ pub mod lindenmayer;
 pub mod lsystemrenderer;
 
 use crate::framework::app::AppRunner;
+use crate::framework::scene::light::LightSource;
 use crate::framework::util::window::WindowConfig;
 use crate::lsystemrenderer::App;
 
@@ -25,19 +26,22 @@ pub fn initialize() {
 
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen()]
-pub fn main(l_system_definition: JsValue) {
+pub fn main(light_sources: JsValue, l_system_definition: JsValue) {
+    let lights: Vec<LightSource> =
+        serde_wasm_bindgen::from_value(light_sources).expect("Could not deserialize light sources");
     let l_system = lindenmayer::LSystem::new(l_system_definition);
-    wasm_bindgen_futures::spawn_local(run(l_system));
+    wasm_bindgen_futures::spawn_local(run(lights, l_system));
 }
 
 #[cfg(target_arch = "wasm32")]
-async fn run(l_system: lindenmayer::LSystem) {
+async fn run(light_sources: Vec<LightSource>, l_system: lindenmayer::LSystem) {
     let window_config = WindowConfig::default();
     let app_runner = AppRunner::<App>::new(window_config).await;
     let app = App::new(
         app_runner.ctx().gpu(),
         app_runner.ctx().surface_configuration(),
         l_system,
+        light_sources,
     );
     app_runner.run(app);
 }

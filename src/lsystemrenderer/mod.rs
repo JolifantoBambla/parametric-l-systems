@@ -7,37 +7,23 @@ use crate::framework::event::web::{
     dispatch_canvas_event, register_custom_canvas_event_dispatcher,
 };
 use crate::framework::event::window::{OnResize, OnUserEvent, OnWindowEvent};
-use crate::framework::gpu::buffer::Buffer;
 use crate::framework::input::Input;
-use crate::framework::mesh::vertex::{Vertex, VertexType};
 use crate::framework::renderer::drawable::Draw;
+use crate::framework::scene::light::LightSource;
 use crate::lindenmayer::LSystem;
-use crate::lsystemrenderer::camera::{OrbitCamera, Uniforms};
 use crate::lsystemrenderer::event::{LSystemEvent, UiEvent};
-use crate::lsystemrenderer::turtle::turtle::{Instance, LSystemManager};
-use glam::Vec3;
-use std::borrow::Cow;
-use std::mem;
+use crate::lsystemrenderer::renderer::Renderer;
+use crate::lsystemrenderer::scene::LSystemScene;
 use std::sync::Arc;
-use wgpu::Face::Back;
 use wgpu::{
-    BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BindGroupLayoutDescriptor,
-    BindGroupLayoutEntry, BindingType, BufferBindingType, BufferUsages, Color, CommandEncoder,
-    CommandEncoderDescriptor, CompareFunction, DepthStencilState, DownlevelCapabilities,
-    DownlevelFlags, Extent3d, FragmentState, Label, Limits, LoadOp, Operations,
-    PipelineLayoutDescriptor, PrimitiveState, RenderPassColorAttachment,
-    RenderPassDepthStencilAttachment, RenderPassDescriptor, RenderPipeline,
-    RenderPipelineDescriptor, ShaderModel, ShaderModuleDescriptor, ShaderSource, ShaderStages,
-    SubmissionIndex, SurfaceConfiguration, TextureDescriptor, TextureDimension, TextureFormat,
-    TextureUsages, TextureView, TextureViewDescriptor, VertexState,
+    CommandEncoderDescriptor, DownlevelCapabilities, DownlevelFlags, Label, Limits, ShaderModel,
+    SubmissionIndex, SurfaceConfiguration, TextureView,
 };
 use winit::event::WindowEvent;
 use winit::event_loop::EventLoop;
 #[cfg(target_arch = "wasm32")]
 use winit::platform::web::WindowExtWebSys;
 use winit::window::Window;
-use crate::lsystemrenderer::renderer::Renderer;
-use crate::lsystemrenderer::scene::LSystemScene;
 
 pub mod camera;
 pub mod event;
@@ -56,13 +42,14 @@ impl App {
         gpu: &Arc<Gpu>,
         surface_configuration: &SurfaceConfiguration,
         l_system: LSystem,
+        light_sources: Vec<LightSource>,
     ) -> Self {
         let width = surface_configuration.width;
         let height = surface_configuration.height;
         let aspect_ratio = width as f32 / height as f32;
 
         let renderer = Renderer::new(gpu, surface_configuration);
-        let scene = LSystemScene::new(l_system, Vec::new(), aspect_ratio, gpu);
+        let scene = LSystemScene::new(l_system, light_sources, aspect_ratio, gpu);
 
         Self {
             gpu: gpu.clone(),
@@ -96,7 +83,8 @@ impl GpuApp for App {
                 .create_command_encoder(&CommandEncoderDescriptor {
                     label: Label::from("frame command encoder"),
                 });
-        self.renderer.render(view, &self.scene, &mut command_encoder);
+        self.renderer
+            .render(view, &self.scene, &mut command_encoder);
         self.gpu.queue().submit(vec![command_encoder.finish()])
     }
 
@@ -127,8 +115,7 @@ impl OnUserEvent for App {
         match event {
             UiEvent::LSystem(LSystemEvent::Iteration(iteration)) => {
                 log::debug!("Got iteration event: {:?}", iteration);
-                self.scene
-                    .set_target_iteration(*iteration as u32);
+                self.scene.set_target_iteration(*iteration as u32);
             }
         }
     }
@@ -146,7 +133,10 @@ impl Update for App {
 
 impl PrepareRender for App {
     fn prepare_render(&mut self, _input: &Input) {
-        self.scene.prepare_render(self.renderer.render_object_creator());
+        self.scene.prepare_render(
+            self.renderer.render_object_creator(),
+            self.renderer.light_sources_bind_group_creator(),
+        );
     }
 }
 

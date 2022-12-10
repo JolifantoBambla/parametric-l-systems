@@ -6,13 +6,6 @@ use crate::framework::input::mouse::MouseEvent;
 use crate::framework::input::{Event, Input};
 use glam::Mat4;
 
-#[repr(C)]
-#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct Uniforms {
-    view: Mat4,
-    projection: Mat4,
-}
-
 #[derive(Copy, Clone, Debug)]
 pub struct OrbitCamera {
     projection: Projection,
@@ -28,16 +21,9 @@ impl OrbitCamera {
             speed,
         }
     }
-
-    pub fn as_uniforms(&self) -> Uniforms {
-        Uniforms {
-            view: self.view(),
-            projection: self.projection(),
-        }
-    }
 }
 
-impl camera::Camera for OrbitCamera {
+impl Camera for OrbitCamera {
     fn view(&self) -> Mat4 {
         self.transform.view()
     }
