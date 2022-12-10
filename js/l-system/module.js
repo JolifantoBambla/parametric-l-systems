@@ -168,11 +168,11 @@ export class Module extends Clone {
         return { name: this.#name, parameters: this.parameters };
     }
 
-    static fromString(str) {
+    static fromString(str, parameters = {}) {
         const symbol = Symbol.fromString(str);
         return new Module({
             name: symbol.name,
-            parameters: symbol.parameters.map(Number),
+            parameters: symbol.parameters.map(p => Number(parameters[p] || p)),
         });
     }
 }
@@ -352,7 +352,7 @@ export class LSystemParser {
         return new LSystem({
             symbols,
             parameters,
-            axiom: LSystemParser.#parseAxiom(axiom, symbols),
+            axiom: LSystemParser.#parseAxiom(axiom, symbols, parameters),
             productions: this.#processProductionSpecs(productionSpecs, symbols, parameters),
         })
     }
@@ -530,7 +530,7 @@ export class LSystemParser {
         return parsedSymbols;
     }
 
-    static #parseAxiom(axiom, symbols) {
+    static #parseAxiom(axiom, symbols, parameters) {
         const parsedAxiom = [];
         const originalAxiom = `${axiom}`;
         while (axiom.length) {
@@ -541,9 +541,10 @@ export class LSystemParser {
                     const closeIdx = findClosingParenthesis(axiom, openIdx);
                     if (openIdx === s.name.length) {
                         const moduleDefinition = axiom.slice(0, closeIdx + 1);
-                        if (s.equals(Symbol.fromString(moduleDefinition))) {
+                        const symbolRepresentation = Symbol.fromString(moduleDefinition);
+                        if (s.equals(symbolRepresentation)) {
                             found = true;
-                            parsedAxiom.push(Module.fromString(moduleDefinition));
+                            parsedAxiom.push(Module.fromString(moduleDefinition, parameters));
                             axiom = axiom.slice(moduleDefinition.length);
                         }
                     } else if (s.parameters.length === 0) {
