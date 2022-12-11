@@ -88,6 +88,30 @@ impl RotateRoll {
 // Der letzte Zustand wird vom Stack entfernt und die Turtle in diesen Zustand versetzt
 
 #[derive(Debug, Deserialize)]
+pub struct SurfaceCommand {
+    parameters: Vec<String>,
+}
+
+impl SurfaceCommand {
+    pub fn name(&self) -> &str {
+        self.parameters.get(0)
+            .expect("SurfaceCommand has no surface name")
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SetMaterialIndex {
+    parameters: [f32; 1],
+}
+
+impl SetMaterialIndex {
+    pub fn material_index(&self) -> usize {
+        *self.parameters.get(0)
+            .expect("SetMaterialIndex has no material index") as usize
+    }
+}
+
+#[derive(Debug, Deserialize)]
 #[serde(tag = "name")]
 pub enum TurtleCommand {
     #[serde(rename = "F")]
@@ -117,6 +141,27 @@ pub enum TurtleCommand {
     // every command below this line is not needed for the exercise
     #[serde(rename = "$")]
     ToHorizontal,
+
+    #[serde(rename = "~")]
+    AddPredefinedSurface(SurfaceCommand),
+
+    #[serde(rename = "BeginSurface")]
+    BeginNewSurface(SurfaceCommand),
+
+    #[serde(rename = "EndSurface")]
+    EndNewSurface(SurfaceCommand),
+
+    #[serde(rename = "{")]
+    StartPolygon,
+
+    #[serde(rename = "}")]
+    EndPolygon,
+
+    #[serde(rename = ".")]
+    RecordVertex,
+
+    #[serde(rename = "´")]
+    SetMaterialIndex(SetMaterialIndex),
 
     #[serde(other)]
     Unknown,

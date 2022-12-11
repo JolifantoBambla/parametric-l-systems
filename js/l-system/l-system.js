@@ -172,7 +172,12 @@ export class Module extends Clone {
         const symbol = Symbol.fromString(str);
         return new Module({
             name: symbol.name,
-            parameters: symbol.parameters.map(p => Number(parameters[p] || p)),
+            parameters: symbol.parameters.map(p => {
+                if (p.startsWith('"') && p.endsWith('"')) {
+                    return p.slice(1, -1).replaceAll(/\s/g, '');
+                }
+                return Number(parameters[p] || p)
+            }),
         });
     }
 }

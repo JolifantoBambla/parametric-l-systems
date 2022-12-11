@@ -104,8 +104,11 @@ impl LSystemModel {
                 TurtleCommand::ToHorizontal => {
                     state.reset_orientation();
                 }
+                TurtleCommand::AddPredefinedSurface(surface_command) => {
+                    log::debug!("add surface command {:?}", surface_command);
+                }
                 _ => {
-                    log::debug!("encountered unknown command {:?}", c);
+                    log::debug!("encountered unknown command");
                 }
             }
         }
