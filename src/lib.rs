@@ -8,6 +8,7 @@ use crate::framework::app::AppRunner;
 use crate::framework::scene::light::LightSource;
 use crate::framework::util::window::WindowConfig;
 use crate::lsystemrenderer::App;
+use crate::lsystemrenderer::scene_descriptor::SceneDescriptor;
 
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
 // allocator.
@@ -26,22 +27,22 @@ pub fn initialize() {
 
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen()]
-pub fn main(light_sources: JsValue, l_system_definition: JsValue) {
-    let lights: Vec<LightSource> =
-        serde_wasm_bindgen::from_value(light_sources).expect("Could not deserialize light sources");
+pub fn main(scene: JsValue, l_system_definition: JsValue) {
+    let scene_descriptor: SceneDescriptor = serde_wasm_bindgen::from_value(scene)
+        .expect("Could not deserialize scene descriptor");
     let l_system = lindenmayer::LSystem::new(l_system_definition);
-    wasm_bindgen_futures::spawn_local(run(lights, l_system));
+    wasm_bindgen_futures::spawn_local(run(scene_descriptor, l_system));
 }
 
 #[cfg(target_arch = "wasm32")]
-async fn run(light_sources: Vec<LightSource>, l_system: lindenmayer::LSystem) {
+async fn run(scene_descriptor: SceneDescriptor, l_system: lindenmayer::LSystem) {
     let window_config = WindowConfig::default();
     let app_runner = AppRunner::<App>::new(window_config).await;
     let app = App::new(
         app_runner.ctx().gpu(),
         app_runner.ctx().surface_configuration(),
         l_system,
-        light_sources,
+        scene_descriptor,
     );
     app_runner.run(app);
 }

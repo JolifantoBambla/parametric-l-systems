@@ -53,7 +53,7 @@
         const lightSources = [
             {
                 light: {
-                    color: [0.0, 0.0, 0.5],
+                    color: [0.0, 0.0, 1.0],
                     intensity: 1.0,
                 },
                 source: {
@@ -64,7 +64,7 @@
             },
             {
                 light: {
-                    color: [0.5, 0.0, 0.0],
+                    color: [1.0, 0.0, 0.0],
                     intensity: 1.0,
                 },
                 source: {
@@ -141,7 +141,15 @@
 
         async function run() {
             await init();
-            main(lightSources, testPreSucParams);
+            main(
+                {
+                    lightSources,
+                    lSystemSettings: {
+                        materials: [{color: [1.0, 1.0, 1.0, 1.0]}]
+                    }
+                },
+                otherTreeModel
+            );
         }
         run();
     </script>

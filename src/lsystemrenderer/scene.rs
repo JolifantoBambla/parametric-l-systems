@@ -10,6 +10,7 @@ use crate::lsystemrenderer::renderer::{LightSourcesBindGroup, LightSourcesBindGr
 use crate::lsystemrenderer::turtle::turtle::LSystemManager;
 use glam::Vec3;
 use std::sync::Arc;
+use crate::SceneDescriptor;
 
 pub struct LSystemScene {
     camera: OrbitCamera,
@@ -21,7 +22,7 @@ pub struct LSystemScene {
 impl LSystemScene {
     pub fn new(
         l_system: LSystem,
-        light_sources: Vec<LightSource>,
+        scene_descriptor: SceneDescriptor,
         view_aspect_ratio: f32,
         gpu: &Arc<Gpu>,
     ) -> Self {
@@ -30,11 +31,11 @@ impl LSystemScene {
             CameraView::new(Vec3::new(0., 0., -10.), Vec3::ZERO, Vec3::Y),
             5.0,
         );
-        let model = LSystemManager::new(l_system, gpu);
+        let model = LSystemManager::new(l_system, scene_descriptor.l_system_settings(), gpu);
         Self {
             camera,
             model,
-            light_sources,
+            light_sources: scene_descriptor.light_sources().clone(),
             light_sources_bind_group: None,
         }
     }

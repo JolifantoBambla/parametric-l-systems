@@ -146,13 +146,13 @@ pub enum TurtleCommand {
     AddPredefinedSurface(SurfaceCommand),
 
     #[serde(rename = "BeginSurface")]
-    BeginNewSurface(SurfaceCommand),
+    BeginSurface(SurfaceCommand),
 
     #[serde(rename = "EndSurface")]
-    EndNewSurface(SurfaceCommand),
+    EndSurface(SurfaceCommand),
 
     #[serde(rename = "{")]
-    StartPolygon,
+    BeginPolygon,
 
     #[serde(rename = "}")]
     EndPolygon,

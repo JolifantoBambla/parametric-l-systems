@@ -24,11 +24,14 @@ use winit::event_loop::EventLoop;
 #[cfg(target_arch = "wasm32")]
 use winit::platform::web::WindowExtWebSys;
 use winit::window::Window;
+use crate::framework::scene::Scene;
+use crate::SceneDescriptor;
 
 pub mod camera;
 pub mod event;
 pub mod renderer;
 pub mod scene;
+pub mod scene_descriptor;
 pub mod turtle;
 
 pub struct App {
@@ -42,14 +45,14 @@ impl App {
         gpu: &Arc<Gpu>,
         surface_configuration: &SurfaceConfiguration,
         l_system: LSystem,
-        light_sources: Vec<LightSource>,
+        scene_descriptor: SceneDescriptor,
     ) -> Self {
         let width = surface_configuration.width;
         let height = surface_configuration.height;
         let aspect_ratio = width as f32 / height as f32;
 
         let renderer = Renderer::new(gpu, surface_configuration);
-        let scene = LSystemScene::new(l_system, light_sources, aspect_ratio, gpu);
+        let scene = LSystemScene::new(l_system, scene_descriptor, aspect_ratio, gpu);
 
         Self {
             gpu: gpu.clone(),
