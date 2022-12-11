@@ -168,11 +168,11 @@ export class Module extends Clone {
         return { name: this.#name, parameters: this.parameters };
     }
 
-    static fromString(str) {
+    static fromString(str, parameters = {}) {
         const symbol = Symbol.fromString(str);
         return new Module({
             name: symbol.name,
-            parameters: symbol.parameters.map(Number),
+            parameters: symbol.parameters.map(p => Number(parameters[p] || p)),
         });
     }
 }
@@ -220,8 +220,14 @@ class Operation {
         return this.#probability;
     }
 
-    apply(module, systemState) {
-        return this.#func(Module.prototype.constructor, ...module.parameters, systemState.parameters);
+    apply(module, predecessorParameters, successorParameters, systemState) {
+        return this.#func(
+            Module.prototype.constructor,
+            ...module.parameters,
+            ...predecessorParameters,
+            ...successorParameters,
+            systemState.parameters
+        );
     }
 }
 
@@ -268,12 +274,20 @@ class Production {
         }
     }
 
-    apply(module, systemState) {
-        return this.#chooseOperation().apply(module, systemState);
+    apply(module, predecessorParameters, successorParameters, systemState) {
+        return this.#chooseOperation().apply(module, predecessorParameters, successorParameters, systemState);
     }
 
-    condition(module, systemState) {
-        return this.#condition ? this.#condition(...module.parameters, systemState.parameters) : true;
+    condition(module, predecessorParameters, successorParameters, systemState) {
+        if (this.#condition) {
+            return this.#condition(
+                ...module.parameters,
+                ...predecessorParameters,
+                ...successorParameters,
+                systemState.parameters
+            );
+        }
+        return true;
     }
 
     rank() {
@@ -352,7 +366,7 @@ export class LSystemParser {
         return new LSystem({
             symbols,
             parameters,
-            axiom: LSystemParser.#parseAxiom(axiom, symbols),
+            axiom: LSystemParser.#parseAxiom(axiom, symbols, parameters),
             productions: this.#processProductionSpecs(productionSpecs, symbols, parameters),
         })
     }
@@ -370,13 +384,30 @@ export class LSystemParser {
     #processProductionSpecs(productionSpecs, symbols, parameters) {
         return Object.keys(productionSpecs).reduce((productions, symbolName) => {
             const specs = productionSpecs[symbolName].map(({probability, moduleSpecification, condition, body}) => {
+                const predecessors = LSystemParser.#parseProductionPreOrSuccessors(moduleSpecification.predecessors, symbols);
+                const successors = LSystemParser.#parseProductionPreOrSuccessors(moduleSpecification.successors, symbols);
+                const predecessorParams = predecessors.flatMap(p => p.parameters);
+                const successorParams = successors.flatMap(p => p.parameters);
                 return {
                     probability,
                     symbol: moduleSpecification.module,
-                    predecessors: LSystemParser.#parseProductionPreOrSuccessors(moduleSpecification.predecessors, symbols),
-                    successors: LSystemParser.#parseProductionPreOrSuccessors(moduleSpecification.successors, symbols),
-                    condition: this.#parseProductionCondition(condition, moduleSpecification.module.parameters, parameters),
-                    body: this.#parseProductionBody(body, moduleSpecification.module.parameters, parameters, symbols),
+                    predecessors,
+                    successors,
+                    condition: this.#parseProductionCondition(
+                        condition,
+                        moduleSpecification.module.parameters,
+                        predecessorParams,
+                        successorParams,
+                        parameters
+                    ),
+                    body: this.#parseProductionBody(
+                        body,
+                        moduleSpecification.module.parameters,
+                        predecessorParams,
+                        successorParams,
+                        parameters,
+                        symbols
+                    ),
                 };
             });
 
@@ -455,7 +486,7 @@ export class LSystemParser {
         }, {});
     }
 
-    #parseProductionCondition(conditionDefinition, moduleParameters, systemParameters) {
+    #parseProductionCondition(conditionDefinition, moduleParameters, predecessorParameters, successorParameters, systemParameters) {
         const requiredSystemParameters = [];
         for (const p of Object.keys(systemParameters)) {
             if (conditionDefinition.includes(p)) {
@@ -465,7 +496,7 @@ export class LSystemParser {
         const systemParamsString = `{${
             requiredSystemParameters.map(p => `${p}=${systemParameters[p]}`)
         }}`;
-        const funcArgs = [...moduleParameters];
+        const funcArgs = [...moduleParameters, ...predecessorParameters, ...successorParameters];
         if (Object.keys(requiredSystemParameters).length) {
             funcArgs.push(systemParamsString);
         }
@@ -478,12 +509,12 @@ export class LSystemParser {
         };
     }
 
-    #parseProductionBody(bodyDefinition, moduleParameters, systemParameters, symbols) {
+    #parseProductionBody(bodyDefinition, moduleParameters, predecessorParameters, successorParameters, systemParameters, symbols) {
         const producedSymbols = LSystemParser.#parseProductionPreOrSuccessors(bodyDefinition, symbols);
         const body = producedSymbols.map(s => {
             return `new ctor({ name: '${s.name}', parameters: [${s.parameters}] })`
         });
-        const funcArgs = ['ctor', ...moduleParameters];
+        const funcArgs = ['ctor', ...moduleParameters, ...predecessorParameters, ...successorParameters];
         if (Object.keys(systemParameters).length) {
             funcArgs.push(`{${Object.keys(systemParameters).map(k =>`${k}=${systemParameters[k]}`)}}`);
         }
@@ -530,7 +561,7 @@ export class LSystemParser {
         return parsedSymbols;
     }
 
-    static #parseAxiom(axiom, symbols) {
+    static #parseAxiom(axiom, symbols, parameters) {
         const parsedAxiom = [];
         const originalAxiom = `${axiom}`;
         while (axiom.length) {
@@ -541,9 +572,10 @@ export class LSystemParser {
                     const closeIdx = findClosingParenthesis(axiom, openIdx);
                     if (openIdx === s.name.length) {
                         const moduleDefinition = axiom.slice(0, closeIdx + 1);
-                        if (s.equals(Symbol.fromString(moduleDefinition))) {
+                        const symbolRepresentation = Symbol.fromString(moduleDefinition);
+                        if (s.equals(symbolRepresentation)) {
                             found = true;
-                            parsedAxiom.push(Module.fromString(moduleDefinition));
+                            parsedAxiom.push(Module.fromString(moduleDefinition, parameters));
                             axiom = axiom.slice(moduleDefinition.length);
                         }
                     } else if (s.parameters.length === 0) {
@@ -614,10 +646,15 @@ export class LSystem {
 
     evaluate(systemState) {
         const result = [];
-        for (const i in systemState.axiom) {
+        for (let i = 0; i < systemState.axiom.length; ++i) {
             const m = systemState.axiom[i];
-            const p = this.#findProduction(i, systemState);
-            result.push(p ? p.apply(m, systemState) : m.clone());
+            const foundProduction = this.#findProduction(i, systemState);
+            if (foundProduction) {
+                const {production, predecessorParameters, successorParameters} = foundProduction;
+                result.push(production.apply(m, predecessorParameters, successorParameters, systemState));
+            } else {
+                result.push(m.clone());
+            }
         }
         systemState.axiom = result.flat();
         return systemState;
@@ -637,30 +674,39 @@ export class LSystem {
         candidates.sort((a, b) => b.rank() - a.rank());
         for (const c of candidates) {
             let matches = true;
-            for (const j in c.predecessors) {
-                if (i - j - 1 < 0) {
+            const predecessors = [];
+            const successors = [];
+            if (c.predecessors.length > i) {
+                continue;
+            }
+            if (c.successors.length > modules.length - i) {
+                continue;
+            }
+            for (let j = 0; j < c.predecessors.length; ++j) {
+                const predecessor = modules[i - c.predecessors.length + j];
+                if (!c.predecessors[j].equals(predecessor)) {
                     matches = false;
                     break;
                 }
-                if (!c.predecessors[c.predecessors.length - j - 1].equals(modules[i - j - 1])) {
+                predecessors.push(predecessor);
+            }
+            if (!matches) {
+                continue;
+            }
+            for (let j = 0; j < c.successors.length; ++j) {
+                const successor = modules[i + j];
+                if (!c.successors[j].equals(successor)) {
                     matches = false;
                     break;
                 }
+                successors.push(successor);
             }
-            if (matches) {
-                for (const j in c.successors) {
-                    if (i + j < modules.length) {
-                        matches = false;
-                        break;
-                    }
-                    if (!c.successors[j].equals(modules[i + j])) {
-                        matches = false;
-                        break;
-                    }
-                }
-            }
-            if (matches && c.condition(module, systemState)) {
-                return c;
+            if (matches && c.condition(module, predecessors, successors, systemState)) {
+                return {
+                    production: c,
+                    predecessorParameters: predecessors.flatMap(p => p.parameters),
+                    successorParameters: successors.flatMap(s => s.parameters),
+                };
             }
         }
         return null;
@@ -834,7 +880,7 @@ export function testLSystems() {
         contextSensitive,
         parametric,
         treeModel,
-        queryParameters
+        //queryParameters
     ];
     const systems = [];
     for (const d of definitions) {

@@ -2,7 +2,7 @@
 use wasm_bindgen::prelude::*;
 
 #[cfg(target_arch = "wasm32")]
-#[wasm_bindgen(module = "/js/l-system/module.js")]
+#[wasm_bindgen(module = "/js/l-system/l-system.js")]
 extern "C" {
     type LSystemIterator;
 
