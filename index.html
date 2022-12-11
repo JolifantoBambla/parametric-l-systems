@@ -10,7 +10,6 @@
 <body>
     <script type="module">
         import init, { main } from "./pkg/parametric_l_systems.js";
-        import {LSystemParser} from "./js/l-system/module.js";
 
         const createUi = (event) => {
             const eventTarget = event.currentTarget;
@@ -100,7 +99,16 @@
             parameters: treeModelConfigs[6],
             alphabet: ['A(l,w)', 'F(l,w)', '[', ']', '+(a)', '/(d)'],
         }
-        console.log(new LSystemParser({}).parseLSystem(otherTreeModel));
+
+        const testPreSucParams = {
+            axiom: 'A(20,w0)B(10,w0)F(20,w0)',
+            productions: [
+                'F(l1,w1) > F(l2,w2): l1 > l2 || w1 > w2 -> F(l1*2.0,w1*2.0)',
+                'A(l1,w1)B(l2,w2) < F(l3,w3): l1 > l2 || w1 > w2 -> F(l3*2.0,w3*2.0)',
+            ],
+            parameters: treeModelConfigs[6],
+            alphabet: ['A(l,w)', 'B(l,w)', 'F(l,w)', '[', ']', '+(a)', '/(d)'],
+        }
 
         // https://math.stackexchange.com/questions/123642/representing-a-3d-hilbert-curve-as-an-l-system
         // + Yaw(90)  +
