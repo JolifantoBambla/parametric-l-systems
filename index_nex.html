@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Parametric L-Systems</title>
+    <!-- import tweakpane for creating & managing the UI elements -->
+    <script src="js/external/tweakpane/tweakpane-3.1.1.min.js"></script>
+    <script src="js/external/tweakpane-plugin-essentials/tweakpane-plugin-essentials-0.1.5.min.js"></script>
+</head>
+<body>
+    <script type="module">
+        import { addJsonFilePicker } from "./js/util/tweakpane-file-picker.js";
+
+        const pane = new Tweakpane.Pane({
+            title: 'Parametric L-Systems',
+            expanded: true,
+        });
+        pane.registerPlugin(TweakpaneEssentialsPlugin);
+
+
+        const sceneSelectionFolder = pane.addFolder({
+            title: 'Scene',
+            expanded: true,
+        });
+        const start = (scene) => {
+            sceneSelectionFolder.hidden = true;
+            const sceneDetails = {
+                lSystem: {
+                    alphabet: [],
+                    axiom: '',
+                    productions: [],
+                    parameters: [],
+                    maxIterations: 0,
+                    parameterPreset: {},
+                },
+                lightSources: [],
+                materials: [],
+                ...scene,
+            }
+            if (scene) {
+                sceneDetails.lSystem.parameterPreset = scene.lSystem.parameterPresets[scene.lSystem.defaultPreset];
+            }
+
+            const sceneFolder = pane.addTab({
+                pages: [
+                    {title: 'L-System'},
+                    {title: 'Scene'}
+                ]
+            });
+
+            const lSystemFolder = sceneFolder.pages[0];
+
+            lSystemFolder.addInput(sceneDetails.lSystem, 'axiom');
+
+            const addExpandableList = (folder, list, title, addNewText, addNewListener = null) => {
+                const listFolder = lSystemFolder.addFolder({
+                    title,
+                    expanded: true,
+                });
+                for (const i in list) {
+                    const inputElement = listFolder.addInput(list, i);
+                    if (addNewListener) {
+                        addNewListener({
+                            key: i,
+                            inputElement,
+                        })
+                    }
+                }
+                let addNewButton = listFolder.addButton({
+                    title: addNewText
+                });
+                const addNewElement = e => {
+                    addNewButton.hidden = true;
+                    const i = `${list.length}`;
+                    list.push('');
+                    const inputElement = listFolder.addInput(list, i);
+                    if (addNewListener) {
+                        addNewListener({
+                            key: i,
+                            inputElement,
+                        })
+                    }
+                    addNewButton = listFolder.addButton({
+                        title: addNewText
+                    });
+                    addNewButton.on('click', addNewElement);
+
+                };
+                addNewButton.on('click', addNewElement);
+            }
+
+            addExpandableList(lSystemFolder, sceneDetails.lSystem.alphabet, 'Alphabet', 'Add new symbol');
+            addExpandableList(lSystemFolder, sceneDetails.lSystem.productions, 'Productions', 'Add new production');
+            addExpandableList(lSystemFolder, sceneDetails.lSystem.parameters, 'Parameters', 'Add new parameter');
+
+            // todo: update parameter list when new one is added / name is changed
+            const parameterPresetFolder = lSystemFolder.addFolder({title: 'Parameter preset', expanded: true});
+            for (const p in sceneDetails.lSystem.parameterPreset) {
+                parameterPresetFolder.addInput(sceneDetails.lSystem.parameterPreset, p);
+            }
+            // todo: only add presets they exist
+            // todo: update parameters based on preset
+            parameterPresetFolder.addBlade({
+                view: 'list',
+                label: 'Choose preset',
+                options: sceneDetails.lSystem.parameterPresets.map((p, i) => {
+                    return {
+                        text: `${i}`,
+                        value: p
+                    };
+                }),
+                value: sceneDetails.lSystem.parameterPreset
+            });
+
+            // todo: add scene page
+            // todo: add lights & materials
+            // todo: add start button
+            // todo: add export button (export sceneDetails)
+        }
+        const sceneFileUploadButton = addJsonFilePicker(sceneSelectionFolder, 'Upload scene file', start);
+        sceneSelectionFolder.addButton({
+            title: 'Create new'
+        }).on('click', e => start());
+
+    </script>
+</body>
+</html>

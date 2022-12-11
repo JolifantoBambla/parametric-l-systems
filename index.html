@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
+    <title>Parametric L-Systems</title>
     <!-- import tweakpane for creating & managing the UI elements -->
     <script src="js/external/tweakpane/tweakpane-3.1.1.min.js"></script>
     <script src="js/external/tweakpane-plugin-essentials/tweakpane-plugin-essentials-0.1.5.min.js"></script>
@@ -10,11 +10,11 @@
 <body>
     <script type="module">
         import init, { main } from "./pkg/parametric_l_systems.js";
+        import { addJsonFilePicker } from "./js/util/tweakpane-file-picker.js";
 
         const createUi = (event) => {
             const eventTarget = event.currentTarget;
 
-            // todo: build UI and dispatch events
             const pane = new Tweakpane.Pane({
                 title: 'Parametric L-Systems',
                 expanded: true,
@@ -151,6 +151,9 @@
                 otherTreeModel
             );
         }
+
+
+
         run();
     </script>
 </body>
