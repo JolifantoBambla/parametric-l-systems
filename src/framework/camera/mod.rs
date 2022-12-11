@@ -1,6 +1,6 @@
 use crate::framework::event::window::OnResize;
 use crate::framework::geometry::bounds::{Bounds, Bounds2, Bounds3};
-use crate::framework::util::math::is_close_to_zero;
+use crate::framework::util::math::f32::is_close_to_zero;
 use glam::{Mat3, Mat4, Vec2, Vec3};
 
 pub trait Camera {
