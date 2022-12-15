@@ -1,3 +1,5 @@
+#![feature(async_closure)]
+
 use wasm_bindgen::prelude::*;
 
 pub mod framework;
@@ -37,12 +39,17 @@ pub fn main(scene: JsValue, l_system_definition: JsValue) {
 #[cfg(target_arch = "wasm32")]
 async fn run(scene_descriptor: SceneDescriptor, l_system: lindenmayer::LSystem) {
     let window_config = WindowConfig::default();
-    let app_runner = AppRunner::<App>::new(window_config).await;
-    let app = App::new(
-        app_runner.ctx().gpu(),
-        app_runner.ctx().surface_configuration(),
-        l_system,
-        scene_descriptor,
-    );
-    app_runner.run(app);
+    AppRunner::<App>::new(
+        window_config,
+        async move |_, _, surface_context| {
+            let gpu = surface_context.gpu().clone();
+            let surface_configuration = surface_context.surface_configuration().clone();
+            App::new(
+                &gpu,
+                &surface_configuration,
+                l_system,
+                scene_descriptor,
+            )
+        }
+    ).await.run();
 }

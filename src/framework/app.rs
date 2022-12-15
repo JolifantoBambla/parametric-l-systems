@@ -1,4 +1,4 @@
-use std::marker::PhantomData;
+use std::future::Future;
 use wgpu::{SubmissionIndex, TextureView};
 use winit::event_loop::EventLoopBuilder;
 #[cfg(target_arch = "wasm32")]
@@ -34,34 +34,40 @@ pub struct AppRunner<
     ctx: WgpuContext,
     event_loop: Option<EventLoop<G::UserEvent>>,
     window: Window,
-    phantom_data: PhantomData<G>,
+    app: G,
 }
 
-impl<
-        G: 'static + GpuApp + OnResize + OnWindowEvent + Update + PrepareRender + OnCommandsSubmitted,
-    > AppRunner<G>
-{
+impl<G: 'static + GpuApp + OnResize + OnWindowEvent + Update + PrepareRender + OnCommandsSubmitted>
+AppRunner<G> {
     #[cfg(target_arch = "wasm32")]
-    pub async fn new(window_config: WindowConfig) -> Self {
+    pub async fn new<'a, F, Fut>(
+        window_config: WindowConfig,
+        create_app: F
+    ) -> Self
+    where
+        F: FnOnce(&Window, &EventLoop<G::UserEvent>, &'a SurfaceContext) -> Fut,
+        Fut: Future<Output = G> + 'a,
+    {
         let event_loop = EventLoopBuilder::<G::UserEvent>::with_user_event().build();
         let window = get_or_create_window(&window_config, &event_loop);
 
         let context = WgpuContext::new(
             &G::get_context_descriptor(),
             Some(SurfaceTarget::Window(&window)),
-        )
-        .await;
+        ).await;
+
+        let app = create_app(&window, &event_loop, context.surface_context()).await;
 
         AppRunner {
             ctx: context,
             event_loop: Some(event_loop),
             window,
-            phantom_data: PhantomData,
+            app
         }
     }
 
     #[cfg(target_arch = "wasm32")]
-    pub fn run(mut self, mut app: G) {
+    pub fn run(mut self) {
         let mut input = Input::new(
             self.ctx().surface_configuration().width,
             self.ctx().surface_configuration().height,
@@ -69,7 +75,7 @@ impl<
 
         let event_loop = self.event_loop.take().unwrap();
 
-        app.init(&self.window, &event_loop, self.ctx());
+        self.app.init(&self.window, &event_loop, self.ctx());
 
         log::debug!("Starting event loop");
         event_loop.spawn(move |event, _, control_flow| {
@@ -95,7 +101,7 @@ impl<
                     let width = size.width.max(1);
                     let height = size.height.max(1);
                     self.ctx.surface_context_mut().on_resize(width, height);
-                    app.on_resize(width, height);
+                    self.app.on_resize(width, height);
                     input.on_resize(width, height);
                 }
                 event::Event::WindowEvent { event, .. } => match event {
@@ -113,17 +119,17 @@ impl<
                     }
                     _ => {
                         input.on_window_event(&event);
-                        app.on_window_event(&event);
+                        self.app.on_window_event(&event);
                     }
                 },
                 event::Event::UserEvent(e) => {
-                    app.on_user_event(&e);
+                    self.app.on_user_event(&e);
                 }
                 event::Event::RedrawRequested(_) => {
                     let frame_input = input.prepare_next();
-                    app.update(&frame_input);
+                    self.app.update(&frame_input);
 
-                    app.prepare_render(&frame_input);
+                    self.app.prepare_render(&frame_input);
 
                     let frame = match self.ctx().surface().get_current_texture() {
                         Ok(frame) => frame,
@@ -139,8 +145,8 @@ impl<
                         .texture
                         .create_view(&wgpu::TextureViewDescriptor::default());
 
-                    let submission_index = app.render(&view, &frame_input);
-                    app.on_commands_submitted(&frame_input, &submission_index);
+                    let submission_index = self.app.render(&view, &frame_input);
+                    self.app.on_commands_submitted(&frame_input, &submission_index);
 
                     frame.present();
                 }
