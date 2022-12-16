@@ -3,17 +3,81 @@
 <head>
     <meta charset="UTF-8">
     <title>Parametric L-Systems</title>
+    <link rel="stylesheet" href="css/materialize/css/materialize.min.css"/>
     <!-- import tweakpane for creating & managing the UI elements -->
     <script src="js/external/tweakpane/tweakpane-3.1.1.min.js"></script>
     <script src="js/external/tweakpane-plugin-essentials/tweakpane-plugin-essentials-0.1.5.min.js"></script>
 </head>
 <body>
+    <div class="row">
+        <div class="col xl12">
+            <h1>Parametric L-System Explorer</h1>
+        </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="row">
+        <div class="col xl12">
+            <div class="col xl4">
+                <!--<h4>L-System</h4>-->
+                <ul class="collection">
+                    <li class="collection-item"><input type="text"></li>
+                    <li class="collection-item"><input type="text"></li>
+                    <li class="collection-item"><input type="text"></li>
+                    <li class="collection-item"><input type="text"></li>
+                </ul>
+                <input type="text">
+                <textarea></textarea>
+                <div class="divider"></div>
+            </div>
+
+            <div class="col xl8" id="scene-view-container" style="position: relative; height: 800pt;">
+                <!--<h4>Viewer</h4>-->
+                <canvas style="width: 100%; height: 100%; background-color:rgb(0, 0, 0);position: absolute" id="scene-view"></canvas>
+                <div id="ui" style="position: absolute; right: 0; z-index: 1"></div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="page-footer">
+        <div class="container">
+            <div class="row">
+                <div class="col l6 xl12">
+                    <h5 class="white-text">Footer Content</h5>
+                    <p class="grey-text text-lighten-4">You can use rows and columns here to organize your footer content.</p>
+                </div>
+                <div class="col l4 offset-l2 xl12">
+                    <h5 class="white-text">Links</h5>
+                    <ul>
+                        <li><a class="grey-text text-lighten-3" href="#!">Link 1</a></li>
+                        <li><a class="grey-text text-lighten-3" href="#!">Link 2</a></li>
+                        <li><a class="grey-text text-lighten-3" href="#!">Link 3</a></li>
+                        <li><a class="grey-text text-lighten-3" href="#!">Link 4</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="footer-copyright">
+            <div class="container">
+                © 2014 Copyright Text
+                <a class="grey-text text-lighten-4 right" href="#!">More Links</a>
+            </div>
+        </div>
+    </footer>
+
+    <script type="text/javascript" src="js/external/materialize/js/materialize.min.js"></script>
     <script type="module">
         import { addJsonFilePicker } from "./js/util/tweakpane-file-picker.js";
+
+        const uiElement = document.getElementById('ui');
+        const sceneViewContainer = document.getElementById('scene-view-container');
+        const sceneCanvas = document.getElementById('scene-view');
 
         const pane = new Tweakpane.Pane({
             title: 'Parametric L-Systems',
             expanded: true,
+            container: uiElement,
         });
         pane.registerPlugin(TweakpaneEssentialsPlugin);
 
