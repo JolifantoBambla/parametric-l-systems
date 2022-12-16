@@ -5,6 +5,7 @@ use wgpu::{Adapter, Device, Instance, Queue, Surface, SurfaceConfiguration, Text
 use winit::window::Window;
 
 /// Helper struct for constructing a `GPUContext`.
+#[derive(Clone, Debug)]
 pub struct ContextDescriptor<'a> {
     /// see `wgpu::Instance::new`
     pub backends: wgpu::Backends,
@@ -38,6 +39,7 @@ impl<'a> Default for ContextDescriptor<'a> {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct Gpu {
     device: Device,
     queue: Queue,
@@ -52,6 +54,7 @@ impl Gpu {
     }
 }
 
+#[derive(Clone, Debug)]
 pub enum SurfaceTarget<'a> {
     Window(&'a Window),
     #[cfg(all(target_arch = "wasm32", not(feature = "emscripten")))]
@@ -92,6 +95,7 @@ impl<'a> SurfaceTarget<'a> {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct HeadlessContext {
     instance: Instance,
     adapter: Adapter,
@@ -110,6 +114,7 @@ impl HeadlessContext {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct SurfaceContext {
     instance: Instance,
     adapter: Adapter,
@@ -165,6 +170,7 @@ impl OnResize for SurfaceContext {
     }
 }
 
+#[derive(Clone, Debug)]
 pub enum WgpuContext {
     Surface(SurfaceContext),
     Headless(HeadlessContext),
