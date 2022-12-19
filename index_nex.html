@@ -6,42 +6,57 @@
     <!-- import materialize -->
     <link rel="stylesheet" href="css/materialize/css/materialize.min.css"/>
 
+    <!-- import Google icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
     <!-- import tweakpane for the viewer's UI elements -->
     <script src="js/external/tweakpane/tweakpane-3.1.1.min.js"></script>
     <script src="js/external/tweakpane-plugin-essentials/tweakpane-plugin-essentials-0.1.5.min.js"></script>
 </head>
 <body>
-    <div class="row">
-        <div class="col xl12">
-            <h1>Parametric L-System Explorer</h1>
+    <header>
+        <div class="row">
+            <div class="col xl12">
+                <h1>Parametric L-System Explorer</h1>
+            </div>
         </div>
-    </div>
-
+    </header>
     <div class="divider"></div>
 
-    <div class="row">
-        <div class="col xl12">
-            <div class="col xl4">
-
-
-                <div class="row">
-                    <h4>L-System Editor</h4>
-                    <div class="col xl12">
-                        <div id="editor" style="width: 100%; height: 300pt; border: 1px solid grey"> </div>
+    <main>
+        <div class="row">
+            <div class="col xl12">
+                <div class="col xl4">
+                    <div class="row">
+                        <h4>L-System Editor</h4>
+                        <div class="col xl12">
+                            <div id="editor" style="width: 100%; height: 500pt; border: 1px solid grey"> </div>
+                            <div class = "file-field input-field waves-effect waves-light btn-small" style="width: 24.6%;" type="submit">
+                                <i class="material-icons left">cloud_upload</i>Upload Scene
+                                <input type="file" accept="application/json" id="scene-upload-button">
+                            </div>
+                            <button class="waves-effect waves-light btn-small" style="width: 24.6%;" type="submit" id="scene-download-button"><i class="material-icons left">save</i>Save Scene</button>
+                            <button class="waves-effect waves-light btn-small" style="width: 24.5%;" type="submit" id="l-system-test-button"><i class="material-icons left">play_circle_outline</i>Test</button>
+                            <button class="waves-effect waves-light btn-small" style="width: 24.6%;" type="submit" id="l-system-render-button"><i class="material-icons left">play_circle_filled</i>Render</button>
+                        </div>
+                    </div>
+                    <div class="divider"></div>
+                    <div class="row">
+                        <div class="col xl12">
+                            <h5>Iterations</h5>
+                            <textarea id="l-system-iterations" style="height: 142pt;" readonly="readonly"></textarea>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-
-
-
-            <div class="col xl8" id="scene-view-container" style="position: relative; height: 400pt;">
-                <!--<h4>Viewer</h4>-->
-                <canvas style="width: 100%; height: 100%; background-color:rgb(0, 0, 0);position: absolute" id="scene-view"></canvas>
-                <div id="ui" style="position: absolute; right: 0; z-index: 1"></div>
+                <div class="col xl8" id="scene-view-container" style="position: relative; height: 800pt;">
+                    <!--<h4>Viewer</h4>-->
+                    <canvas style="width: 100%; height: 100%; background-color:rgb(0, 0, 0);position: absolute" id="scene-view"></canvas>
+                    <div id="ui" style="position: absolute; right: 0; z-index: 1"></div>
+                </div>
             </div>
         </div>
-    </div>
+    </main>
 
     <footer class="page-footer">
         <div class="container">
@@ -54,7 +69,7 @@
         </div>
         <div class="footer-copyright">
             <div class="container">
-                © 2014 Copyright Text
+                © 2023 Copyright Text
                 <a class="grey-text text-lighten-4 right" href="#!">More Links</a>
             </div>
         </div>
@@ -63,15 +78,66 @@
     <script type="text/javascript" src="js/external/materialize/js/materialize.min.js"></script>
     <script src="ace-builds-1.5.0/src-min-noconflict/ace.js" type="text/javascript" charset="utf-8"></script>
     <script>
-        const editor = ace.edit("editor");
-        editor.setTheme("ace/theme/GitHub");
-        //editor.session.setMode("ace/mode/javascript");
-
+        // https://stackoverflow.com/questions/19721439/download-json-object-as-a-file-from-browser
+        function downloadObjectAsJson(obj, fileName, indent = null){
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute(
+                'href', `data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify(obj, null, indent))}`
+            );
+            downloadAnchorNode.setAttribute('download', `${fileName}.json`);
+            document.body.appendChild(downloadAnchorNode); // required for firefox
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+        }
     </script>
 
     <script type="module">
-
         import { addJsonFilePicker } from "./js/util/tweakpane-file-picker.js";
+
+        const editor = ace.edit('editor');
+        editor.setTheme('ace/theme/github');
+        editor.session.setMode('ace/mode/json')
+
+        const parseCurrentSceneSource = () => {
+            // todo: parse DSL into scene JSON / object
+            return JSON.parse(editor.getValue());
+        }
+        const parseSceneJsonToDSL = sceneJson => {
+            // todo: parse scene into L-System DSL
+            return sceneJson;
+        }
+
+        const lSystemIterations = document.getElementById('l-system-iterations');
+
+        const sceneUploadButton = document.getElementById('scene-upload-button');
+        sceneUploadButton.addEventListener('change', e => {
+            const reader = new FileReader();
+            reader.onload = event => {
+                const scene = parseSceneJsonToDSL(JSON.parse(String(event.target.result)));
+                // todo: parse scene into L-System DSL
+                editor.setValue(String(event.target.result));
+            }
+            reader.readAsText(e.target.files[0]);
+        });
+        const sceneDownloadButton = document.getElementById('scene-download-button');
+        sceneDownloadButton.addEventListener('click', _ => {
+            // todo: parse DSL to scene JSON / object
+            downloadObjectAsJson(parseCurrentSceneSource(), 'scene', 2);
+        });
+        const lSystemTestButton = document.getElementById('l-system-test-button');
+        lSystemTestButton.addEventListener('click', () => {
+            // todo: create L-System
+            // todo: run min(4, maxIterations) iterations
+            console.log(parseCurrentSceneSource());
+
+            // todo: display result in result field
+            lSystemIterations.value = 'test\ntest\ntest\ntest\ntest';
+        })
+        const lSytemRenderbutton = document.getElementById('l-system-render-button');
+        lSytemRenderbutton.addEventListener('click', _ => {
+            // todo: pass new l-system event to viewer
+           console.log(parseCurrentSceneSource());
+        });
 
         const uiElement = document.getElementById('ui');
         const sceneViewContainer = document.getElementById('scene-view-container');
