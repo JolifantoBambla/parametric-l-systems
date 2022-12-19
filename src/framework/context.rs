@@ -39,7 +39,7 @@ impl<'a> Default for ContextDescriptor<'a> {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct Gpu {
     device: Device,
     queue: Queue,
@@ -95,7 +95,7 @@ impl<'a> SurfaceTarget<'a> {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct HeadlessContext {
     instance: Instance,
     adapter: Adapter,
@@ -114,7 +114,7 @@ impl HeadlessContext {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct SurfaceContext {
     instance: Instance,
     adapter: Adapter,
@@ -170,7 +170,7 @@ impl OnResize for SurfaceContext {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub enum WgpuContext {
     Surface(SurfaceContext),
     Headless(HeadlessContext),
