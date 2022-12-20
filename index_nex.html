@@ -92,11 +92,15 @@
     </script>
 
     <script type="module">
-        import { addJsonFilePicker } from "./js/util/tweakpane-file-picker.js";
+        import {LSystemIterator} from './js/l-system/l-system.js';
+        import * as defaultScene from './scenes/tree-prusinkiewicz.json' assert {type: 'json'};
 
         const editor = ace.edit('editor');
         editor.setTheme('ace/theme/github');
-        editor.session.setMode('ace/mode/json')
+        editor.session.setMode('ace/mode/json');
+        editor.setValue(JSON.stringify({...defaultScene.default}, null, 2));
+
+        const lSystemIterations = document.getElementById('l-system-iterations');
 
         const parseCurrentSceneSource = () => {
             // todo: parse DSL into scene JSON / object
@@ -107,7 +111,25 @@
             return sceneJson;
         }
 
-        const lSystemIterations = document.getElementById('l-system-iterations');
+        const testSystems = (scene) => {
+            return Object.keys(scene.systems).map(systemName => {
+                const s = scene.systems[systemName];
+                console.log(systemName, s);
+                const iterator = LSystemIterator.createLSystemIterator(s);
+                const results = [
+                    `System "${systemName}":`,
+                    `\t0: ${iterator.current()}`
+                ];
+                for (let i = 0; i < 3; ++i) {
+                    results.push(`\t${i + 1}: ${iterator.next()}`);
+                }
+                return results.join('\n');
+            });
+        };
+        const testAndPrintSystems = (scene) => {
+            lSystemIterations.value = testSystems(scene).join('\n\n');
+        }
+
 
         const sceneUploadButton = document.getElementById('scene-upload-button');
         sceneUploadButton.addEventListener('change', e => {
@@ -126,17 +148,19 @@
         });
         const lSystemTestButton = document.getElementById('l-system-test-button');
         lSystemTestButton.addEventListener('click', () => {
-            // todo: create L-System
-            // todo: run min(4, maxIterations) iterations
-            console.log(parseCurrentSceneSource());
-
-            // todo: display result in result field
-            lSystemIterations.value = 'test\ntest\ntest\ntest\ntest';
+            const scene = parseCurrentSceneSource();
+            if (scene.systems) {
+                testAndPrintSystems(scene);
+            }
         })
         const lSytemRenderbutton = document.getElementById('l-system-render-button');
         lSytemRenderbutton.addEventListener('click', _ => {
-            // todo: pass new l-system event to viewer
-           console.log(parseCurrentSceneSource());
+            const scene = parseCurrentSceneSource();
+            if (scene.systems) {
+                testAndPrintSystems(scene);
+                // todo: pass new l-system event to viewer
+                console.log(parseCurrentSceneSource());
+            }
         });
 
         const uiElement = document.getElementById('ui');
@@ -150,127 +174,6 @@
         });
         pane.registerPlugin(TweakpaneEssentialsPlugin);
 
-        const sceneSelectionFolder = pane.addFolder({
-            title: 'Scene',
-            expanded: true,
-        });
-        const start = (scene) => {
-            sceneSelectionFolder.hidden = true;
-            const sceneDetails = {
-                lSystem: {
-                    alphabet: [],
-                    axiom: '',
-                    productions: [],
-                    parameters: {},
-                    maxIterations: 0,
-                },
-                lightSources: [],
-                materials: [],
-                ...scene,
-            }
-
-            const sceneFolder = pane.addTab({
-                pages: [
-                    {title: 'L-System'},
-                    {title: 'Scene'}
-                ]
-            });
-
-            const lSystemFolder = sceneFolder.pages[0];
-
-            lSystemFolder.addInput(sceneDetails.lSystem, 'axiom');
-
-            const addExpandableList = (folder, list, title, addNewText, addNewListener = null) => {
-                const listFolder = lSystemFolder.addFolder({
-                    title,
-                    expanded: true,
-                });
-                for (const i in list) {h
-                    const inputElement = listFolder.addInput(list, i);
-                    if (addNewListener) {
-                        addNewListener({
-                            key: i,
-                            inputElement,
-                        })
-                    }
-                }
-                let addNewButton = listFolder.addButton({
-                    title: addNewText
-                });
-                const addNewElement = e => {
-                    addNewButton.hidden = true;
-                    const i = `${list.length}`;
-                    list.push('');
-                    const inputElement = listFolder.addInput(list, i);
-                    if (addNewListener) {
-                        addNewListener({
-                            key: i,
-                            inputElement,
-                        })
-                    }
-                    addNewButton = listFolder.addButton({
-                        title: addNewText
-                    });
-                    addNewButton.on('click', addNewElement);
-
-                };
-                addNewButton.on('click', addNewElement);
-            }
-
-            addExpandableList(lSystemFolder, sceneDetails.lSystem.alphabet, 'Alphabet', 'Add new symbol');
-            addExpandableList(lSystemFolder, sceneDetails.lSystem.productions, 'Productions', 'Add new production');
-
-            const parametersFolder = lSystemFolder.addFolder({title: 'L-System Parameters', expanded: true});
-            const parametersListFolder = parametersFolder.addFolder({title: 'Parameters', expanded: true});
-            for (const i in sceneDetails.lSystem.parameters) {
-                parametersListFolder.addInput(sceneDetails.lSystem.parameters, i);
-            }
-
-            const newParameterInput = {name: 'param', value: '0.0'};
-            const newParametersFolder = parametersFolder.addFolder({title: 'New Parameter', expanded: false});
-            newParametersFolder.addInput(newParameterInput, 'name');
-            newParametersFolder.addInput(newParameterInput, 'value');
-            newParametersFolder.addButton({title: 'Add new parameter'})
-                .on('click', e => {
-                    if (sceneDetails.lSystem.parameters[newParameterInput.name] !== undefined) {
-                        alert(`L-System parameter '${newParameterInput.name}' already exists.`);
-                    } else {
-                        const value = Number(newParameterInput.value);
-                        sceneDetails.lSystem.parameters[newParameterInput.name] = isNaN(value) ? newParameterInput.value : value;
-                        parametersListFolder.addInput(sceneDetails.lSystem.parameters, newParameterInput.name);
-                    }
-                });
-
-            // todo: update parameter list when new one is added / name is changed
-
-            if (sceneDetails.lSystem.parameterPresets && sceneDetails.lSystem.parameterPresets.length) {
-                const parameterPresetFolder = lSystemFolder.addFolder({title: 'Parameter preset', expanded: true});
-
-                // todo: only add presets they exist
-                // todo: update parameters based on preset
-                parameterPresetFolder.addBlade({
-                    view: 'list',
-                    label: 'Choose preset',
-                    options: sceneDetails.lSystem.parameterPresets.map((p, i) => {
-                        return {
-                            text: `Preset ${i}`,
-                            value: `${i}`
-                        };
-                    }),
-                    value: '0'
-                });
-            }
-
-            // todo: add scene page
-            // todo: add lights & materials
-            // todo: add start button
-            // todo: add export button (export sceneDetails)
-        }
-        const renderExistingScene = addJsonFilePicker(sceneSelectionFolder, 'Load & render scene from file', scene => console.log('todo: render scene', scene));
-        const sceneFileUploadButton = addJsonFilePicker(sceneSelectionFolder, 'Load & edit scene from file', start);
-        const createNewButton = sceneSelectionFolder.addButton({
-            title: 'Create new'
-        }).on('click', e => start());
 
 
     </script>
