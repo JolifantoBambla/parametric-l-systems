@@ -1,3 +1,5 @@
+use glam::Vec3;
+use std::sync::Arc;
 use crate::framework::camera::{CameraView, Projection};
 use crate::framework::context::Gpu;
 use crate::framework::event::lifecycle::Update;
@@ -8,15 +10,31 @@ use crate::lindenmayer::LSystem;
 use crate::lsystemrenderer::camera::OrbitCamera;
 use crate::lsystemrenderer::renderer::{LightSourcesBindGroup, LightSourcesBindGroupCreator, RenderObject, RenderObjectCreator};
 use crate::lsystemrenderer::turtle::turtle::LSystemManager;
-use glam::Vec3;
-use std::sync::Arc;
+use crate::framework::scene::transform::Transform;
 use crate::SceneDescriptor;
+
+enum Primitive {
+    LSystem(LSystemManager)
+}
+
+struct SceneObject {
+    transform: Transform,
+    primitive: Primitive,
+}
+
+impl Update for SceneObject {
+    fn update(&mut self, input: &Input) {
+        match &mut self.primitive {
+            Primitive::LSystem(l_system) => l_system.update(input)
+        };
+    }
+}
 
 pub struct LSystemScene {
     camera: OrbitCamera,
     light_sources: Vec<LightSource>,
-    model: LSystemManager,
     light_sources_bind_group: Option<LightSourcesBindGroup>,
+    objects: Vec<SceneObject>,
 }
 
 impl LSystemScene {
@@ -31,12 +49,17 @@ impl LSystemScene {
             CameraView::new(Vec3::new(0., 0., -10.), Vec3::ZERO, Vec3::Y),
             5.0,
         );
-        let model = LSystemManager::new(l_system, scene_descriptor.l_system_settings(), gpu);
+
+        let scene_object = SceneObject {
+            transform: Transform::default(),
+            primitive: Primitive::LSystem(LSystemManager::new(l_system, scene_descriptor.l_system_settings(), gpu))
+        };
+
         Self {
             camera,
-            model,
             light_sources: scene_descriptor.light_sources().clone(),
             light_sources_bind_group: None,
+            objects: vec![scene_object],
         }
     }
     pub fn camera(&self) -> OrbitCamera {
@@ -45,11 +68,15 @@ impl LSystemScene {
     pub fn lights(&self) -> &Vec<LightSource> {
         &self.light_sources
     }
-    pub fn model(&self) -> &LSystemManager {
-        &self.model
-    }
-    pub fn get_active_render_objects(&self) -> &Vec<RenderObject> {
-        self.model.get_render_objects()
+
+    pub fn get_active_render_objects(&self) -> Vec<&Vec<RenderObject>> {
+        self.objects.iter()
+            .map(|o| match &o.primitive {
+                Primitive::LSystem(l_system) => {
+                    l_system.get_render_objects()
+                }
+            })
+            .collect()
     }
 
     pub fn get_light_sources_bind_group(&self) -> &LightSourcesBindGroup {
@@ -58,21 +85,32 @@ impl LSystemScene {
     }
 
     pub fn prepare_render(&mut self, render_object_creator: &RenderObjectCreator, light_sources_bind_group_creator: &LightSourcesBindGroupCreator) {
-        self.model.prepare_render(render_object_creator);
+        self.objects.iter_mut()
+            .for_each(|o| match &mut o.primitive {
+                Primitive::LSystem(l_system) => {
+                    l_system.prepare_render(render_object_creator);
+                }
+            });
         if self.light_sources_bind_group.is_none() {
             self.light_sources_bind_group = Some(light_sources_bind_group_creator.create(self.lights()));
         }
     }
 
+    // todo: set iteration for specific l_System
     pub fn set_target_iteration(&mut self, target_iteration: u32) {
-        self.model.set_target_iteration(target_iteration);
+        self.objects.iter_mut()
+            .for_each(|o| match &mut o.primitive {
+                Primitive::LSystem(l_system) => {
+                    l_system.set_target_iteration(target_iteration);
+                }
+            });
     }
 }
 
 impl Update for LSystemScene {
     fn update(&mut self, input: &Input) {
         self.camera.update(input);
-        self.model.update(input);
+        self.objects.iter_mut().for_each(|o| o.update(input));
     }
 }
 

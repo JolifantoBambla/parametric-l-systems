@@ -27,16 +27,19 @@ pub fn initialize() {
 
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen()]
-pub fn main(scene: JsValue, l_system_definition: JsValue) {
+pub fn main(canvas_id: String, scene: JsValue, l_system_definition: JsValue) {
     let scene_descriptor: SceneDescriptor = serde_wasm_bindgen::from_value(scene)
         .expect("Could not deserialize scene descriptor");
     let l_system = lindenmayer::LSystem::new(l_system_definition);
-    wasm_bindgen_futures::spawn_local(run(scene_descriptor, l_system));
+    wasm_bindgen_futures::spawn_local(run(canvas_id, scene_descriptor, l_system));
 }
 
 #[cfg(target_arch = "wasm32")]
-async fn run(scene_descriptor: SceneDescriptor, l_system: lindenmayer::LSystem) {
-    let window_config = WindowConfig::default();
+async fn run(canvas_id: String, scene_descriptor: SceneDescriptor, l_system: lindenmayer::LSystem) {
+    let window_config = WindowConfig::new_with_canvas(
+        "L-System Viewer".to_string(),
+        canvas_id
+    );
     let app_runner = AppRunner::<App>::new(window_config).await;
     let app = App::new(
         app_runner.ctx().gpu(),

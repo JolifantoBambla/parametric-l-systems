@@ -348,8 +348,10 @@ impl Renderer {
 
         scene.get_light_sources_bind_group().set_bind_group(&mut render_pass);
 
-        for render_object in scene.get_active_render_objects() {
-            render_object.draw(&mut render_pass);
+        for render_objects in scene.get_active_render_objects() {
+            for render_object in render_objects {
+                render_object.draw(&mut render_pass);
+            }
         }
     }
     pub fn render_object_creator(&self) -> &RenderObjectCreator {

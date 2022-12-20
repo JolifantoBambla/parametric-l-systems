@@ -92,8 +92,12 @@
     </script>
 
     <script type="module">
+        import init, { main } from "./pkg/parametric_l_systems.js";
         import {LSystemIterator} from './js/l-system/l-system.js';
         import * as defaultScene from './scenes/tree-prusinkiewicz.json' assert {type: 'json'};
+
+        const sceneCanvas = document.getElementById('scene-view');
+        console.log(sceneCanvas.id, sceneCanvas.width, sceneCanvas.height, sceneCanvas.innerWidth, sceneCanvas.innerHeight);
 
         const editor = ace.edit('editor');
         editor.setTheme('ace/theme/github');
@@ -130,6 +134,49 @@
             lSystemIterations.value = testSystems(scene).join('\n\n');
         }
 
+        // todo: start with default scene
+        // todo: only initialize once
+        // todo: new format
+        // todo: ui
+        async function run(canvasId, lSystem, settings) {
+            await init();
+            main(canvasId, settings, lSystem);
+        }
+
+        const constructViewerInputFromScene = (scene) => {
+            // todo: multiple lSystems
+            // todo: other objects
+
+            const lSystemSceneObject = scene.scene.objects[0];
+            const instance = scene.instances[lSystemSceneObject.instance];
+            console.log(lSystemSceneObject, scene.systems[instance.system]);
+            const lSystem = scene.systems[instance.system];
+            lSystem.parameters = {
+                ...lSystem.parameters,
+                ...lSystemSceneObject.parameters
+            }
+
+            // todo: new format
+            const sceneSettings = {
+                lightSources: scene.scene.lights.pointLights.map(p => {
+                    return {
+                        light: {
+                            color: p.color,
+                            intensity: 1.0,
+                        },
+                        source: {
+                            point: {
+                                position: p.position,
+                            }
+                        }
+                    }
+                }),
+                lSystemSettings: {
+                    materials: [{color: [...instance.materials[0].color, 1.0]}]
+                }
+            };
+            run(sceneCanvas.id, lSystem, sceneSettings);
+        }
 
         const sceneUploadButton = document.getElementById('scene-upload-button');
         sceneUploadButton.addEventListener('change', e => {
@@ -158,14 +205,13 @@
             const scene = parseCurrentSceneSource();
             if (scene.systems) {
                 testAndPrintSystems(scene);
-                // todo: pass new l-system event to viewer
-                console.log(parseCurrentSceneSource());
+                constructViewerInputFromScene(scene);
             }
         });
 
         const uiElement = document.getElementById('ui');
         const sceneViewContainer = document.getElementById('scene-view-container');
-        const sceneCanvas = document.getElementById('scene-view');
+
 
         const pane = new Tweakpane.Pane({
             title: 'Parametric L-Systems',
