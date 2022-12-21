@@ -50,7 +50,6 @@
                 </div>
 
                 <div class="col xl8" id="scene-view-container" style="position: relative; height: 80vh;">
-                    <!--<h4>Viewer</h4>-->
                     <canvas style="width: 100%; height: 100%; background-color:rgb(0, 0, 0);position: absolute" id="scene-view"></canvas>
                     <div id="ui" style="position: absolute; right: 0; z-index: 1"></div>
                 </div>
@@ -96,16 +95,12 @@
         import {LSystemIterator} from './js/l-system/l-system.js';
         import * as defaultScene from './scenes/tree-prusinkiewicz.json' assert {type: 'json'};
 
-        const sceneCanvas = document.getElementById('scene-view');
-        console.log(sceneCanvas.id, sceneCanvas.width, sceneCanvas.height, sceneCanvas.innerWidth, sceneCanvas.innerHeight);
+        let activeScene = null;
 
         const editor = ace.edit('editor');
         editor.setTheme('ace/theme/github');
         editor.session.setMode('ace/mode/json');
         editor.setValue(JSON.stringify({...defaultScene.default}, null, 2));
-
-        const lSystemIterations = document.getElementById('l-system-iterations');
-
         const parseCurrentSceneSource = () => {
             // todo: parse DSL into scene JSON / object
             return JSON.parse(editor.getValue());
@@ -115,10 +110,11 @@
             return sceneJson;
         }
 
+        const lSystemIterations = document.getElementById('l-system-iterations');
+
         const testSystems = (scene) => {
             return Object.keys(scene.systems).map(systemName => {
                 const s = scene.systems[systemName];
-                console.log(systemName, s);
                 const iterator = LSystemIterator.createLSystemIterator(s);
                 const results = [
                     `System "${systemName}":`,
@@ -134,27 +130,18 @@
             lSystemIterations.value = testSystems(scene).join('\n\n');
         }
 
-        // todo: start with default scene
-        // todo: only initialize once
-        // todo: new format
-        // todo: ui
-        async function run(canvasId, lSystem, settings) {
-            await init();
-            main(canvasId, settings, lSystem);
-        }
-
-        const constructViewerInputFromScene = (scene) => {
+        const sceneToViewerInputs = (scene) => {
             // todo: multiple lSystems
             // todo: other objects
 
             const lSystemSceneObject = scene.scene.objects[0];
-            const instance = scene.instances[lSystemSceneObject.instance];
-            console.log(lSystemSceneObject, scene.systems[instance.system]);
-            const lSystem = scene.systems[instance.system];
+            const lSystem = scene.systems[lSystemSceneObject.system];
+            const instance = lSystem.instances[lSystemSceneObject.instance];
             lSystem.parameters = {
                 ...lSystem.parameters,
-                ...lSystemSceneObject.parameters
-            }
+                ...instance.parameters
+            };
+
 
             // todo: new format
             const sceneSettings = {
@@ -175,7 +162,10 @@
                     materials: [{color: [...instance.materials[0].color, 1.0]}]
                 }
             };
-            run(sceneCanvas.id, lSystem, sceneSettings);
+            return [lSystem, sceneSettings];
+        }
+
+        const constructViewerInputFromScene = (scene) => {
         }
 
         const sceneUploadButton = document.getElementById('scene-upload-button');
@@ -204,24 +194,65 @@
         lSytemRenderbutton.addEventListener('click', _ => {
             const scene = parseCurrentSceneSource();
             if (scene.systems) {
-                testAndPrintSystems(scene);
-                constructViewerInputFromScene(scene);
+                try {
+                    testAndPrintSystems(scene);
+                    constructViewerInputFromScene(scene);
+                } catch (err) {
+                    console.error(err);
+                }
             }
         });
 
+
         const uiElement = document.getElementById('ui');
-        const sceneViewContainer = document.getElementById('scene-view-container');
-
-
         const pane = new Tweakpane.Pane({
-            title: 'Parametric L-Systems',
+            title: 'Viewer',
             expanded: true,
             container: uiElement,
         });
         pane.registerPlugin(TweakpaneEssentialsPlugin);
 
+        const sceneViewContainer = document.getElementById('scene-view-container');
+        const sceneCanvas = document.getElementById('scene-view');
+        sceneCanvas.width = sceneViewContainer.clientWidth;
+        sceneCanvas.height = sceneViewContainer.clientHeight;
+        sceneCanvas.addEventListener('app::initialized', _ => {
+            const settings = {
+                iteration: 0,
+            };
 
+            if (activeScene) {
+                for (const obj of activeScene.scene.objects) {
+                    if (obj.type === 'lSystem') {
+                        const instance = activeScene.systems[obj.system].instances[obj.instance];
+                        const iterationsSlider = pane.addInput(settings, 'iteration', {
+                            label: 'Iteration',
+                            min: 1, max: instance.iterations, step: 1,
+                        });
+                        iterationsSlider.on('change', e => {
+                            sceneCanvas.dispatchEvent(new CustomEvent(
+                                'ui::lsystem::iteration',
+                                {detail: {lSystem: {iteration: e.value - 1}}}
+                            ));
+                        });
+                    }
+                }
+            }
 
+            console.debug('created UI');
+        });
+
+        // todo: start with default scene
+        // todo: only initialize once
+        // todo: new format
+        // todo: ui
+        async function run(canvasId, lSystem, settings) {
+            await init();
+            main(canvasId, settings, lSystem);
+        }
+
+        activeScene = parseCurrentSceneSource();
+        run(sceneCanvas.id, ...sceneToViewerInputs(activeScene));
     </script>
 </body>
 </html>
