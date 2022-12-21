@@ -16,6 +16,24 @@ TODO: Install and configure WebGPU capable browser
 
 Open `index.html` in a browser that supports WebGPU.
 
+# Scene file format
+
+```
+{
+  "systems": { ... },
+  "scene": { ... }
+}
+```
+
+```
+{
+  "definition": {
+    "alphabet": [ ... ]
+  }
+}
+```
+
+
 # Specification
 
 ## L-system
