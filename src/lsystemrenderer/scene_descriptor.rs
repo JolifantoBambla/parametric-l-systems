@@ -1,4 +1,8 @@
+use std::collections::HashMap;
+use glam::{Mat4, Vec3};
 use serde::Deserialize;
+use wasm_bindgen::JsValue;
+use crate::framework::scene::transform::Transform;
 use crate::LightSource;
 use crate::lsystemrenderer::turtle::turtle::Material;
 
@@ -26,6 +30,8 @@ pub struct SceneDescriptor {
 
     #[serde(rename = "lSystemSettings")]
     l_system_settings: Option<LSystemSettings>,
+
+    transform: Transform,
 }
 
 impl SceneDescriptor {
@@ -36,4 +42,47 @@ impl SceneDescriptor {
     pub fn l_system_settings(&self) -> &Option<LSystemSettings> {
         &self.l_system_settings
     }
+
+    pub fn transform(&self) -> &Transform {
+        &self.transform
+    }
 }
+
+
+#[derive(Clone, Debug, Deserialize)]
+struct LSystemInstance {
+    //#[serde(rename = "lSystem")]
+    //l_system: JsValue,
+    transform: Transform,
+    #[serde(rename = "lSystemSettings")]
+    materials: Option<LSystemSettings>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+struct CameraDescriptor {
+    eye: Vec3,
+    #[serde(rename = "lookAt")]
+    look_at: Vec3,
+    up: Vec3,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+struct Light {
+    color: Vec3,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+struct LightsDescriptor {
+    ambient: Light,
+
+}
+
+struct Scene {
+
+}
+
+struct Foo {
+    systems: HashMap<String, HashMap<String, LSystemInstance>>,
+    scene: Scene,
+}
+

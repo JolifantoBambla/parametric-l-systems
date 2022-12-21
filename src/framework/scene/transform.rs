@@ -1,4 +1,5 @@
 use glam::{Affine3A, Mat3, Mat4, Quat, Vec3};
+use serde::Deserialize;
 
 pub trait Transformable {
     #[inline]
@@ -49,7 +50,8 @@ pub trait Transformable {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Deserialize)]
+#[serde(from = "Mat3")]
 pub struct Orientation {
     forward: Vec3,
     right: Vec3,
@@ -128,7 +130,8 @@ impl From<Quat> for Orientation {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Deserialize)]
+#[serde(from = "Mat4")]
 pub struct Transform {
     position: Vec3,
     orientation: Orientation,
@@ -240,6 +243,13 @@ impl Default for Transform {
             orientation: Orientation::default(),
             scale: Vec3::ONE,
         }
+    }
+}
+
+impl From<Mat4> for Transform {
+    fn from(m: Mat4) -> Self {
+        let (scale, rotation, translation) = m.to_scale_rotation_translation();
+        Self::from_scale_rotation_translation(scale, rotation, translation)
     }
 }
 

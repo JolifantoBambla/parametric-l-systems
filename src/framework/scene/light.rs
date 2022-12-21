@@ -76,6 +76,7 @@ impl PointLight {
 
 #[derive(Copy, Clone, Debug, Deserialize)]
 pub enum LightSourceType {
+    Ambient,
     #[serde(rename = "directional")]
     Directional(DirectionalLight),
     #[serde(rename = "point")]
@@ -91,6 +92,10 @@ pub struct LightSource {
 impl LightSource {
     pub fn new(light: Light, source: LightSourceType) -> Self {
         Self { light, source }
+    }
+
+    pub fn new_ambient(color: Vec3) -> Self {
+        Self::new(Light { color, ..Default::default() }, LightSourceType::Ambient)
     }
 
     pub fn new_directional(direction: Vec3, color: Vec3, intensity: f32) -> Self {

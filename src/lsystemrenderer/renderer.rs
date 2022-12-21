@@ -98,10 +98,16 @@ impl From<&LightSource> for LightSourceUniforms {
             position_or_direction: match light_source.source() {
                 LightSourceType::Directional(d) => d.direction(),
                 LightSourceType::Point(p) => p.position(),
+                LightSourceType::Ambient => {
+                    panic!("Ambient light source does not have a position or direction");
+                },
             },
             light_type: match light_source.source() {
                 LightSourceType::Directional(_) => 0,
                 LightSourceType::Point(_) => 1,
+                LightSourceType::Ambient => {
+                    panic!("Ambient light source can not be mapped to a LightSourceUniform");
+                },
             },
         }
     }

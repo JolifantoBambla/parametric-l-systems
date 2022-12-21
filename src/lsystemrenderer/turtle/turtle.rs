@@ -200,9 +200,16 @@ impl LSystemModel {
             }
         }
 
+        let base_base_rotation = Quat::from_rotation_x((90. as f32).to_radians());
+
+        log::info!("{}", Mat3::from_quat(base_base_rotation));
         let scale_value = 1. / aabb.diagonal().max_element();
         let model_translation = Mat4::from_translation(-aabb.center());
-        let model_scale = Mat4::from_scale(Vec3::new(scale_value, scale_value, scale_value));
+        let model_scale = Mat4::from_scale_rotation_translation(
+            Vec3::new(scale_value, scale_value, scale_value),
+            base_base_rotation,
+            Vec3::ZERO
+        );
 
         cylinder_instances.iter_mut().for_each(|c| {
             c.matrix = model_scale.mul_mat4(&model_translation).mul_mat4(&c.matrix);

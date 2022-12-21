@@ -96,6 +96,7 @@
         import * as defaultScene from './scenes/tree-prusinkiewicz.json' assert {type: 'json'};
 
         let activeScene = null;
+        let activeSceneLocked = false;
 
         const editor = ace.edit('editor');
         editor.setTheme('ace/theme/github');
@@ -115,13 +116,25 @@
         const testSystems = (scene) => {
             return Object.keys(scene.systems).map(systemName => {
                 const s = scene.systems[systemName];
-                const iterator = LSystemIterator.createLSystemIterator(s);
+                const definition = s.definition;
                 const results = [
                     `System "${systemName}":`,
-                    `\t0: ${iterator.current()}`
                 ];
-                for (let i = 0; i < 3; ++i) {
-                    results.push(`\t${i + 1}: ${iterator.next()}`);
+                for (const instanceName in s.instances) {
+                    const instance = s.instances[instanceName];
+                    results.push(`  ${instanceName}:`);
+                    const iterator = LSystemIterator.createLSystemIterator({
+                        ...definition,
+                        parameters: {
+                            ...definition.parameters,
+                            ...instance.parameters,
+                        }
+                    });
+                    results.push(`    0: ${iterator.current()}`);
+                    for (let i = 0; i < Math.min(3, instance.iterations); ++i) {
+                        results.push(`    ${i + 1}: ${iterator.next()}`);
+                    }
+                    results.push('\n');
                 }
                 return results.join('\n');
             });
@@ -135,8 +148,9 @@
             // todo: other objects
 
             const lSystemSceneObject = scene.scene.objects[0];
-            const lSystem = scene.systems[lSystemSceneObject.system];
-            const instance = lSystem.instances[lSystemSceneObject.instance];
+            const system = scene.systems[lSystemSceneObject.system];
+            const lSystem = system.definition;
+            const instance = system.instances[lSystemSceneObject.instance];
             lSystem.parameters = {
                 ...lSystem.parameters,
                 ...instance.parameters
@@ -160,7 +174,13 @@
                 }),
                 lSystemSettings: {
                     materials: [{color: [...instance.materials[0].color, 1.0]}]
-                }
+                },
+                transform: [
+                    1, 0, 0, 0,
+                    0, 0, 1, 0,
+                    0, -1, 0, 0,
+                    0, 0, 0, 1
+                ]
             };
             return [lSystem, sceneSettings];
         }
@@ -227,7 +247,7 @@
                         const instance = activeScene.systems[obj.system].instances[obj.instance];
                         const iterationsSlider = pane.addInput(settings, 'iteration', {
                             label: 'Iteration',
-                            min: 1, max: instance.iterations, step: 1,
+                            min: 1, max: instance.iterations + 1, step: 1,
                         });
                         iterationsSlider.on('change', e => {
                             sceneCanvas.dispatchEvent(new CustomEvent(
@@ -248,7 +268,7 @@
         // todo: ui
         async function run(canvasId, lSystem, settings) {
             await init();
-            main(canvasId, settings, lSystem);
+            main(canvasId, settings, lSystem, {tree: {g: lSystem}});
         }
 
         activeScene = parseCurrentSceneSource();

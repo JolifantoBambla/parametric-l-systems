@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use glam::Vec3;
 use std::sync::Arc;
 use crate::framework::camera::{CameraView, Projection};
@@ -35,11 +36,14 @@ pub struct LSystemScene {
     light_sources: Vec<LightSource>,
     light_sources_bind_group: Option<LightSourcesBindGroup>,
     objects: Vec<SceneObject>,
+
+    l_systems: HashMap<String, HashMap<String, LSystemManager>>,
 }
 
 impl LSystemScene {
     pub fn new(
         l_system: LSystem,
+        //l_systems: HashMap<String, HashMap<String, LSystem>>,
         scene_descriptor: SceneDescriptor,
         view_aspect_ratio: f32,
         gpu: &Arc<Gpu>,
@@ -49,6 +53,19 @@ impl LSystemScene {
             CameraView::new(Vec3::new(0., 0., -10.), Vec3::ZERO, Vec3::Y),
             5.0,
         );
+
+
+        /*
+        let mut l_systems = HashMap::new();
+        for (name, system) in l_systems.iter() {
+            let mut instances = HashMap::new();
+            for (instance_name, instance) in instances.iter() {
+                instances.insert(instance_name, instance)
+            }
+            l_systems.insert(name, instances);
+        }
+
+         */
 
         let scene_object = SceneObject {
             transform: Transform::default(),
@@ -60,6 +77,7 @@ impl LSystemScene {
             light_sources: scene_descriptor.light_sources().clone(),
             light_sources_bind_group: None,
             objects: vec![scene_object],
+            l_systems: HashMap::new(),
         }
     }
     pub fn camera(&self) -> OrbitCamera {
