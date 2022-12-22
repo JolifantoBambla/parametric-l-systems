@@ -48,7 +48,7 @@ pub struct LSystemScene {
     ambient_light: LightSource,
     light_sources: Vec<LightSource>,
     light_sources_bind_group: Option<LightSourcesBindGroup>,
-    objects: Vec<SceneObject>,
+    objects: HashMap<String, SceneObject>,
     cylinder_mesh: Arc<GpuMesh>,
     meshes: HashMap<String, Arc<SceneMesh>>,
     l_systems: HashMap<String, HashMap<String, LSystemManager>>,
@@ -105,8 +105,8 @@ impl LSystemScene {
             l_system_managers.insert(name, instances);
         }
 
-        let mut objects = Vec::new();
-        for descriptor in scene_descriptor.scene().objects() {
+        let mut objects = HashMap::new();
+        for (object_id, descriptor) in scene_descriptor.scene().objects() {
             match descriptor {
                 SceneObjectDescriptor::LSystem(d) => {
                     let iteration = if let Some(iteration) = d.iteration() {
@@ -125,22 +125,25 @@ impl LSystemScene {
                         .get_mut(d.instance())
                         .expect(format!("Object references unknown instance: {}", d.instance()).as_str())
                         .maybe_increase_max_iteration(iteration);
-                    objects.push(SceneObject {
-                        transform: d.transform(),
-                        transform_buffer: Buffer::new_single_element(
-                            "transform buffer",
-                            d.transform().as_mat4(),
-                            BufferUsages::UNIFORM,
-                            gpu,
-                        ),
-                        primitive: Primitive::LSystem(LSystemObject{
-                            system: d.system().to_string(),
-                            instance: d.instance().to_string(),
-                            target_iteration: iteration,
-                            active_iteration: None,
-                            render_objects: HashMap::new(),
-                        })
-                    });
+                    objects.insert(
+                        object_id.to_string(),
+                        SceneObject {
+                            transform: d.transform(),
+                            transform_buffer: Buffer::new_single_element(
+                                "transform buffer",
+                                d.transform().as_mat4(),
+                                BufferUsages::UNIFORM,
+                                gpu,
+                            ),
+                            primitive: Primitive::LSystem(LSystemObject{
+                                system: d.system().to_string(),
+                                instance: d.instance().to_string(),
+                                target_iteration: iteration,
+                                active_iteration: None,
+                                render_objects: HashMap::new(),
+                            })
+                        }
+                    );
                 }
                 SceneObjectDescriptor::Obj(_) => log::warn!("Obj object type not yet supported"),
             }
@@ -161,7 +164,7 @@ impl LSystemScene {
 
     pub fn get_active_render_objects(&self) -> Vec<&Vec<RenderObject>> {
         self.objects.iter()
-            .map(|o| match &o.primitive {
+            .map(|(_, o)| match &o.primitive {
                 Primitive::LSystem(l_system) => {
                     if !l_system.render_objects.is_empty() {
                         l_system.render_objects.get(&l_system.active_iteration.unwrap())
@@ -184,7 +187,7 @@ impl LSystemScene {
             self.light_sources_bind_group = Some(light_sources_bind_group_creator.create(self.lights()));
         }
 
-        for o in self.objects.iter_mut() {
+        for (_, o) in self.objects.iter_mut() {
             match &mut o.primitive {
                 Primitive::LSystem(l_system) => {
                     if !l_system.render_objects.contains_key(&l_system.target_iteration) {
@@ -219,15 +222,20 @@ impl LSystemScene {
     }
 
     // todo: set iteration for specific l_System object
-    pub fn set_target_iteration(&mut self, target_iteration: u32) {
-        /*
-        self.objects.iter_mut()
-            .for_each(|o| match &mut o.primitive {
+    pub fn set_target_iteration(&mut self, object_name: &str, target_iteration: u32) {
+        if let Some(object) = self.objects.get_mut(object_name) {
+            match &mut object.primitive {
                 Primitive::LSystem(l_system) => {
-                    l_system.set_target_iteration(target_iteration);
+                    l_system.target_iteration = target_iteration;
+                    if l_system.render_objects.contains_key(&target_iteration) {
+                        l_system.active_iteration = Some(target_iteration);
+                    }
                 }
-            });
-         */
+                _ => log::warn!("Object is not an L-System: {}", object_name),
+            }
+        } else {
+            log::warn!("Unknown object: {}", object_name);
+        }
     }
 
     pub fn camera(&self) -> OrbitCamera {
@@ -238,6 +246,9 @@ impl LSystemScene {
     }
     pub fn background_color(&self) -> Vec3 {
         self.background_color
+    }
+    pub fn set_background_color(&mut self, background_color: Vec3) {
+        self.background_color = background_color;
     }
 }
 

@@ -202,12 +202,12 @@
   },
   "scene": {
     "camera": {
-      "eye": [0, 0, -1],
+      "eye": [0, 0, -1.5],
       "lookAt": [0, 0, 0],
       "up": [0, 1, 0]
     },
-    "objects": [
-      {
+    "objects": {
+      "Tree": {
         "type": "lSystem",
         "system": "tree",
         "instance": "g",
@@ -218,7 +218,7 @@
           0, 0, 0, 1
         ]
       }
-    ],
+    },
     "lights": {
       "ambient": {
         "color": [

@@ -208,33 +208,74 @@
             container: uiElement,
         });
         pane.registerPlugin(TweakpaneEssentialsPlugin);
+        let activeSceneFolder = null;
 
         const sceneViewContainer = document.getElementById('scene-view-container');
         const sceneCanvas = document.getElementById('scene-view');
         sceneCanvas.width = sceneViewContainer.clientWidth;
         sceneCanvas.height = sceneViewContainer.clientHeight;
         sceneCanvas.addEventListener('app::initialized', _ => {
-            const settings = {
-                iteration: 0,
-            };
-
             if (activeScene) {
-                // todo: one slider per lSystem object
-                // todo: background color
-                // todo: new scene
+                if (activeSceneFolder) {
+                    activeSceneFolder.hidden = true;
+
+                }
+                activeSceneFolder = pane.addFolder({
+                    title: 'Scene',
+                    expanded: true,
+                });
+
                 // todo: fps graph
 
-                for (const obj of activeScene.scene.objects) {
+                // todo: background color
+                const backgroundColor = {r: 0, g: 0, b: 0};
+                if (activeScene.scene.camera.backgroundColor) {
+                    backgroundColor.r = activeScene.scene.camera.backgroundColor[0];
+                    backgroundColor.r = activeScene.scene.camera.backgroundColor[1];
+                    backgroundColor.r = activeScene.scene.camera.backgroundColor[2];
+                }
+                const sceneSettings = {
+                    backgroundColor,
+                }
+
+                const backgroundColorPicker = activeSceneFolder.addInput(sceneSettings, 'backgroundColor', {
+                    label: 'Background color',
+                    picker: 'inline',
+                    expanded: false,
+                    color: {type: 'float'},
+                });
+                backgroundColorPicker.on('change', e => {
+                    sceneCanvas.dispatchEvent(new CustomEvent(
+                        'ui::scene::background-color',
+                        {detail: {scene: {backgroundColor: [e.value.r, e.value.g, e.value.b]}}}
+                    ));
+                });
+
+                const lSystemObjectsFolder = activeSceneFolder.addFolder({
+                    title: 'L-System Objects',
+                    expanded: true,
+                });
+                for (const objectName in activeScene.scene.objects) {
+                    const obj = activeScene.scene.objects[objectName];
                     if (obj.type === 'lSystem') {
+                        const objectFolder = lSystemObjectsFolder.addFolder({
+                            title: objectName,
+                            expanded: true,
+                        });
+
                         const instance = activeScene.systems[obj.system].instances[obj.instance];
-                        const iterationsSlider = pane.addInput(settings, 'iteration', {
+                        const settings = {
+                            iteration: obj.iteration || instance.iterations,
+                        };
+
+                        const iterationsSlider = objectFolder.addInput(settings, 'iteration', {
                             label: 'Iteration',
                             min: 1, max: instance.iterations + 1, step: 1,
                         });
                         iterationsSlider.on('change', e => {
                             sceneCanvas.dispatchEvent(new CustomEvent(
                                 'ui::lsystem::iteration',
-                                {detail: {lSystem: {iteration: e.value - 1}}}
+                                {detail: {lSystem: {iteration: {objectName, iteration: e.value - 1}}}}
                             ));
                         });
                     }

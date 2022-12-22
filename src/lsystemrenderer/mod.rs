@@ -12,7 +12,7 @@ use crate::framework::input::Input;
 use crate::framework::renderer::drawable::Draw;
 use crate::framework::scene::light::LightSource;
 use crate::lindenmayer::LSystem;
-use crate::lsystemrenderer::event::{LSystemEvent, UiEvent};
+use crate::lsystemrenderer::event::{LSystemEvent, SceneEvent, UiEvent};
 use crate::lsystemrenderer::renderer::Renderer;
 use crate::lsystemrenderer::scene::LSystemScene;
 use std::sync::Arc;
@@ -72,6 +72,7 @@ impl GpuApp for App {
         #[cfg(target_arch = "wasm32")]
         {
             let canvas = window.canvas();
+            register_custom_canvas_event_dispatcher("ui::scene::background-color", &canvas, event_loop);
             register_custom_canvas_event_dispatcher("ui::lsystem::iteration", &canvas, event_loop);
             if dispatch_canvas_event("app::initialized", &canvas).is_err() {
                 log::error!("Could not dispatch 'app::initialized' event");
@@ -117,8 +118,10 @@ impl OnUserEvent for App {
     fn on_user_event(&mut self, event: &Self::UserEvent) {
         match event {
             UiEvent::LSystem(LSystemEvent::Iteration(iteration)) => {
-                log::debug!("Got iteration event: {:?}", iteration);
-                self.scene.set_target_iteration(*iteration as u32);
+                self.scene.set_target_iteration(iteration.object_name(), iteration.iteration());
+            }
+            UiEvent::Scene(SceneEvent::BackgroundColor(color)) => {
+                self.scene.set_background_color(*color);
             }
         }
     }

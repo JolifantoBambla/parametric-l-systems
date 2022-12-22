@@ -229,7 +229,7 @@ pub enum SceneResource {
 pub struct Scene {
     camera: CameraDescriptor,
     lights: LightsDescriptor,
-    objects: Vec<SceneObjectDescriptor>,
+    objects: HashMap<String, SceneObjectDescriptor>,
 }
 
 impl Scene {
@@ -239,7 +239,7 @@ impl Scene {
     pub fn lights(&self) -> &LightsDescriptor {
         &self.lights
     }
-    pub fn objects(&self) -> &Vec<SceneObjectDescriptor> {
+    pub fn objects(&self) -> &HashMap<String, SceneObjectDescriptor> {
         &self.objects
     }
 }
