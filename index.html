@@ -51,7 +51,7 @@
 
                 <div class="col xl8" id="scene-view-container" style="position: relative; height: 80vh;">
                     <canvas style="width: 100%; height: 100%; background-color:rgb(0, 0, 0);position: absolute" id="scene-view"></canvas>
-                    <div id="ui" style="position: absolute; right: 0; z-index: 1"></div>
+                    <div id="ui" style="position: absolute; right: 0; z-index: 1;"></div>
                 </div>
             </div>
         </div>
@@ -199,7 +199,6 @@
                 }
             }
         });
-
 
         const uiElement = document.getElementById('ui');
         const pane = new Tweakpane.Pane({
