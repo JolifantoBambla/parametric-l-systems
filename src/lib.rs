@@ -31,16 +31,8 @@ pub fn initialize() {
 
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen()]
-pub fn main(canvas_id: String, scene: JsValue, l_system_definition: JsValue, systems: Object) {
-    let l_systems = parse_l_systems(systems);
-
-    /*
-    let foo: HashMap<String, JsValue> = serde_wasm_bindgen::from_value(systems)
-        .unwrap();
-
-    log::info!("{:?} systems", foo);
-    */
-
+pub fn main(canvas_id: String, scene: JsValue, l_system_definitions: Object) {
+    let l_systems = parse_l_systems(l_system_definitions);
     let scene_descriptor: LSystemSceneDescriptor = serde_wasm_bindgen::from_value(scene)
         .expect("Could not deserialize scene descriptor");
     wasm_bindgen_futures::spawn_local(run(canvas_id, scene_descriptor, l_systems));
@@ -82,6 +74,7 @@ fn parse_l_systems(systems: Object) -> HashMap<String, HashMap<String, LSystem>>
                     .expect("Object key was no String")
             );
         }
+        log::info!("instance name {:?}", instance_names);
         let mut instances = HashMap::new();
         for (j, instance) in Object::values(&system).iter().enumerate() {
             instances.insert(

@@ -182,7 +182,25 @@
                     0, 0, 0, 1
                 ]
             };
-            return [lSystem, sceneSettings];
+            const systems = {};
+            for (const systemName in scene.systems) {
+                const system = scene.systems[systemName]
+                systems[systemName] = {
+                };
+                for (const instanceName in system.instances) {
+                    systems[systemName][instanceName] = {
+                        ...system.definition,
+                        parameters: {
+                            ...system.definition.parameters,
+                            ...system.instances[instanceName].parameters
+                        }
+                    }
+                }
+            }
+
+            console.log(systems);
+
+            return [scene, systems];//[lSystem, sceneSettings];
         }
 
         const constructViewerInputFromScene = (scene) => {
