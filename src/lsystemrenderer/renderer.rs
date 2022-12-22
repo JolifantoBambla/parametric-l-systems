@@ -320,6 +320,8 @@ impl Renderer {
         scene: &LSystemScene,
         command_encoder: &mut CommandEncoder,
     ) {
+        let background_color = scene.background_color();
+
         self.camera_uniforms
             .write_buffer(&vec![CameraUniforms::from(&scene.camera())]);
 
@@ -328,9 +330,9 @@ impl Renderer {
             resolve_target: None,
             ops: Operations {
                 load: LoadOp::Clear(Color {
-                    r: 0.0,
-                    g: 0.0,
-                    b: 0.0,
+                    r: background_color.x as f64,
+                    g: background_color.y as f64,
+                    b: background_color.z as f64,
                     a: 1.0,
                 }),
                 store: true,

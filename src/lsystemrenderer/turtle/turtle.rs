@@ -17,13 +17,20 @@ use crate::framework::renderer::drawable::{Draw, DrawInstanced, GpuMesh};
 use crate::framework::scene::transform::{Orientation, Transform, Transformable};
 use crate::lindenmayer::LSystem;
 use crate::lsystemrenderer::renderer::{RenderObject, RenderObjectCreator};
-use crate::lsystemrenderer::scene_descriptor::LSystemSettings;
 use crate::lsystemrenderer::turtle::command::TurtleCommand;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Deserialize, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Material {
     color: Vec4,
+}
+
+impl Default for Material {
+    fn default() -> Self {
+        Self {
+            color: Vec4::ONE,
+        }
+    }
 }
 
 #[repr(C)]
@@ -54,20 +61,6 @@ enum MaterialMode {
 struct MaterialState {
     material_mode: MaterialMode,
     materials: Vec<Material>,
-}
-
-impl From<&LSystemSettings> for MaterialState {
-    fn from(settings: &LSystemSettings) -> Self {
-        let (materials, material_mode) = if let Some(materials) = settings.materials() {
-            (materials.clone(), MaterialMode::MaterialIndex(settings.start_material()))
-        } else {
-            (Vec::new(), MaterialMode::default())
-        };
-        Self {
-            materials,
-            material_mode
-        }
-    }
 }
 
 #[derive(Clone, Debug, Default)]
@@ -236,7 +229,6 @@ impl LSystemModel {
 pub struct LSystemManager {
     gpu: Arc<Gpu>,
     max_time_to_iterate: f32,
-    cylinder_mesh: Arc<GpuMesh>,
     l_system: LSystem,
     target_iteration: u32,
     active_iteration: u32,
@@ -246,27 +238,22 @@ pub struct LSystemManager {
 }
 
 impl LSystemManager {
-    pub fn new(l_system: LSystem, settings: &Option<LSystemSettings>, gpu: &Arc<Gpu>) -> Self {
-        let cylinder_mesh = Arc::new(GpuMesh::from_mesh::<Vertex>(
-            &Mesh::new_default_cylinder(true),
-            gpu.device(),
-        ));
-
+    pub fn new(
+        l_system: LSystem,
+        transform: Transform,
+        initial_material_state: Option<MaterialState>,
+        gpu: &Arc<Gpu>
+    ) -> Self {
         let mut iterations = Vec::new();
         let commands: Vec<TurtleCommand> = serde_wasm_bindgen::from_value(l_system.next_raw())
             .expect("Could not parse turtle commands");
 
-        let material_state = if let Some(settings) = settings {
-            MaterialState::from(settings)
-        } else {
-            MaterialState::default()
-        };
+        let material_state = initial_material_state.unwrap_or(MaterialState::default());
         iterations.push(LSystemModel::from_turtle_commands(&commands, material_state.clone(), gpu));
 
         Self {
             gpu: gpu.clone(),
             max_time_to_iterate: 50.,
-            cylinder_mesh,
             l_system,
             target_iteration: 0,
             active_iteration: 0,

@@ -1,6 +1,6 @@
 struct Camera {
-    view : mat4x4<f32>,
-    projection : mat4x4<f32>,
+    view: mat4x4<f32>,
+    projection: mat4x4<f32>,
 };
 
 struct LightSource {
