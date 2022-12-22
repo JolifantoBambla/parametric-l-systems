@@ -23,6 +23,7 @@ use wgpu::{
     SurfaceConfiguration, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages,
     TextureView, TextureViewDescriptor, VertexState,
 };
+use crate::framework::scene::transform::Transform;
 
 pub struct RenderObject {
     gpu_mesh: Arc<GpuMesh>,
@@ -48,15 +49,22 @@ impl RenderObjectCreator {
     pub fn create_render_object(
         &self,
         mesh: &Arc<GpuMesh>,
+        transform: &Buffer<Mat4>,
         instances: &Buffer<Instance>,
     ) -> RenderObject {
         let bind_group = self.gpu.device().create_bind_group(&BindGroupDescriptor {
             label: Label::from("instances bind group"),
             layout: &self.bind_group_layout,
-            entries: &[BindGroupEntry {
-                binding: 0,
-                resource: instances.buffer().as_entire_binding(),
-            }],
+            entries: &[
+                BindGroupEntry {
+                    binding: 0,
+                    resource: instances.buffer().as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: transform.buffer().as_entire_binding(),
+                }
+            ],
         });
         RenderObject {
             gpu_mesh: mesh.clone(),

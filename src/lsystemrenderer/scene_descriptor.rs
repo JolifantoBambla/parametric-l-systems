@@ -3,11 +3,11 @@ use glam::Vec3;
 use serde::Deserialize;
 use crate::framework::camera::CameraView;
 use crate::framework::scene::transform::Transform;
-use crate::lsystemrenderer::turtle::turtle::Material;
+use crate::lsystemrenderer::turtle::turtle::{Material, MaterialState};
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct LSystemInstance {
-    iterations: usize,
+    iterations: u32,
 
     transform: Option<Transform>,
 
@@ -18,7 +18,7 @@ pub struct LSystemInstance {
 }
 
 impl LSystemInstance {
-    pub fn iterations(&self) -> usize {
+    pub fn iterations(&self) -> u32 {
         self.iterations
     }
     pub fn transform(&self) -> Transform {
@@ -29,20 +29,6 @@ impl LSystemInstance {
     }
     pub fn materials(&self) -> &Option<Vec<Material>> {
         &self.materials
-    }
-}
-
-impl From<&LSystemInstance> for MaterialState {
-    fn from(instance: &LSystemInstance) -> Self {
-        let (materials, material_mode) = if let Some(materials) = instance.materials() {
-            (materials.clone(), MaterialMode::MaterialIndex(instance.start_material()))
-        } else {
-            (Vec::new(), MaterialMode::default())
-        };
-        Self {
-            materials,
-            material_mode
-        }
     }
 }
 
@@ -140,15 +126,16 @@ impl DirectionalLightDescriptor {
     }
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize)]
+#[serde(default)]
 pub struct LightsDescriptor {
     ambient: Option<AmbientLightDescriptor>,
 
     #[serde(rename = "pointLights")]
-    point_lights: Option<Vec<PointLightDescriptor>>,
+    point_lights: Vec<PointLightDescriptor>,
 
     #[serde(rename = "directionalLights")]
-    directional_lights: Option<Vec<DirectionalLightDescriptor>>,
+    directional_lights: Vec<DirectionalLightDescriptor>,
 }
 
 impl LightsDescriptor {
@@ -156,10 +143,10 @@ impl LightsDescriptor {
         &self.ambient
     }
     pub fn point_lights(&self) -> &Vec<PointLightDescriptor> {
-        &self.point_lights.unwrap_or(Vec::new())
+        &self.point_lights
     }
     pub fn directional_lights(&self) -> &Vec<DirectionalLightDescriptor> {
-        &self.directional_lights.unwrap_or(Vec::new())
+        &self.directional_lights
     }
 }
 
@@ -168,7 +155,7 @@ pub struct LSystemObjectDescriptor {
     transform: Option<Transform>,
     system: String,
     instance: String,
-    iteration: Option<usize>,
+    iteration: Option<u32>,
 }
 
 impl LSystemObjectDescriptor {
@@ -181,7 +168,7 @@ impl LSystemObjectDescriptor {
     pub fn instance(&self) -> &str {
         &self.instance
     }
-    pub fn iteration(&self) -> usize {
+    pub fn iteration(&self) -> u32 {
         self.iteration.unwrap_or(0)
     }
 }
@@ -270,7 +257,7 @@ impl LSystemSceneDescriptor {
     pub fn scene(&self) -> &Scene {
         &self.scene
     }
-    pub fn resources(&self) -> &HashMap<String, SceneResource> {
-        &self.resources.unwrap_or(HashMap::new())
+    pub fn resources(&self) -> &Option<HashMap<String, SceneResource>> {
+        &self.resources
     }
 }

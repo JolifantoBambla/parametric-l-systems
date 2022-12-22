@@ -1,23 +1,25 @@
 use std::collections::HashMap;
-use glam::{Quat, Vec3};
+use glam::{Mat4, Vec3};
 use std::sync::Arc;
-use wasm_bindgen::JsValue;
+use wgpu::BufferUsages;
 use crate::framework::camera::{CameraView, Projection};
 use crate::framework::context::Gpu;
 use crate::framework::event::lifecycle::Update;
 use crate::framework::event::window::OnResize;
+use crate::framework::gpu::buffer::Buffer;
 use crate::framework::input::Input;
+use crate::framework::mesh::mesh::Mesh;
 use crate::framework::mesh::vertex::Vertex;
 use crate::framework::renderer::drawable::GpuMesh;
 use crate::framework::scene::light::LightSource;
 use crate::lindenmayer::LSystem;
 use crate::lsystemrenderer::camera::OrbitCamera;
 use crate::lsystemrenderer::renderer::{LightSourcesBindGroup, LightSourcesBindGroupCreator, RenderObject, RenderObjectCreator};
-use crate::lsystemrenderer::turtle::turtle::LSystemManager;
+use crate::lsystemrenderer::turtle::turtle::{LSystemManager, MaterialState};
 use crate::framework::scene::transform::Transform;
 use crate::lsystemrenderer::scene_descriptor::{LSystemSceneDescriptor, SceneObjectDescriptor};
 
-struct Mesh {
+struct SceneMesh {
     mesh: GpuMesh,
     transform: Transform,
 }
@@ -25,7 +27,8 @@ struct Mesh {
 struct LSystemObject {
     system: String,
     instance: String,
-    iteration: usize,
+    iteration: u32,
+    render_objects: Vec<Vec<RenderObject>>,
 }
 
 enum Primitive {
@@ -34,15 +37,8 @@ enum Primitive {
 
 struct SceneObject {
     transform: Transform,
+    transform_buffer: Buffer<Mat4>,
     primitive: Primitive,
-}
-
-impl Update for SceneObject {
-    fn update(&mut self, input: &Input) {
-        match &mut self.primitive {
-            Primitive::LSystem(l_system) => l_system.update(input)
-        };
-    }
 }
 
 pub struct LSystemScene {
@@ -52,8 +48,8 @@ pub struct LSystemScene {
     light_sources: Vec<LightSource>,
     light_sources_bind_group: Option<LightSourcesBindGroup>,
     objects: Vec<SceneObject>,
-    cylinder_mesh: Arc<Mesh>,
-    meshes: HashMap<String, Arc<Mesh>>,
+    cylinder_mesh: Arc<GpuMesh>,
+    meshes: HashMap<String, Arc<SceneMesh>>,
     l_systems: HashMap<String, HashMap<String, LSystemManager>>,
 }
 
@@ -83,28 +79,27 @@ impl LSystemScene {
             light_sources.push(LightSource::new_point(descriptor.position(), descriptor.color(), 1.0));
         }
 
-        let l_system_cylinder_mesh = Arc::new(
-            Mesh {
-                mesh: GpuMesh::from_mesh::<Vertex>(
-                    &Mesh::new_default_cylinder(true),
-                    gpu.device(),
-                ),
-                transform: Transform::from_rotation(Quat::from_rotation_x(f32::to_radians(-90.)))
-            },
-        );
+        let l_system_cylinder_mesh = Arc::new(GpuMesh::from_mesh::<Vertex>(
+            &Mesh::new_default_cylinder(true),
+            gpu.device(),
+        ));
         // todo: parse obj resources into meshes
         let meshes = HashMap::new();
 
         let mut l_system_managers = HashMap::new();
         for (name, mut system) in l_systems.drain() {
+            let system_descriptor = scene_descriptor.systems().get(&name)
+                .expect(format!("System has no descriptor: {}", name).as_str());
             let mut instances = HashMap::new();
             for (instance_name, instance) in system.drain() {
-                // todo: this also needs some data from scene_descriptor
+                let instance_descriptor = system_descriptor.instances().get(&instance_name)
+                    .expect(format!("Instance has no descriptor: {}", instance_name).as_str());
                 instances.insert(instance_name.to_string(), LSystemManager::new(
                     instance,
-                    scene_descriptor.l_system_settings(),
-                    gpu)
-                );
+                    system_descriptor.transform(),
+                    Some(MaterialState::from(instance_descriptor)),
+                    gpu
+                ));
             }
             l_system_managers.insert(name, instances);
         }
@@ -113,13 +108,24 @@ impl LSystemScene {
         for descriptor in scene_descriptor.scene().objects() {
             match descriptor {
                 SceneObjectDescriptor::LSystem(d) => {
-                    // todo: set system's target iteration to max(d.iteration(), systen.target_iteration)
+                    let mut system = l_system_managers.get_mut(d.system())
+                        .expect(format!("Object references unknown LSystem: {}", d.system()).as_str());
+                    let mut instance = system.get_mut(d.instance())
+                        .expect(format!("Object references unknown instance: {}", d.instance()).as_str());
+                    instance.maybe_increase_max_iteration(d.iteration());
                     objects.push(SceneObject {
                         transform: d.transform(),
+                        transform_buffer: Buffer::new_single_element(
+                            "transform buffer",
+                            d.transform().as_mat4(),
+                            BufferUsages::UNIFORM,
+                            gpu,
+                        ),
                         primitive: Primitive::LSystem(LSystemObject{
                             system: d.system().to_string(),
                             instance: d.instance().to_string(),
                             iteration: d.iteration(),
+                            render_objects: Vec::new(),
                         })
                     });
                 }
@@ -134,19 +140,44 @@ impl LSystemScene {
             light_sources,
             light_sources_bind_group: None,
             objects,
+            cylinder_mesh: l_system_cylinder_mesh,
             meshes,
             l_systems: l_system_managers,
         }
     }
 
+    #[inline]
+    fn get_l_system_instance(&self, system_name: &str, instance_name: &str) -> &LSystemManager {
+        self.l_systems.get(system_name)
+            .expect(format!("Unknown system: {}", system_name).as_str())
+            .get(instance_name)
+            .expect(format!("Unkown instance: {}", instance_name).as_str())
+    }
+
+    #[inline]
+    fn get_l_system_instance_mut(&mut self, system_name: &str, instance_name: &str) -> &mut LSystemManager {
+        self.l_systems.get_mut(system_name)
+            .expect(format!("Unknown system: {}", system_name).as_str())
+            .get_mut(instance_name)
+            .expect(format!("Unkown instance: {}", instance_name).as_str())
+    }
 
     pub fn get_active_render_objects(&self) -> Vec<&Vec<RenderObject>> {
         self.objects.iter()
             .map(|o| match &o.primitive {
                 Primitive::LSystem(l_system) => {
-                    l_system.get_render_objects()
+                    if !l_system.render_objects.is_empty() {
+                        if l_system.iteration > l_system.render_objects.len() as u32 {
+                            l_system.render_objects.last()
+                        } else {
+                            l_system.render_objects.get(l_system.iteration as usize)
+                        }
+                    } else {
+                        None
+                    }
                 }
             })
+            .flatten()
             .collect()
     }
 
@@ -156,25 +187,45 @@ impl LSystemScene {
     }
 
     pub fn prepare_render(&mut self, render_object_creator: &RenderObjectCreator, light_sources_bind_group_creator: &LightSourcesBindGroupCreator) {
-        self.objects.iter_mut()
-            .for_each(|o| match &mut o.primitive {
-                Primitive::LSystem(l_system) => {
-                    l_system.prepare_render(render_object_creator);
-                }
-            });
         if self.light_sources_bind_group.is_none() {
             self.light_sources_bind_group = Some(light_sources_bind_group_creator.create(self.lights()));
         }
+
+        for o in self.objects.iter_mut() {
+            match &mut o.primitive {
+                Primitive::LSystem(l_system) => {
+                    if l_system.iteration > l_system.render_objects.len() as u32 {
+                        let iteration = self.l_systems.get(&l_system.system)
+                            .expect(format!("Unknown system: {}", l_system.system).as_str())
+                            .get(&l_system.instance)
+                            .expect(format!("Unkown instance: {}", l_system.instance).as_str())
+                            .try_get_iteration(l_system.iteration);
+                        if iteration.0 > l_system.render_objects.len() as u32 {
+                            let cylinder_render_object = render_object_creator.create_render_object(
+                                &self.cylinder_mesh,
+                                &o.transform_buffer,
+                                iteration.1.cylinder_instances_buffer(),
+                            );
+                            // todo: add other meshes that are used by the iteration
+                            l_system.render_objects.push(vec![cylinder_render_object]);
+                        }
+                    }
+                }
+                _ => {}
+            };
+        }
     }
 
-    // todo: set iteration for specific l_System
+    // todo: set iteration for specific l_System object
     pub fn set_target_iteration(&mut self, target_iteration: u32) {
+        /*
         self.objects.iter_mut()
             .for_each(|o| match &mut o.primitive {
                 Primitive::LSystem(l_system) => {
                     l_system.set_target_iteration(target_iteration);
                 }
             });
+         */
     }
 
     pub fn camera(&self) -> OrbitCamera {
@@ -191,7 +242,11 @@ impl LSystemScene {
 impl Update for LSystemScene {
     fn update(&mut self, input: &Input) {
         self.camera.update(input);
-        self.objects.iter_mut().for_each(|o| o.update(input));
+        for (_, system) in self.l_systems.iter_mut() {
+            for (_, instance) in system.iter_mut() {
+                instance.update(input);
+            }
+        }
     }
 }
 
