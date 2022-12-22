@@ -58,11 +58,11 @@ impl RenderObjectCreator {
             entries: &[
                 BindGroupEntry {
                     binding: 0,
-                    resource: instances.buffer().as_entire_binding(),
+                    resource: transform.buffer().as_entire_binding(),
                 },
                 BindGroupEntry {
                     binding: 1,
-                    resource: transform.buffer().as_entire_binding(),
+                    resource: instances.buffer().as_entire_binding(),
                 }
             ],
         });
@@ -216,16 +216,28 @@ impl Renderer {
         let instances_bind_group_layout = gpu.device().create_bind_group_layout(
             &BindGroupLayoutDescriptor {
                 label: Label::from("Instance buffer bind group layout"),
-                entries: &[BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: ShaderStages::VERTEX | ShaderStages::FRAGMENT,
-                    ty: BindingType::Buffer {
-                        ty: BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: wgpu::BufferSize::new(mem::size_of::<Instance>() as _),
+                entries: &[
+                    BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: ShaderStages::VERTEX | ShaderStages::FRAGMENT,
+                        ty: BindingType::Buffer {
+                            ty: BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: wgpu::BufferSize::new(mem::size_of::<Mat4>() as _),
+                        },
+                        count: None,
                     },
-                    count: None,
-                }],
+                    BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: ShaderStages::VERTEX | ShaderStages::FRAGMENT,
+                        ty: BindingType::Buffer {
+                            ty: BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: wgpu::BufferSize::new(mem::size_of::<Instance>() as _),
+                        },
+                        count: None,
+                    },
+                ],
             },
         );
         let light_sources_bind_group_layout =

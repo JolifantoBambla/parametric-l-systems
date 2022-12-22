@@ -27,8 +27,9 @@ struct SceneMesh {
 struct LSystemObject {
     system: String,
     instance: String,
-    iteration: u32,
-    render_objects: Vec<Vec<RenderObject>>,
+    target_iteration: u32,
+    active_iteration: Option<u32>,
+    render_objects: HashMap<u32, Vec<RenderObject>>,
 }
 
 enum Primitive {
@@ -108,11 +109,22 @@ impl LSystemScene {
         for descriptor in scene_descriptor.scene().objects() {
             match descriptor {
                 SceneObjectDescriptor::LSystem(d) => {
-                    let mut system = l_system_managers.get_mut(d.system())
-                        .expect(format!("Object references unknown LSystem: {}", d.system()).as_str());
-                    let mut instance = system.get_mut(d.instance())
-                        .expect(format!("Object references unknown instance: {}", d.instance()).as_str());
-                    instance.maybe_increase_max_iteration(d.iteration());
+                    let iteration = if let Some(iteration) = d.iteration() {
+                        *iteration
+                    } else {
+                        scene_descriptor.systems()
+                            .get(d.system())
+                            .expect(format!("Object references unknown LSystem: {}", d.system()).as_str())
+                            .instances()
+                            .get(d.instance())
+                            .expect(format!("Object references unknown instance: {}", d.instance()).as_str())
+                            .iterations()
+                    };
+                    l_system_managers.get_mut(d.system())
+                        .expect(format!("Object references unknown LSystem: {}", d.system()).as_str())
+                        .get_mut(d.instance())
+                        .expect(format!("Object references unknown instance: {}", d.instance()).as_str())
+                        .maybe_increase_max_iteration(iteration);
                     objects.push(SceneObject {
                         transform: d.transform(),
                         transform_buffer: Buffer::new_single_element(
@@ -124,8 +136,9 @@ impl LSystemScene {
                         primitive: Primitive::LSystem(LSystemObject{
                             system: d.system().to_string(),
                             instance: d.instance().to_string(),
-                            iteration: d.iteration(),
-                            render_objects: Vec::new(),
+                            target_iteration: iteration,
+                            active_iteration: None,
+                            render_objects: HashMap::new(),
                         })
                     });
                 }
@@ -146,32 +159,12 @@ impl LSystemScene {
         }
     }
 
-    #[inline]
-    fn get_l_system_instance(&self, system_name: &str, instance_name: &str) -> &LSystemManager {
-        self.l_systems.get(system_name)
-            .expect(format!("Unknown system: {}", system_name).as_str())
-            .get(instance_name)
-            .expect(format!("Unkown instance: {}", instance_name).as_str())
-    }
-
-    #[inline]
-    fn get_l_system_instance_mut(&mut self, system_name: &str, instance_name: &str) -> &mut LSystemManager {
-        self.l_systems.get_mut(system_name)
-            .expect(format!("Unknown system: {}", system_name).as_str())
-            .get_mut(instance_name)
-            .expect(format!("Unkown instance: {}", instance_name).as_str())
-    }
-
     pub fn get_active_render_objects(&self) -> Vec<&Vec<RenderObject>> {
         self.objects.iter()
             .map(|o| match &o.primitive {
                 Primitive::LSystem(l_system) => {
                     if !l_system.render_objects.is_empty() {
-                        if l_system.iteration > l_system.render_objects.len() as u32 {
-                            l_system.render_objects.last()
-                        } else {
-                            l_system.render_objects.get(l_system.iteration as usize)
-                        }
+                        l_system.render_objects.get(&l_system.active_iteration.unwrap())
                     } else {
                         None
                     }
@@ -194,20 +187,29 @@ impl LSystemScene {
         for o in self.objects.iter_mut() {
             match &mut o.primitive {
                 Primitive::LSystem(l_system) => {
-                    if l_system.iteration > l_system.render_objects.len() as u32 {
+                    if !l_system.render_objects.contains_key(&l_system.target_iteration) {
                         let iteration = self.l_systems.get(&l_system.system)
                             .expect(format!("Unknown system: {}", l_system.system).as_str())
                             .get(&l_system.instance)
                             .expect(format!("Unkown instance: {}", l_system.instance).as_str())
-                            .try_get_iteration(l_system.iteration);
-                        if iteration.0 > l_system.render_objects.len() as u32 {
+                            .try_get_iteration(l_system.target_iteration);
+                        let mut insert = if let Some(active_iteration) = l_system.active_iteration {
+                            active_iteration != iteration.0
+                        } else {
+                            true
+                        };
+                        if insert {
                             let cylinder_render_object = render_object_creator.create_render_object(
                                 &self.cylinder_mesh,
                                 &o.transform_buffer,
                                 iteration.1.cylinder_instances_buffer(),
                             );
                             // todo: add other meshes that are used by the iteration
-                            l_system.render_objects.push(vec![cylinder_render_object]);
+                            l_system.render_objects.insert(
+                                iteration.0,
+                                vec![cylinder_render_object]
+                            );
+                            l_system.active_iteration = Some(iteration.0)
                         }
                     }
                 }

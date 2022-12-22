@@ -144,44 +144,6 @@
         }
 
         const sceneToViewerInputs = (scene) => {
-            // todo: multiple lSystems
-            // todo: other objects
-
-            const lSystemSceneObject = scene.scene.objects[0];
-            const system = scene.systems[lSystemSceneObject.system];
-            const lSystem = system.definition;
-            const instance = system.instances[lSystemSceneObject.instance];
-            lSystem.parameters = {
-                ...lSystem.parameters,
-                ...instance.parameters
-            };
-
-
-            // todo: new format
-            const sceneSettings = {
-                lightSources: scene.scene.lights.pointLights.map(p => {
-                    return {
-                        light: {
-                            color: p.color,
-                            intensity: 1.0,
-                        },
-                        source: {
-                            point: {
-                                position: p.position,
-                            }
-                        }
-                    }
-                }),
-                lSystemSettings: {
-                    materials: [{color: [...instance.materials[0].color, 1.0]}]
-                },
-                transform: [
-                    1, 0, 0, 0,
-                    0, 0, 1, 0,
-                    0, -1, 0, 0,
-                    0, 0, 0, 1
-                ]
-            };
             const systems = {};
             for (const systemName in scene.systems) {
                 const system = scene.systems[systemName]
@@ -197,7 +159,6 @@
                     }
                 }
             }
-
             return [scene, systems];
         }
 
@@ -258,6 +219,11 @@
             };
 
             if (activeScene) {
+                // todo: one slider per lSystem object
+                // todo: background color
+                // todo: new scene
+                // todo: fps graph
+
                 for (const obj of activeScene.scene.objects) {
                     if (obj.type === 'lSystem') {
                         const instance = activeScene.systems[obj.system].instances[obj.instance];

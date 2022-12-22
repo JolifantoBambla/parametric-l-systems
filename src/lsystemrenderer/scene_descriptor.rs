@@ -169,8 +169,8 @@ impl LSystemObjectDescriptor {
     pub fn instance(&self) -> &str {
         &self.instance
     }
-    pub fn iteration(&self) -> u32 {
-        self.iteration.unwrap_or(0)
+    pub fn iteration(&self) -> &Option<u32> {
+        &self.iteration
     }
 }
 

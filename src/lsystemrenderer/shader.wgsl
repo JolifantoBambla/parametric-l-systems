@@ -30,7 +30,8 @@ struct VertexOutput {
 };
 
 @group(0) @binding(0) var<uniform> camera: Camera;
-@group(1) @binding(0) var<storage> instances: array<Instance>;
+@group(2) @binding(0) var<uniform> model_transform: mat4x4<f32>;
+@group(1) @binding(1) var<storage> instances: array<Instance>;
 @group(2) @binding(0) var<storage> light_sources: array<LightSource>;
 
 fn compute_light_direction(light_index: u32, position: vec3<f32>) -> vec3<f32> {
