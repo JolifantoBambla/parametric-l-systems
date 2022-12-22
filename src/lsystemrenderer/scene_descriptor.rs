@@ -34,6 +34,7 @@ impl LSystemInstance {
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct LSystemDescriptor {
+    #[serde(rename = "type")]
     system_type: String,
     instances: HashMap<String, LSystemInstance>,
     transform: Option<Transform>,

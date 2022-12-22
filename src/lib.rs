@@ -74,7 +74,6 @@ fn parse_l_systems(systems: Object) -> HashMap<String, HashMap<String, LSystem>>
                     .expect("Object key was no String")
             );
         }
-        log::info!("instance name {:?}", instance_names);
         let mut instances = HashMap::new();
         for (j, instance) in Object::values(&system).iter().enumerate() {
             instances.insert(

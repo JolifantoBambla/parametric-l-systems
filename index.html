@@ -198,9 +198,7 @@
                 }
             }
 
-            console.log(systems);
-
-            return [scene, systems];//[lSystem, sceneSettings];
+            return [scene, systems];
         }
 
         const constructViewerInputFromScene = (scene) => {
@@ -284,9 +282,9 @@
         // todo: only initialize once
         // todo: new format
         // todo: ui
-        async function run(canvasId, lSystem, settings) {
+        async function run(canvasId, scene, systems) {
             await init();
-            main(canvasId, settings, lSystem, {tree: {g: lSystem}});
+            main(canvasId, scene, systems);
         }
 
         activeScene = parseCurrentSceneSource();
