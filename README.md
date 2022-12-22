@@ -27,9 +27,32 @@ Open `index.html` in a browser that supports WebGPU.
 
 ```
 {
+  "systems": {
+    "<system-name>": { ... },
+    ...
+  },
+  ...
+}
+```
+
+```
+{
   "definition": {
-    "alphabet": [ ... ]
-  }
+    "alphabet": [ ... ],
+    "parameters": {
+      "<parameter-name>": <parameter-value>,
+      ...
+    },
+    "productions": [ ... ],
+    "axiom": "..."
+  },
+  "instances: {
+    "iterations": <integer>,
+    "parameters": { ... },    // optional overrides for system parameters
+    "materials": [ ... ],.    // optional
+    "startMaterial": <number> // optional
+  },
+  "transform": [ ... ].       // optional
 }
 ```
 
