@@ -52,7 +52,7 @@ impl App {
         let aspect_ratio = width as f32 / height as f32;
 
         let renderer = Renderer::new(gpu, surface_configuration);
-        let scene = LSystemScene::new(l_systems, scene_descriptor, aspect_ratio, gpu);
+        let scene = LSystemScene::new(l_systems, &scene_descriptor, aspect_ratio, gpu);
 
         Self {
             gpu: gpu.clone(),
@@ -73,6 +73,7 @@ impl GpuApp for App {
         {
             let canvas = window.canvas();
             register_custom_canvas_event_dispatcher("ui::scene::background-color", &canvas, event_loop);
+            register_custom_canvas_event_dispatcher("ui::scene::new", &canvas, event_loop);
             register_custom_canvas_event_dispatcher("ui::lsystem::iteration", &canvas, event_loop);
             if dispatch_canvas_event("app::initialized", &canvas).is_err() {
                 log::error!("Could not dispatch 'app::initialized' event");
@@ -122,6 +123,14 @@ impl OnUserEvent for App {
             }
             UiEvent::Scene(SceneEvent::BackgroundColor(color)) => {
                 self.scene.set_background_color(*color);
+            },
+            UiEvent::Scene(SceneEvent::New(new_scene)) => {
+                self.scene = LSystemScene::new(
+                    LSystem::from_l_system_definitions(new_scene.l_system_definitions()),
+                    new_scene.scene_descriptor(),
+                    self.scene.aspect_ratio(),
+                    &self.gpu
+                );
             }
         }
     }

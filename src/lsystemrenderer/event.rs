@@ -1,5 +1,9 @@
+use std::collections::HashMap;
 use glam::Vec3;
+use js_sys::Object;
 use serde::Deserialize;
+use crate::lindenmayer::LSystemDefinition;
+use crate::LSystemSceneDescriptor;
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct IterationEvent {
@@ -24,9 +28,26 @@ pub enum LSystemEvent {
 }
 
 #[derive(Clone, Debug, Deserialize)]
+pub struct NewSceneEvent {
+    scene_descriptor: LSystemSceneDescriptor,
+    l_system_definitions: HashMap<String, HashMap<String, LSystemDefinition>>,
+}
+
+impl NewSceneEvent {
+    pub fn scene_descriptor(&self) -> &LSystemSceneDescriptor {
+        &self.scene_descriptor
+    }
+    pub fn l_system_definitions(&self) -> &HashMap<String, HashMap<String, LSystemDefinition>> {
+        &self.l_system_definitions
+    }
+}
+
+#[derive(Clone, Debug, Deserialize)]
 pub enum SceneEvent {
     #[serde(rename = "backgroundColor")]
     BackgroundColor(Vec3),
+    #[serde(rename = "new")]
+    New(NewSceneEvent),
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -34,5 +55,5 @@ pub enum UiEvent {
     #[serde(rename = "lSystem")]
     LSystem(LSystemEvent),
     #[serde(rename = "scene")]
-    Scene(SceneEvent,)
+    Scene(SceneEvent),
 }

@@ -45,6 +45,7 @@ struct SceneObject {
 pub struct LSystemScene {
     background_color: Vec3,
     camera: OrbitCamera,
+    aspect_ratio: f32,
     ambient_light: LightSource,
     light_sources: Vec<LightSource>,
     light_sources_bind_group: Option<LightSourcesBindGroup>,
@@ -57,7 +58,7 @@ pub struct LSystemScene {
 impl LSystemScene {
     pub fn new(
         mut l_systems: HashMap<String, HashMap<String, LSystem>>,
-        scene_descriptor: LSystemSceneDescriptor,
+        scene_descriptor: &LSystemSceneDescriptor,
         view_aspect_ratio: f32,
         gpu: &Arc<Gpu>,
     ) -> Self {
@@ -152,6 +153,7 @@ impl LSystemScene {
         Self {
             background_color: scene_descriptor.scene().camera().background_color(),
             camera,
+            aspect_ratio: view_aspect_ratio,
             ambient_light,
             light_sources,
             light_sources_bind_group: None,
@@ -250,6 +252,10 @@ impl LSystemScene {
     pub fn set_background_color(&mut self, background_color: Vec3) {
         self.background_color = background_color;
     }
+
+    pub fn aspect_ratio(&self) -> f32 {
+        self.aspect_ratio
+    }
 }
 
 impl Update for LSystemScene {
@@ -265,6 +271,7 @@ impl Update for LSystemScene {
 
 impl OnResize for LSystemScene {
     fn on_resize(&mut self, width: u32, height: u32) {
+        self.aspect_ratio = width as f32 / height as f32;
         self.camera.on_resize(width, height);
     }
 }

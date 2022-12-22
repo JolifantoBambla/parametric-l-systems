@@ -10,7 +10,7 @@ pub mod lsystemrenderer;
 use crate::framework::app::AppRunner;
 use crate::framework::scene::light::LightSource;
 use crate::framework::util::window::WindowConfig;
-use crate::lindenmayer::LSystem;
+use crate::lindenmayer::{LSystem, LSystemDefinition};
 use crate::lsystemrenderer::App;
 use crate::lsystemrenderer::scene_descriptor::LSystemSceneDescriptor;
 
@@ -31,10 +31,10 @@ pub fn initialize() {
 
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen()]
-pub fn main(canvas_id: String, scene: JsValue, l_system_definitions: Object) {
-    let l_systems = parse_l_systems(l_system_definitions);
+pub fn main(canvas_id: String, scene: JsValue, l_system_definitions: JsValue) {
     let scene_descriptor: LSystemSceneDescriptor = serde_wasm_bindgen::from_value(scene)
         .expect("Could not deserialize scene descriptor");
+    let l_systems = LSystem::from_js_systems(l_system_definitions);
     wasm_bindgen_futures::spawn_local(run(canvas_id, scene_descriptor, l_systems));
 }
 
@@ -52,36 +52,4 @@ async fn run(canvas_id: String, scene_descriptor: LSystemSceneDescriptor, l_syst
         scene_descriptor,
     );
     app_runner.run(app);
-}
-
-#[cfg(target_arch = "wasm32")]
-fn parse_l_systems(systems: Object) -> HashMap<String, HashMap<String, LSystem>> {
-    let mut l_systems = HashMap::new();
-    let mut system_names: Vec<String> = Vec::new();
-    for system_name in Object::keys(&systems).iter() {
-        system_names.push(
-            serde_wasm_bindgen::from_value(system_name)
-                .expect("Object key was no String")
-        );
-    }
-    for (i, js_system) in Object::values(&systems).iter().enumerate() {
-        let system = Object::try_from(&js_system)
-            .expect("JsValue was no Object");
-        let mut instance_names: Vec<String> = Vec::new();
-        for instance_name in Object::keys(&system).iter() {
-            instance_names.push(
-                serde_wasm_bindgen::from_value(instance_name)
-                    .expect("Object key was no String")
-            );
-        }
-        let mut instances = HashMap::new();
-        for (j, instance) in Object::values(&system).iter().enumerate() {
-            instances.insert(
-                instance_names[j].clone(),
-                LSystem::new(instance)
-            );
-        }
-        l_systems.insert(system_names[i].clone(), instances);
-    }
-    l_systems
 }

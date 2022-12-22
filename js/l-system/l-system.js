@@ -337,7 +337,9 @@ export class LSystemParser {
         // if no alphabet is given it is parsed from the axiom and the productions in the following way
         //  - symbols for which productions exist are first extracted from the productions
         //  -
-
+        if (parameters instanceof Map) {
+            parameters = Object.fromEntries(parameters);
+        }
         const productionSpecs = productions.map(p => this.#splitProductionDefinition(p))
             .reduce((symbolsToProdSpecs, p) => {
                 const symbol = p.moduleSpecification.module.toGenericString();
