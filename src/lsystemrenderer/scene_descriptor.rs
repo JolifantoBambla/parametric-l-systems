@@ -3,7 +3,7 @@ use glam::Vec3;
 use serde::Deserialize;
 use crate::framework::camera::CameraView;
 use crate::framework::scene::transform::Transform;
-use crate::lsystemrenderer::turtle::turtle::{Material, MaterialState};
+use crate::lsystemrenderer::turtle::turtle::Material;
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct LSystemInstance {
@@ -22,7 +22,7 @@ impl LSystemInstance {
         self.iterations
     }
     pub fn transform(&self) -> Transform {
-        self.transform.unwrap_or(Transform::default())
+        self.transform.unwrap_or_default()
     }
     pub fn start_material(&self) -> usize {
         self.start_material.unwrap_or(0)
@@ -48,7 +48,7 @@ impl LSystemDescriptor {
         &self.instances
     }
     pub fn transform(&self) -> Transform {
-        self.transform.unwrap_or(Transform::default())
+        self.transform.unwrap_or_default()
     }
 }
 
@@ -161,7 +161,7 @@ pub struct LSystemObjectDescriptor {
 
 impl LSystemObjectDescriptor {
     pub fn transform(&self) -> Transform {
-        self.transform.unwrap_or(Transform::default())
+        self.transform.unwrap_or_default()
     }
     pub fn system(&self) -> &str {
         &self.system
@@ -183,7 +183,7 @@ pub struct ObjObject {
 
 impl ObjObject {
     pub fn transform(&self) -> Transform {
-        self.transform.unwrap_or(Transform::default())
+        self.transform.unwrap_or_default()
     }
     pub fn obj(&self) -> &str {
         &self.obj
@@ -214,7 +214,7 @@ impl ObjResource {
         &self.source
     }
     pub fn transform(&self) -> Transform {
-        self.transform.unwrap_or(Transform::default())
+        self.transform.unwrap_or_default()
     }
 }
 

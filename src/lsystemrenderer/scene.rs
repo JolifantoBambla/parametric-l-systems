@@ -91,11 +91,11 @@ impl LSystemScene {
         let mut l_system_managers = HashMap::new();
         for (name, mut system) in l_systems.drain() {
             let system_descriptor = scene_descriptor.systems().get(&name)
-                .expect(format!("System has no descriptor: {}", name).as_str());
+                .unwrap_or_else(|| panic!("System has no descriptor: {}", name));
             let mut instances = HashMap::new();
             for (instance_name, instance) in system.drain() {
                 let instance_descriptor = system_descriptor.instances().get(&instance_name)
-                    .expect(format!("Instance has no descriptor: {}", instance_name).as_str());
+                    .unwrap_or_else(|| panic!("Instance has no descriptor: {}", instance_name));
                 instances.insert(instance_name.to_string(), LSystemManager::new(
                     instance,
                     system_descriptor.transform(),
@@ -115,16 +115,16 @@ impl LSystemScene {
                     } else {
                         scene_descriptor.systems()
                             .get(d.system())
-                            .expect(format!("Object references unknown LSystem: {}", d.system()).as_str())
+                            .unwrap_or_else(|| panic!("Object references unknown LSystem: {}", d.system()))
                             .instances()
                             .get(d.instance())
-                            .expect(format!("Object references unknown instance: {}", d.instance()).as_str())
+                            .unwrap_or_else(|| panic!("Object references unknown instance: {}", d.instance()))
                             .iterations()
                     };
                     l_system_managers.get_mut(d.system())
-                        .expect(format!("Object references unknown LSystem: {}", d.system()).as_str())
+                        .unwrap_or_else(|| panic!("Object references unknown LSystem: {}", d.system()))
                         .get_mut(d.instance())
-                        .expect(format!("Object references unknown instance: {}", d.instance()).as_str())
+                        .unwrap_or_else(|| panic!("Object references unknown instance: {}", d.instance()))
                         .maybe_increase_max_iteration(iteration);
                     objects.insert(
                         object_id.to_string(),
@@ -166,7 +166,7 @@ impl LSystemScene {
 
     pub fn get_active_render_objects(&self) -> Vec<&Vec<RenderObject>> {
         self.objects.iter()
-            .map(|(_, o)| match &o.primitive {
+            .filter_map(|(_, o)| match &o.primitive {
                 Primitive::LSystem(l_system) => {
                     if !l_system.render_objects.is_empty() {
                         l_system.render_objects.get(&l_system.active_iteration.unwrap())
@@ -175,7 +175,6 @@ impl LSystemScene {
                     }
                 }
             })
-            .flatten()
             .collect()
     }
 
@@ -186,7 +185,7 @@ impl LSystemScene {
 
     pub fn prepare_render(&mut self, render_object_creator: &RenderObjectCreator, light_sources_bind_group_creator: &LightSourcesBindGroupCreator) {
         if self.light_sources_bind_group.is_none() {
-            self.light_sources_bind_group = Some(light_sources_bind_group_creator.create(self.lights()));
+            self.light_sources_bind_group = Some(light_sources_bind_group_creator.create(self.lights().as_slice()));
         }
 
         for (_, o) in self.objects.iter_mut() {
@@ -194,11 +193,11 @@ impl LSystemScene {
                 Primitive::LSystem(l_system) => {
                     if !l_system.render_objects.contains_key(&l_system.target_iteration) {
                         let iteration = self.l_systems.get(&l_system.system)
-                            .expect(format!("Unknown system: {}", l_system.system).as_str())
+                            .unwrap_or_else(|| panic!("Unknown system: {}", l_system.system))
                             .get(&l_system.instance)
-                            .expect(format!("Unkown instance: {}", l_system.instance).as_str())
+                            .unwrap_or_else(|| panic!("Unkown instance: {}", l_system.instance))
                             .try_get_iteration(l_system.target_iteration);
-                        let mut insert = if let Some(active_iteration) = l_system.active_iteration {
+                        let insert = if let Some(active_iteration) = l_system.active_iteration {
                             active_iteration != iteration.0
                         } else {
                             true
@@ -218,7 +217,6 @@ impl LSystemScene {
                         }
                     }
                 }
-                _ => {}
             };
         }
     }
@@ -233,7 +231,6 @@ impl LSystemScene {
                         l_system.active_iteration = Some(target_iteration);
                     }
                 }
-                _ => log::warn!("Object is not an L-System: {}", object_name),
             }
         } else {
             log::warn!("Unknown object: {}", object_name);

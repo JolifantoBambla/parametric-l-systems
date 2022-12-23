@@ -8,6 +8,7 @@ use wgpu::{BufferAddress, BufferDescriptor, BufferUsages, Label};
 
 pub struct Buffer<T: bytemuck::Pod> {
     ctx: Arc<Gpu>,
+    #[allow(unused)]
     label: String,
     buffer: wgpu::Buffer,
     num_elements: usize,
@@ -50,6 +51,7 @@ impl<T: bytemuck::Pod> Buffer<T> {
         }
     }
 
+    #[allow(unused)]
     fn create_read_buffer(&self, ctx: &Arc<Gpu>) -> Self {
         assert!(self.supports(BufferUsages::COPY_SRC));
         let label = format!("map buffer [{}]", self.label.as_str());

@@ -1,22 +1,15 @@
-use glam::{Mat3, Mat4, Quat, Vec3, Vec4};
+use glam::{Mat4, Quat, Vec3, Vec4};
 use serde::Deserialize;
-use std::collections::{HashMap, VecDeque};
+use std::collections::VecDeque;
 use std::sync::Arc;
-use wgpu::{
-    BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout, BufferUsages, Device, Label,
-    RenderPass,
-};
+use wgpu::BufferUsages;
 use crate::framework::context::Gpu;
 use crate::framework::event::lifecycle::Update;
 use crate::framework::geometry::bounds::{Bounds, Bounds3};
 use crate::framework::gpu::buffer::Buffer;
 use crate::framework::input::Input;
-use crate::framework::mesh::mesh::Mesh;
-use crate::framework::mesh::vertex::Vertex;
-use crate::framework::renderer::drawable::{Draw, DrawInstanced, GpuMesh};
 use crate::framework::scene::transform::{Orientation, Transform, Transformable};
 use crate::lindenmayer::LSystem;
-use crate::lsystemrenderer::renderer::{RenderObject, RenderObjectCreator};
 use crate::lsystemrenderer::scene_descriptor::LSystemInstance;
 use crate::lsystemrenderer::turtle::command::TurtleCommand;
 
@@ -49,11 +42,6 @@ pub struct LSystemModel {
 #[derive(Copy, Clone, Debug, Default)]
 enum MaterialMode {
     MaterialIndex(usize),
-    White,
-    Black,
-    Red,
-    Green,
-    Blue,
     #[default]
     Random,
 }
@@ -113,11 +101,6 @@ impl TurtleState {
                 *self.material_state.materials.get(idx)
                     .unwrap_or(&self.make_random_material())
             }
-            MaterialMode::White => Material { color: Vec4::ONE },
-            MaterialMode::Black => Material { color: Vec3::ZERO.extend(1.0) },
-            MaterialMode::Red => Material { color: Vec3::X.extend(1.0) },
-            MaterialMode::Green => Material { color: Vec3::Y.extend(1.0) },
-            MaterialMode::Blue => Material { color: Vec3::Z.extend(1.0) },
             MaterialMode::Random => self.make_random_material()
         }
     }
@@ -139,7 +122,7 @@ impl LSystemModel {
             ..Default::default()
         };
 
-        let cylinder_base_rotation = Quat::from_rotation_x((-90. as f32).to_radians());
+        let cylinder_base_rotation = Quat::from_rotation_x(f32::to_radians(-90.));
         for c in commands {
             match c {
                 TurtleCommand::AddCylinder(cylinder) => {

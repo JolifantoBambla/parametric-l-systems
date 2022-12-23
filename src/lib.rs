@@ -1,6 +1,4 @@
 use std::collections::HashMap;
-use std::hash::Hash;
-use js_sys::Object;
 use wasm_bindgen::prelude::*;
 
 pub mod framework;
@@ -8,9 +6,8 @@ pub mod lindenmayer;
 pub mod lsystemrenderer;
 
 use crate::framework::app::AppRunner;
-use crate::framework::scene::light::LightSource;
 use crate::framework::util::window::WindowConfig;
-use crate::lindenmayer::{LSystem, LSystemDefinition};
+use crate::lindenmayer::LSystem;
 use crate::lsystemrenderer::App;
 use crate::lsystemrenderer::scene_descriptor::LSystemSceneDescriptor;
 

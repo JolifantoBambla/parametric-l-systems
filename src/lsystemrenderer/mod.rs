@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use crate::framework::app::GpuApp;
-use crate::framework::camera::{CameraView, Projection};
 use crate::framework::context::{ContextDescriptor, Gpu, SurfaceContext};
 use crate::framework::event::lifecycle::{OnCommandsSubmitted, PrepareRender, Update};
 #[cfg(target_arch = "wasm32")]
@@ -9,14 +8,11 @@ use crate::framework::event::web::{
 };
 use crate::framework::event::window::{OnResize, OnUserEvent, OnWindowEvent};
 use crate::framework::input::Input;
-use crate::framework::renderer::drawable::Draw;
-use crate::framework::scene::light::LightSource;
 use crate::lindenmayer::LSystem;
 use crate::lsystemrenderer::event::{LSystemEvent, SceneEvent, UiEvent};
 use crate::lsystemrenderer::renderer::Renderer;
 use crate::lsystemrenderer::scene::LSystemScene;
 use std::sync::Arc;
-use web_sys::EventTarget;
 use wgpu::{
     CommandEncoderDescriptor, DownlevelCapabilities, DownlevelFlags, Label, Limits, ShaderModel,
     SubmissionIndex, SurfaceConfiguration, TextureView,

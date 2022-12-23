@@ -2,7 +2,7 @@ use std::f32::consts::TAU;
 use crate::framework::mesh::vertex::VertexType;
 use crate::framework::util::math::f32::PHI;
 use glam::{Vec2, Vec3};
-use obj::{load_obj, Obj, TexturedVertex};
+use obj::{Obj, TexturedVertex};
 
 pub struct Mesh<V: VertexType> {
     name: String,
@@ -28,7 +28,7 @@ impl<V: VertexType> Mesh<V> {
             faces.push([obj.indices[base_index], obj.indices[base_index + 1], obj.indices[base_index + 2]]);
         }
         Self {
-            name: obj.name.unwrap_or("unnamed obj".to_string()),
+            name: obj.name.unwrap_or_else(|| "unnamed obj".to_string()),
             vertices,
             faces,
         }
@@ -219,6 +219,10 @@ impl<V: VertexType> Mesh<V> {
             Vec3::new(-inv_phi, -1., 0.),
         ];
 
+        let vertices = vertex_positions.iter()
+            .map(|&v| V::from_pos_normal_tex_coords(v, v.normalize(), Vec2::ZERO))
+            .collect();
+
         #[rustfmt::skip]
         let faces = vec![
             [ 2,  1,  0],
@@ -242,10 +246,15 @@ impl<V: VertexType> Mesh<V> {
             [ 5, 11,  4],
             [10,  8,  4],
         ];
-        todo!()
+
+        Self {
+            name: "Icosahedron".to_string(),
+            vertices,
+            faces,
+        }
     }
 
-    pub fn new_icosphere(num_subdivisions: u32) -> Self {
+    pub fn new_icosphere(_num_subdivisions: u32) -> Self {
         todo!()
     }
 

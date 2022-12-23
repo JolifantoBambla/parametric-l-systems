@@ -2,9 +2,7 @@ use glam::{Affine3A, Mat3, Mat4, Quat, Vec3};
 use serde::Deserialize;
 
 pub trait Transformable {
-    #[inline]
     fn transform(&self) -> &Transform;
-    #[inline]
     fn transform_mut(&mut self) -> &mut Transform;
     fn translate(&mut self, translation: Vec3) {
         self.transform_mut().position += translation;

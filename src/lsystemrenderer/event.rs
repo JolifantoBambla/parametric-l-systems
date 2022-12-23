@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use glam::Vec3;
-use js_sys::Object;
 use serde::Deserialize;
 use crate::lindenmayer::LSystemDefinition;
 use crate::LSystemSceneDescriptor;
@@ -45,6 +44,7 @@ impl NewSceneEvent {
 }
 
 #[derive(Clone, Debug, Deserialize)]
+#[allow(variant_size_differences)]
 pub enum SceneEvent {
     #[serde(rename = "backgroundColor")]
     BackgroundColor(Vec3),

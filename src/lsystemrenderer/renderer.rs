@@ -4,11 +4,11 @@ use crate::framework::event::window::OnResize;
 use crate::framework::gpu::buffer::Buffer;
 use crate::framework::mesh::vertex::{Vertex, VertexType};
 use crate::framework::renderer::drawable::{Draw, DrawInstanced, GpuMesh};
-use crate::framework::scene::light::{Light, LightSource, LightSourceType, PointLight};
+use crate::framework::scene::light::{Light, LightSource, LightSourceType};
 use crate::lsystemrenderer::camera::OrbitCamera;
 use crate::lsystemrenderer::scene::LSystemScene;
 use crate::lsystemrenderer::turtle::turtle::Instance;
-use glam::{Mat4, Vec3, Vec4};
+use glam::{Mat4, Vec3};
 use std::borrow::Cow;
 use std::mem;
 use std::sync::Arc;
@@ -23,7 +23,6 @@ use wgpu::{
     SurfaceConfiguration, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages,
     TextureView, TextureViewDescriptor, VertexState,
 };
-use crate::framework::scene::transform::Transform;
 
 pub struct RenderObject {
     gpu_mesh: Arc<GpuMesh>,
@@ -139,7 +138,7 @@ pub struct LightSourcesBindGroupCreator {
 }
 
 impl LightSourcesBindGroupCreator {
-    pub fn create(&self, lights: &Vec<LightSource>) -> LightSourcesBindGroup {
+    pub fn create(&self, lights: &[LightSource]) -> LightSourcesBindGroup {
         let lights_buffer: Buffer<LightSourceUniforms> = Buffer::from_data(
             "light sources buffer",
             &lights.iter().map(|l| l.into()).collect(),
@@ -391,7 +390,7 @@ impl Renderer {
 }
 
 impl OnResize for Renderer {
-    fn on_resize(&mut self, width: u32, height: u32) {
+    fn on_resize(&mut self, _width: u32, _height: u32) {
         // todo: recreate depth texture
         log::error!("resize not implemented for renderer yet");
     }
