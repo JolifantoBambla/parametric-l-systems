@@ -96,7 +96,7 @@
         import * as defaultScene from './scenes/tree-prusinkiewicz.json' assert {type: 'json'};
 
         let activeScene = null;
-        let activeSceneLocked = false;
+        let activeSceneLocked = true;
 
         const editor = ace.edit('editor');
         editor.setTheme('ace/theme/github');
@@ -162,12 +162,6 @@
             return [scene, systems];
         }
 
-        const constructViewerInputFromScene = (scene) => {
-            // todo: pass new scene to app!
-            // -> lock scene
-            // -> reconstruct ui
-        }
-
         const sceneUploadButton = document.getElementById('scene-upload-button');
         sceneUploadButton.addEventListener('change', e => {
             const reader = new FileReader();
@@ -193,10 +187,18 @@
         const lSytemRenderbutton = document.getElementById('l-system-render-button');
         lSytemRenderbutton.addEventListener('click', _ => {
             const scene = parseCurrentSceneSource();
-            if (scene.systems) {
+            if (!activeSceneLocked && scene.systems) {
+                activeSceneLocked = true;
+                activeScene = scene;
                 try {
                     testAndPrintSystems(scene);
-                    constructViewerInputFromScene(scene);
+                    const [sceneDescriptor, lSystemDefinitions] = sceneToViewerInputs(scene);
+                    sceneCanvas.dispatchEvent(new CustomEvent(
+                        'ui::scene::new',
+                        {detail: {scene: {new: {sceneDescriptor, lSystemDefinitions}}}}
+                    ));
+                    buildUi();
+                    activeSceneLocked = false;
                 } catch (err) {
                     console.error(err);
                 }
@@ -211,12 +213,7 @@
         });
         pane.registerPlugin(TweakpaneEssentialsPlugin);
         let activeSceneFolder = null;
-
-        const sceneViewContainer = document.getElementById('scene-view-container');
-        const sceneCanvas = document.getElementById('scene-view');
-        sceneCanvas.width = sceneViewContainer.clientWidth;
-        sceneCanvas.height = sceneViewContainer.clientHeight;
-        sceneCanvas.addEventListener('app::initialized', _ => {
+        const buildUi = () => {
             if (activeScene) {
                 if (activeSceneFolder) {
                     activeSceneFolder.hidden = true;
@@ -229,7 +226,6 @@
 
                 // todo: fps graph
 
-                // todo: background color
                 const backgroundColor = {r: 0, g: 0, b: 0};
                 if (activeScene.scene.camera.backgroundColor) {
                     backgroundColor.r = activeScene.scene.camera.backgroundColor[0];
@@ -285,18 +281,24 @@
             }
 
             console.debug('created UI');
+        }
+
+        const sceneViewContainer = document.getElementById('scene-view-container');
+        const sceneCanvas = document.getElementById('scene-view');
+        sceneCanvas.width = sceneViewContainer.clientWidth;
+        sceneCanvas.height = sceneViewContainer.clientHeight;
+        sceneCanvas.addEventListener('app::initialized', _ => {
+            buildUi();
+            activeSceneLocked = false;
         });
 
-        // todo: start with default scene
-        // todo: only initialize once
-        // todo: new format
-        // todo: ui
         async function run(canvasId, scene, systems) {
             await init();
             main(canvasId, scene, systems);
         }
 
         activeScene = parseCurrentSceneSource();
+        testAndPrintSystems(activeScene);
         run(sceneCanvas.id, ...sceneToViewerInputs(activeScene));
     </script>
 </body>

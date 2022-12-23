@@ -317,3 +317,11 @@ impl Update for LSystemManager {
         }
     }
 }
+
+impl Drop for LSystemManager {
+    fn drop(&mut self) {
+        for iteration in self.iterations.iter_mut() {
+            iteration.cylinder_instances_buffer.buffer().destroy();
+        }
+    }
+}

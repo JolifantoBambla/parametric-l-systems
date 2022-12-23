@@ -29,7 +29,9 @@ pub enum LSystemEvent {
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct NewSceneEvent {
+    #[serde(rename = "sceneDescriptor")]
     scene_descriptor: LSystemSceneDescriptor,
+    #[serde(rename = "lSystemDefinitions")]
     l_system_definitions: HashMap<String, HashMap<String, LSystemDefinition>>,
 }
 

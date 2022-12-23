@@ -275,3 +275,11 @@ impl OnResize for LSystemScene {
         self.camera.on_resize(width, height);
     }
 }
+
+impl Drop for LSystemScene {
+    fn drop(&mut self) {
+        for (_, o) in self.objects.iter_mut() {
+            o.transform_buffer.buffer().destroy();
+        }
+    }
+}

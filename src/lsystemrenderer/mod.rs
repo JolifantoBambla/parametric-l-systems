@@ -16,6 +16,7 @@ use crate::lsystemrenderer::event::{LSystemEvent, SceneEvent, UiEvent};
 use crate::lsystemrenderer::renderer::Renderer;
 use crate::lsystemrenderer::scene::LSystemScene;
 use std::sync::Arc;
+use web_sys::EventTarget;
 use wgpu::{
     CommandEncoderDescriptor, DownlevelCapabilities, DownlevelFlags, Label, Limits, ShaderModel,
     SubmissionIndex, SurfaceConfiguration, TextureView,

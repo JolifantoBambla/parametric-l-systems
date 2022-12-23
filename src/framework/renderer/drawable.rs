@@ -84,3 +84,10 @@ impl Draw for GpuMesh {
         self.draw_instanced(pass, 1);
     }
 }
+
+impl Drop for GpuMesh {
+    fn drop(&mut self) {
+        self.vertex_buffer.destroy();
+        self.index_buffer.destroy();
+    }
+}
