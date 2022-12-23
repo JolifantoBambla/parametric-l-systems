@@ -4,10 +4,10 @@ use crate::framework::event::window::OnResize;
 use crate::framework::gpu::buffer::Buffer;
 use crate::framework::mesh::vertex::{Vertex, VertexType};
 use crate::framework::renderer::drawable::{Draw, DrawInstanced, GpuMesh};
-use crate::framework::scene::light::{Light, LightSource, LightSourceType, PointLight};
+use crate::framework::scene::light::{Light, LightSource, LightSourceType};
 use crate::lsystemrenderer::camera::OrbitCamera;
+use crate::lsystemrenderer::instancing::Instance;
 use crate::lsystemrenderer::scene::LSystemScene;
-use crate::lsystemrenderer::turtle::turtle::Instance;
 use glam::{Mat4, Vec3, Vec4};
 use std::borrow::Cow;
 use std::mem;
@@ -48,15 +48,22 @@ impl RenderObjectCreator {
     pub fn create_render_object(
         &self,
         mesh: &Arc<GpuMesh>,
+        transform: &Buffer<Mat4>,
         instances: &Buffer<Instance>,
     ) -> RenderObject {
         let bind_group = self.gpu.device().create_bind_group(&BindGroupDescriptor {
             label: Label::from("instances bind group"),
             layout: &self.bind_group_layout,
-            entries: &[BindGroupEntry {
-                binding: 0,
-                resource: instances.buffer().as_entire_binding(),
-            }],
+            entries: &[
+                BindGroupEntry {
+                    binding: 0,
+                    resource: transform.buffer().as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: instances.buffer().as_entire_binding(),
+                },
+            ],
         });
         RenderObject {
             gpu_mesh: mesh.clone(),
@@ -98,10 +105,16 @@ impl From<&LightSource> for LightSourceUniforms {
             position_or_direction: match light_source.source() {
                 LightSourceType::Directional(d) => d.direction(),
                 LightSourceType::Point(p) => p.position(),
+                LightSourceType::Ambient => {
+                    panic!("Ambient light source does not have a position or direction");
+                }
             },
             light_type: match light_source.source() {
                 LightSourceType::Directional(_) => 0,
                 LightSourceType::Point(_) => 1,
+                LightSourceType::Ambient => {
+                    panic!("Ambient light source can not be mapped to a LightSourceUniform");
+                }
             },
         }
     }
@@ -125,12 +138,12 @@ pub struct LightSourcesBindGroupCreator {
 }
 
 impl LightSourcesBindGroupCreator {
-    pub fn create(&self, lights: &Vec<LightSource>) -> LightSourcesBindGroup {
+    pub fn create(&self, lights: &[LightSource]) -> LightSourcesBindGroup {
         let lights_buffer: Buffer<LightSourceUniforms> = Buffer::from_data(
             "light sources buffer",
             &lights.iter().map(|l| l.into()).collect(),
             BufferUsages::STORAGE,
-            &self.gpu
+            &self.gpu,
         );
         let bind_group = self.gpu.device().create_bind_group(&BindGroupDescriptor {
             label: Label::from("light sources bind group"),
@@ -149,6 +162,7 @@ impl LightSourcesBindGroupCreator {
 
 pub struct Renderer {
     camera_uniforms: Buffer<CameraUniforms>,
+    ambient_light_uniforms: Buffer<Vec4>,
     depth_view: TextureView,
     render_pipeline: RenderPipeline,
     uniforms_bind_group: BindGroup,
@@ -182,11 +196,11 @@ impl Renderer {
             source: ShaderSource::Wgsl(Cow::Borrowed(include_str!("shader.wgsl"))),
         });
 
-        let camera_uniforms_bind_group_layout =
-            gpu.device()
-                .create_bind_group_layout(&BindGroupLayoutDescriptor {
-                    label: None,
-                    entries: &[BindGroupLayoutEntry {
+        let camera_uniforms_bind_group_layout = gpu.device().create_bind_group_layout(
+            &BindGroupLayoutDescriptor {
+                label: None,
+                entries: &[
+                    BindGroupLayoutEntry {
                         binding: 0,
                         visibility: ShaderStages::VERTEX | ShaderStages::FRAGMENT,
                         ty: BindingType::Buffer {
@@ -197,21 +211,45 @@ impl Renderer {
                             ),
                         },
                         count: None,
-                    }],
-                });
+                    },
+                    BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: ShaderStages::VERTEX | ShaderStages::FRAGMENT,
+                        ty: BindingType::Buffer {
+                            ty: BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: wgpu::BufferSize::new(mem::size_of::<Vec4>() as _),
+                        },
+                        count: None,
+                    },
+                ],
+            },
+        );
         let instances_bind_group_layout = gpu.device().create_bind_group_layout(
             &BindGroupLayoutDescriptor {
                 label: Label::from("Instance buffer bind group layout"),
-                entries: &[BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: ShaderStages::VERTEX | ShaderStages::FRAGMENT,
-                    ty: BindingType::Buffer {
-                        ty: BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: wgpu::BufferSize::new(mem::size_of::<Instance>() as _),
+                entries: &[
+                    BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: ShaderStages::VERTEX | ShaderStages::FRAGMENT,
+                        ty: BindingType::Buffer {
+                            ty: BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: wgpu::BufferSize::new(mem::size_of::<Mat4>() as _),
+                        },
+                        count: None,
                     },
-                    count: None,
-                }],
+                    BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: ShaderStages::VERTEX | ShaderStages::FRAGMENT,
+                        ty: BindingType::Buffer {
+                            ty: BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: wgpu::BufferSize::new(mem::size_of::<Instance>() as _),
+                        },
+                        count: None,
+                    },
+                ],
             },
         );
         let light_sources_bind_group_layout =
@@ -224,9 +262,10 @@ impl Renderer {
                         ty: BindingType::Buffer {
                             ty: BufferBindingType::Storage { read_only: true },
                             has_dynamic_offset: false,
-                            min_binding_size: wgpu::BufferSize::new(
-                                mem::size_of::<LightSourceUniforms>() as _
-                            ),
+                            min_binding_size: wgpu::BufferSize::new(mem::size_of::<
+                                LightSourceUniforms,
+                            >()
+                                as _),
                         },
                         count: None,
                     }],
@@ -280,18 +319,31 @@ impl Renderer {
             BufferUsages::UNIFORM | BufferUsages::COPY_DST,
             gpu,
         );
+        let ambient_light_uniforms = Buffer::new_zeroed(
+            "ambient light uniforms",
+            1,
+            BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+            gpu,
+        );
 
         let uniforms_bind_group = gpu.device().create_bind_group(&BindGroupDescriptor {
             label: Label::from("uniforms bind group"),
             layout: &camera_uniforms_bind_group_layout,
-            entries: &[BindGroupEntry {
-                binding: 0,
-                resource: camera_uniforms.buffer().as_entire_binding(),
-            }],
+            entries: &[
+                BindGroupEntry {
+                    binding: 0,
+                    resource: camera_uniforms.buffer().as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: ambient_light_uniforms.buffer().as_entire_binding(),
+                },
+            ],
         });
 
         Self {
             camera_uniforms,
+            ambient_light_uniforms,
             depth_view,
             render_pipeline,
             uniforms_bind_group,
@@ -304,7 +356,7 @@ impl Renderer {
                 gpu: gpu.clone(),
                 bind_group_index: 2,
                 bind_group_layout: light_sources_bind_group_layout,
-            }
+            },
         }
     }
 
@@ -314,17 +366,24 @@ impl Renderer {
         scene: &LSystemScene,
         command_encoder: &mut CommandEncoder,
     ) {
+        let background_color = scene.background_color();
+
         self.camera_uniforms
             .write_buffer(&vec![CameraUniforms::from(&scene.camera())]);
+        self.ambient_light_uniforms.write_buffer(&vec![scene
+            .ambient_light()
+            .light()
+            .color()
+            .extend(1.0)]);
 
         let color_attachment = RenderPassColorAttachment {
             view: render_target,
             resolve_target: None,
             ops: Operations {
                 load: LoadOp::Clear(Color {
-                    r: 0.0,
-                    g: 0.0,
-                    b: 0.0,
+                    r: background_color.x as f64,
+                    g: background_color.y as f64,
+                    b: background_color.z as f64,
                     a: 1.0,
                 }),
                 store: true,
@@ -346,10 +405,14 @@ impl Renderer {
         render_pass.set_pipeline(&self.render_pipeline);
         render_pass.set_bind_group(0, &self.uniforms_bind_group, &[]);
 
-        scene.get_light_sources_bind_group().set_bind_group(&mut render_pass);
+        scene
+            .get_light_sources_bind_group()
+            .set_bind_group(&mut render_pass);
 
-        for render_object in scene.get_active_render_objects() {
-            render_object.draw(&mut render_pass);
+        for render_objects in scene.get_active_render_objects() {
+            for render_object in render_objects {
+                render_object.draw(&mut render_pass);
+            }
         }
     }
     pub fn render_object_creator(&self) -> &RenderObjectCreator {
@@ -361,7 +424,7 @@ impl Renderer {
 }
 
 impl OnResize for Renderer {
-    fn on_resize(&mut self, width: u32, height: u32) {
+    fn on_resize(&mut self, _width: u32, _height: u32) {
         // todo: recreate depth texture
         log::error!("resize not implemented for renderer yet");
     }

@@ -1,5 +1,5 @@
 pub mod f64 {
-    pub const SQRT_5: f64 = 2.236067977499789805051477742381393909454345703125f64;
+    pub const SQRT_5: f64 = 2.236_067_977_499_79_f64;
 
     /// The [golden ratio](https://en.wikipedia.org/wiki/Golden_ratio).
     pub const PHI: f64 = (1.0 + SQRT_5) / 2.0;
@@ -21,4 +21,3 @@ pub mod f32 {
         val.abs() < f32::EPSILON
     }
 }
-

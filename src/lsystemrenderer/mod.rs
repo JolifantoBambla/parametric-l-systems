@@ -1,5 +1,4 @@
 use crate::framework::app::GpuApp;
-use crate::framework::camera::{CameraView, Projection};
 use crate::framework::context::{ContextDescriptor, Gpu, SurfaceContext};
 use crate::framework::event::lifecycle::{OnCommandsSubmitted, PrepareRender, Update};
 #[cfg(target_arch = "wasm32")]
@@ -8,12 +7,12 @@ use crate::framework::event::web::{
 };
 use crate::framework::event::window::{OnResize, OnUserEvent, OnWindowEvent};
 use crate::framework::input::Input;
-use crate::framework::renderer::drawable::Draw;
-use crate::framework::scene::light::LightSource;
 use crate::lindenmayer::LSystem;
-use crate::lsystemrenderer::event::{LSystemEvent, UiEvent};
+use crate::lsystemrenderer::event::{LSystemEvent, SceneEvent, UiEvent};
 use crate::lsystemrenderer::renderer::Renderer;
 use crate::lsystemrenderer::scene::LSystemScene;
+use crate::lsystemrenderer::scene_descriptor::LSystemSceneDescriptor;
+use std::collections::HashMap;
 use std::sync::Arc;
 use wgpu::{
     CommandEncoderDescriptor, DownlevelCapabilities, DownlevelFlags, Label, Limits, ShaderModel,
@@ -24,15 +23,14 @@ use winit::event_loop::EventLoop;
 #[cfg(target_arch = "wasm32")]
 use winit::platform::web::WindowExtWebSys;
 use winit::window::Window;
-use crate::framework::scene::Scene;
-use crate::SceneDescriptor;
 
 pub mod camera;
 pub mod event;
+pub mod instancing;
+pub mod l_system_manager;
 pub mod renderer;
 pub mod scene;
 pub mod scene_descriptor;
-pub mod turtle;
 
 pub struct App {
     gpu: Arc<Gpu>,
@@ -44,15 +42,15 @@ impl App {
     pub fn new(
         gpu: &Arc<Gpu>,
         surface_configuration: &SurfaceConfiguration,
-        l_system: LSystem,
-        scene_descriptor: SceneDescriptor,
+        l_systems: HashMap<String, HashMap<String, LSystem>>,
+        scene_descriptor: LSystemSceneDescriptor,
     ) -> Self {
         let width = surface_configuration.width;
         let height = surface_configuration.height;
         let aspect_ratio = width as f32 / height as f32;
 
         let renderer = Renderer::new(gpu, surface_configuration);
-        let scene = LSystemScene::new(l_system, scene_descriptor, aspect_ratio, gpu);
+        let scene = LSystemScene::new(l_systems, &scene_descriptor, aspect_ratio, gpu);
 
         Self {
             gpu: gpu.clone(),
@@ -72,6 +70,12 @@ impl GpuApp for App {
         #[cfg(target_arch = "wasm32")]
         {
             let canvas = window.canvas();
+            register_custom_canvas_event_dispatcher(
+                "ui::scene::background-color",
+                &canvas,
+                event_loop,
+            );
+            register_custom_canvas_event_dispatcher("ui::scene::new", &canvas, event_loop);
             register_custom_canvas_event_dispatcher("ui::lsystem::iteration", &canvas, event_loop);
             if dispatch_canvas_event("app::initialized", &canvas).is_err() {
                 log::error!("Could not dispatch 'app::initialized' event");
@@ -117,8 +121,19 @@ impl OnUserEvent for App {
     fn on_user_event(&mut self, event: &Self::UserEvent) {
         match event {
             UiEvent::LSystem(LSystemEvent::Iteration(iteration)) => {
-                log::debug!("Got iteration event: {:?}", iteration);
-                self.scene.set_target_iteration(*iteration as u32);
+                self.scene
+                    .set_target_iteration(iteration.object_name(), iteration.iteration());
+            }
+            UiEvent::Scene(SceneEvent::BackgroundColor(color)) => {
+                self.scene.set_background_color(*color);
+            }
+            UiEvent::Scene(SceneEvent::New(new_scene)) => {
+                self.scene = LSystemScene::new(
+                    LSystem::from_l_system_definitions(new_scene.l_system_definitions()),
+                    new_scene.scene_descriptor(),
+                    self.scene.aspect_ratio(),
+                    &self.gpu,
+                );
             }
         }
     }

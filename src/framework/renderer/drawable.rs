@@ -1,4 +1,4 @@
-use crate::framework::mesh::{mesh::Mesh, vertex::VertexType};
+use crate::framework::mesh::{vertex::VertexType, Mesh};
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use wgpu::{Buffer, BufferUsages, Device, IndexFormat, Label, RenderPass};
 
@@ -82,5 +82,12 @@ impl DrawInstanced for GpuMesh {
 impl Draw for GpuMesh {
     fn draw<'a>(&'a self, pass: &mut RenderPass<'a>) {
         self.draw_instanced(pass, 1);
+    }
+}
+
+impl Drop for GpuMesh {
+    fn drop(&mut self) {
+        self.vertex_buffer.destroy();
+        self.index_buffer.destroy();
     }
 }

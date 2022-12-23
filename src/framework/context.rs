@@ -124,18 +124,6 @@ pub struct SurfaceContext {
 }
 
 impl SurfaceContext {
-    fn choose_surface_format(&self) -> wgpu::TextureFormat {
-        self.surface.get_supported_formats(&self.adapter)[0]
-    }
-
-    fn choose_present_mode(&self) -> wgpu::PresentMode {
-        self.surface.get_supported_present_modes(&self.adapter)[0]
-    }
-
-    fn choose_alpha_mode(&self) -> wgpu::CompositeAlphaMode {
-        self.surface.get_supported_alpha_modes(&self.adapter)[0]
-    }
-
     pub fn configure_surface(&self) {
         self.surface
             .configure(self.gpu.device(), &self.surface_configuration);
