@@ -37,6 +37,7 @@ Open `index.html` in a browser that supports WebGPU.
 
 ```
 {
+  "type": "object" // currently, only object is allowed
   "definition": {
     "alphabet": [ ... ],
     "parameters": {
@@ -56,6 +57,17 @@ Open `index.html` in a browser that supports WebGPU.
 }
 ```
 
+```json
+{
+  ...
+  "scene": {
+    "camera": {},
+    "lights": {},
+    "objects: {}
+  }
+  ...
+}
+```
 
 # Specification
 
