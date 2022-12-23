@@ -10,7 +10,7 @@ pub struct AddCylinder {
 
 impl AddCylinder {
     pub fn length(&self) -> f32 {
-        if let Some(length) = self.parameters.get(0) {
+        if let Some(length) = self.parameters.first() {
             *length
         } else {
             1.
@@ -35,7 +35,7 @@ pub struct MoveForward {
 
 impl MoveForward {
     pub fn length(&self) -> f32 {
-        *self.parameters.get(0).expect("MoveForward has no length")
+        *self.parameters.first().expect("MoveForward has no length")
     }
 }
 
@@ -48,7 +48,7 @@ pub struct RotateYaw {
 
 impl RotateYaw {
     pub fn angle(&self) -> f32 {
-        *self.parameters.get(0).expect("RotateYaw has no angle")
+        *self.parameters.first().expect("RotateYaw has no angle")
     }
 }
 
@@ -61,7 +61,7 @@ pub struct RotatePitch {
 
 impl RotatePitch {
     pub fn angle(&self) -> f32 {
-        *self.parameters.get(0).expect("RotatePitch has no angle")
+        *self.parameters.first().expect("RotatePitch has no angle")
     }
 }
 
@@ -74,7 +74,7 @@ pub struct RotateRoll {
 
 impl RotateRoll {
     pub fn angle(&self) -> f32 {
-        *self.parameters.get(0).expect("RotateRoll has no angle")
+        *self.parameters.first().expect("RotateRoll has no angle")
     }
 }
 
@@ -109,7 +109,7 @@ impl SetMaterialIndex {
     pub fn material_index(&self) -> usize {
         *self
             .parameters
-            .get(0)
+            .first()
             .expect("SetMaterialIndex has no material index") as usize
     }
 }

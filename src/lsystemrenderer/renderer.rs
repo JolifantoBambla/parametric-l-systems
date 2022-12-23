@@ -1,14 +1,4 @@
-use crate::framework::camera::Camera;
-use crate::framework::context::Gpu;
-use crate::framework::event::window::OnResize;
-use crate::framework::gpu::buffer::Buffer;
-use crate::framework::mesh::vertex::{Vertex, VertexType};
-use crate::framework::renderer::drawable::{Draw, DrawInstanced, GpuMesh};
-use crate::framework::scene::light::{Light, LightSource, LightSourceType};
-use crate::lsystemrenderer::camera::OrbitCamera;
-use crate::lsystemrenderer::scene::LSystemScene;
-use crate::lsystemrenderer::turtle::turtle::Instance;
-use glam::{Mat4, Vec3};
+use glam::{Mat4, Vec3, Vec4};
 use std::borrow::Cow;
 use std::mem;
 use std::sync::Arc;
@@ -23,6 +13,16 @@ use wgpu::{
     SurfaceConfiguration, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages,
     TextureView, TextureViewDescriptor, VertexState,
 };
+use crate::framework::camera::Camera;
+use crate::framework::context::Gpu;
+use crate::framework::event::window::OnResize;
+use crate::framework::gpu::buffer::Buffer;
+use crate::framework::mesh::vertex::{Vertex, VertexType};
+use crate::framework::renderer::drawable::{Draw, DrawInstanced, GpuMesh};
+use crate::framework::scene::light::{Light, LightSource, LightSourceType};
+use crate::lsystemrenderer::camera::OrbitCamera;
+use crate::lsystemrenderer::scene::LSystemScene;
+use crate::lsystemrenderer::instancing::Instance;
 
 pub struct RenderObject {
     gpu_mesh: Arc<GpuMesh>,
@@ -162,6 +162,7 @@ impl LightSourcesBindGroupCreator {
 
 pub struct Renderer {
     camera_uniforms: Buffer<CameraUniforms>,
+    ambient_light_uniforms: Buffer<Vec4>,
     depth_view: TextureView,
     render_pipeline: RenderPipeline,
     uniforms_bind_group: BindGroup,
@@ -199,18 +200,32 @@ impl Renderer {
             gpu.device()
                 .create_bind_group_layout(&BindGroupLayoutDescriptor {
                     label: None,
-                    entries: &[BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: ShaderStages::VERTEX | ShaderStages::FRAGMENT,
-                        ty: BindingType::Buffer {
-                            ty: BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: wgpu::BufferSize::new(
-                                mem::size_of::<CameraUniforms>() as _,
-                            ),
+                    entries: &[
+                        BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: ShaderStages::VERTEX | ShaderStages::FRAGMENT,
+                            ty: BindingType::Buffer {
+                                ty: BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: wgpu::BufferSize::new(
+                                    mem::size_of::<CameraUniforms>() as _,
+                                ),
+                            },
+                            count: None,
                         },
-                        count: None,
-                    }],
+                        BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: ShaderStages::VERTEX | ShaderStages::FRAGMENT,
+                            ty: BindingType::Buffer {
+                                ty: BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: wgpu::BufferSize::new(
+                                    mem::size_of::<Vec4>() as _,
+                                ),
+                            },
+                            count: None,
+                        }
+                    ],
                 });
         let instances_bind_group_layout = gpu.device().create_bind_group_layout(
             &BindGroupLayoutDescriptor {
@@ -306,18 +321,31 @@ impl Renderer {
             BufferUsages::UNIFORM | BufferUsages::COPY_DST,
             gpu,
         );
+        let ambient_light_uniforms = Buffer::new_zeroed(
+            "ambient light uniforms",
+            1,
+            BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+            gpu,
+        );
 
         let uniforms_bind_group = gpu.device().create_bind_group(&BindGroupDescriptor {
             label: Label::from("uniforms bind group"),
             layout: &camera_uniforms_bind_group_layout,
-            entries: &[BindGroupEntry {
-                binding: 0,
-                resource: camera_uniforms.buffer().as_entire_binding(),
-            }],
+            entries: &[
+                BindGroupEntry {
+                    binding: 0,
+                    resource: camera_uniforms.buffer().as_entire_binding(),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: ambient_light_uniforms.buffer().as_entire_binding(),
+                }
+            ],
         });
 
         Self {
             camera_uniforms,
+            ambient_light_uniforms,
             depth_view,
             render_pipeline,
             uniforms_bind_group,
@@ -344,6 +372,8 @@ impl Renderer {
 
         self.camera_uniforms
             .write_buffer(&vec![CameraUniforms::from(&scene.camera())]);
+        self.ambient_light_uniforms
+            .write_buffer(&vec![scene.ambient_light().light().color().extend(1.0)]);
 
         let color_attachment = RenderPassColorAttachment {
             view: render_target,

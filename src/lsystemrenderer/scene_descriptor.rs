@@ -1,9 +1,9 @@
 use crate::framework::camera::CameraView;
 use crate::framework::scene::transform::Transform;
-use crate::lsystemrenderer::turtle::turtle::Material;
 use glam::Vec3;
 use serde::Deserialize;
 use std::collections::HashMap;
+use crate::lsystemrenderer::instancing::Material;
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct LSystemInstance {

@@ -160,6 +160,15 @@
                     }
                 }
             }
+            if (scene.resources) {
+                for (const resource of Object.values(scene.resources)) {
+                    if (resource.type === "obj") {
+                        if (resource.path) {
+                            // todo: fetch obj (i.e., refactor into callback foo)
+                        }
+                    }
+                }
+            }
             return [scene, systems];
         }
 

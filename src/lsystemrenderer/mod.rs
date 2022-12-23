@@ -29,7 +29,8 @@ pub mod event;
 pub mod renderer;
 pub mod scene;
 pub mod scene_descriptor;
-pub mod turtle;
+pub mod l_system_manager;
+pub mod instancing;
 
 pub struct App {
     gpu: Arc<Gpu>,

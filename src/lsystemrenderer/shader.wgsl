@@ -30,6 +30,7 @@ struct VertexOutput {
 };
 
 @group(0) @binding(0) var<uniform> camera: Camera;
+@group(0) @binding(1) var<uniform> ambient_light: vec4<f32>;
 @group(1) @binding(0) var<uniform> model_transform: mat4x4<f32>;
 @group(1) @binding(1) var<storage> instances: array<Instance>;
 @group(2) @binding(0) var<storage> light_sources: array<LightSource>;
@@ -51,7 +52,7 @@ fn vertex_main(input : VertexInput) -> VertexOutput {
     let world_normal = normalize((model_matrix * vec4(input.normal, 0.0)).xyz);
 
     let object_color = instance.color;
-    let ambient_color = vec3(0.1, 0.1, 0.1);
+    let ambient_color = ambient_light.rgb;
 
     var color = (object_color.rgb * ambient_color);
     for (var i = 0u; i < arrayLength(&light_sources); i += 1) {

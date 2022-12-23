@@ -1,4 +1,4 @@
-use crate::framework::mesh::{mesh::Mesh, vertex::VertexType};
+use crate::framework::mesh::{Mesh, vertex::VertexType};
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use wgpu::{Buffer, BufferUsages, Device, IndexFormat, Label, RenderPass};
 

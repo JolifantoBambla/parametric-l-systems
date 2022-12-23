@@ -1,11 +1,14 @@
+use glam::{Mat4, Vec3};
+use std::collections::HashMap;
+use std::sync::Arc;
+use wgpu::BufferUsages;
 use crate::framework::camera::{CameraView, Projection};
 use crate::framework::context::Gpu;
 use crate::framework::event::lifecycle::Update;
 use crate::framework::event::window::OnResize;
 use crate::framework::gpu::buffer::Buffer;
 use crate::framework::input::Input;
-use crate::framework::mesh::mesh::Mesh;
-use crate::framework::mesh::vertex::Vertex;
+use crate::framework::mesh::{Mesh, vertex::Vertex};
 use crate::framework::renderer::drawable::GpuMesh;
 use crate::framework::scene::light::LightSource;
 use crate::framework::scene::transform::Transform;
@@ -14,16 +17,17 @@ use crate::lsystemrenderer::camera::OrbitCamera;
 use crate::lsystemrenderer::renderer::{
     LightSourcesBindGroup, LightSourcesBindGroupCreator, RenderObject, RenderObjectCreator,
 };
-use crate::lsystemrenderer::scene_descriptor::{LSystemSceneDescriptor, SceneObjectDescriptor};
-use crate::lsystemrenderer::turtle::turtle::{Instance, LSystemManager, MaterialState};
-use glam::{Mat4, Vec3};
-use std::collections::HashMap;
-use std::sync::Arc;
-use wgpu::BufferUsages;
+use crate::lsystemrenderer::scene_descriptor::{LSystemSceneDescriptor, SceneObjectDescriptor, SceneResource};
+use crate::lsystemrenderer::l_system_manager::{LSystemManager, turtle::MaterialState};
+use crate::lsystemrenderer::instancing::Instance;
+
+struct MeshResource {
+    mesh: Arc<GpuMesh>,
+    transform: Transform,
+}
 
 struct SceneMesh {
     mesh: Arc<GpuMesh>,
-    transform: Transform,
     instance_buffer: Buffer<Instance>,
     render_objects: Option<Vec<RenderObject>>,
 }
@@ -55,7 +59,7 @@ pub struct LSystemScene {
     light_sources_bind_group: Option<LightSourcesBindGroup>,
     objects: HashMap<String, SceneObject>,
     cylinder_mesh: Arc<GpuMesh>,
-    meshes: HashMap<String, Arc<SceneMesh>>,
+    meshes: HashMap<String, Arc<MeshResource>>,
     l_systems: HashMap<String, HashMap<String, LSystemManager>>,
 }
 
@@ -97,8 +101,31 @@ impl LSystemScene {
             &Mesh::new_default_cylinder(true),
             gpu.device(),
         ));
-        // todo: parse obj resources into meshes
-        let meshes = HashMap::new();
+
+        let mut meshes: HashMap<String, Arc<MeshResource>> = HashMap::new();
+        if let Some(resources) = scene_descriptor.resources() {
+            for (resource_id, resource) in resources.iter() {
+                match resource {
+                    SceneResource::Obj(descriptor) => {
+                        match Mesh::from_obj_source(descriptor.source()) {
+                            Ok(mesh) => {
+                                let gpu_mesh = GpuMesh::from_mesh::<Vertex>(&mesh, gpu.device());
+                                meshes.insert(
+                                    resource_id.to_string(),
+                                    Arc::new(MeshResource {
+                                        mesh: Arc::new(gpu_mesh),
+                                        transform: descriptor.transform()
+                                    })
+                                );
+                            },
+                            Err(error) => {
+                                log::error!("Could not parse OJB source: {}", error);
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         let mut l_system_managers = HashMap::new();
         for (name, mut system) in l_systems.drain() {
@@ -174,7 +201,34 @@ impl LSystemScene {
                         },
                     );
                 }
-                SceneObjectDescriptor::Obj(_) => log::warn!("Obj object type not yet supported"),
+                SceneObjectDescriptor::Obj(d) => {
+                    let mesh = meshes.get(d.obj())
+                        .unwrap_or_else(|| panic!("Object references unknown mesh: {}", d.obj()));
+                    objects.insert(
+                        object_id.to_string(),
+                        SceneObject {
+                            transform_buffer: Buffer::new_single_element(
+                                "transform buffer",
+                                d.transform().as_mat4(),
+                                BufferUsages::UNIFORM,
+                                gpu,
+                            ),
+                            primitive: Primitive::Mesh(SceneMesh {
+                                mesh: mesh.mesh.clone(),
+                                instance_buffer: Buffer::new_single_element(
+                                    "instance buffer",
+                                    Instance::new(
+                                        mesh.transform.as_mat4(),
+                                        d.material(),
+                                    ),
+                                    BufferUsages::STORAGE,
+                                    gpu
+                                ),
+                                render_objects: None
+                            })
+                        }
+                    );
+                },
             }
         }
 
@@ -301,9 +355,11 @@ impl LSystemScene {
     pub fn set_background_color(&mut self, background_color: Vec3) {
         self.background_color = background_color;
     }
-
     pub fn aspect_ratio(&self) -> f32 {
         self.aspect_ratio
+    }
+    pub fn ambient_light(&self) -> LightSource {
+        self.ambient_light
     }
 }
 
