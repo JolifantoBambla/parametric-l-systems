@@ -112,7 +112,7 @@ impl Orientation {
 
 impl Default for Orientation {
     fn default() -> Self {
-        Self::new(-Vec3::Z, Vec3::Y)
+        Self::from(Mat3::IDENTITY)
     }
 }
 
@@ -236,11 +236,7 @@ impl Transform {
 
 impl Default for Transform {
     fn default() -> Self {
-        Self {
-            position: Vec3::ZERO,
-            orientation: Orientation::default(),
-            scale: Vec3::ONE,
-        }
+        Self::from(Mat4::IDENTITY)
     }
 }
 

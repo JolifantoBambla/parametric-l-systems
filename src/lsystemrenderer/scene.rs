@@ -15,15 +15,17 @@ use crate::lsystemrenderer::renderer::{
     LightSourcesBindGroup, LightSourcesBindGroupCreator, RenderObject, RenderObjectCreator,
 };
 use crate::lsystemrenderer::scene_descriptor::{LSystemSceneDescriptor, SceneObjectDescriptor};
-use crate::lsystemrenderer::turtle::turtle::{LSystemManager, MaterialState};
+use crate::lsystemrenderer::turtle::turtle::{Instance, LSystemManager, MaterialState};
 use glam::{Mat4, Vec3};
 use std::collections::HashMap;
 use std::sync::Arc;
 use wgpu::BufferUsages;
 
 struct SceneMesh {
-    mesh: GpuMesh,
+    mesh: Arc<GpuMesh>,
     transform: Transform,
+    instance_buffer: Buffer<Instance>,
+    render_objects: Option<Vec<RenderObject>>,
 }
 
 struct LSystemObject {
@@ -36,10 +38,10 @@ struct LSystemObject {
 
 enum Primitive {
     LSystem(LSystemObject),
+    Mesh(SceneMesh),
 }
 
 struct SceneObject {
-    transform: Transform,
     transform_buffer: Buffer<Mat4>,
     primitive: Primitive,
 }
@@ -156,7 +158,6 @@ impl LSystemScene {
                     objects.insert(
                         object_id.to_string(),
                         SceneObject {
-                            transform: d.transform(),
                             transform_buffer: Buffer::new_single_element(
                                 "transform buffer",
                                 d.transform().as_mat4(),
@@ -203,6 +204,9 @@ impl LSystemScene {
                     } else {
                         None
                     }
+                }
+                Primitive::Mesh(mesh) => {
+                    mesh.render_objects.as_ref()
                 }
             })
             .collect()
@@ -258,11 +262,17 @@ impl LSystemScene {
                         }
                     }
                 }
+                Primitive::Mesh(mesh) => {
+                    if mesh.render_objects.is_none() {
+                        mesh.render_objects = Some(vec![render_object_creator.create_render_object(
+                            &mesh.mesh, &o.transform_buffer, &mesh.instance_buffer
+                        )]);
+                    }
+                }
             };
         }
     }
 
-    // todo: set iteration for specific l_System object
     pub fn set_target_iteration(&mut self, object_name: &str, target_iteration: u32) {
         if let Some(object) = self.objects.get_mut(object_name) {
             match &mut object.primitive {
@@ -272,6 +282,7 @@ impl LSystemScene {
                         l_system.active_iteration = Some(target_iteration);
                     }
                 }
+                _ => log::warn!("Can not set target iteration on non L-System object"),
             }
         } else {
             log::warn!("Unknown object: {}", object_name);

@@ -131,7 +131,8 @@
                         }
                     });
                     results.push(`    0: ${iterator.current()}`);
-                    for (let i = 0; i < Math.min(3, instance.iterations); ++i) {
+                    const iterations = instance.unlimitedTestIterations ? instance.iterations : Math.min(3, instance.iterations);
+                    for (let i = 0; i < iterations; ++i) {
                         results.push(`    ${i + 1}: ${iterator.next()}`);
                     }
                     results.push('\n');
@@ -184,8 +185,8 @@
                 testAndPrintSystems(scene);
             }
         })
-        const lSytemRenderbutton = document.getElementById('l-system-render-button');
-        lSytemRenderbutton.addEventListener('click', _ => {
+        const lSystemRenderButton = document.getElementById('l-system-render-button');
+        lSystemRenderButton.addEventListener('click', _ => {
             const scene = parseCurrentSceneSource();
             if (!activeSceneLocked && scene.systems) {
                 activeSceneLocked = true;
@@ -198,10 +199,10 @@
                         {detail: {scene: {new: {sceneDescriptor, lSystemDefinitions}}}}
                     ));
                     buildUi();
-                    activeSceneLocked = false;
                 } catch (err) {
                     console.error(err);
                 }
+                activeSceneLocked = false;
             }
         });
 
@@ -217,7 +218,7 @@
             if (activeScene) {
                 if (activeSceneFolder) {
                     activeSceneFolder.hidden = true;
-
+                    // todo: can I also destroy this?
                 }
                 activeSceneFolder = pane.addFolder({
                     title: 'Scene',

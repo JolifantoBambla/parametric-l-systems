@@ -30,7 +30,7 @@ struct VertexOutput {
 };
 
 @group(0) @binding(0) var<uniform> camera: Camera;
-@group(2) @binding(0) var<uniform> model_transform: mat4x4<f32>;
+@group(1) @binding(0) var<uniform> model_transform: mat4x4<f32>;
 @group(1) @binding(1) var<storage> instances: array<Instance>;
 @group(2) @binding(0) var<storage> light_sources: array<LightSource>;
 
@@ -46,7 +46,7 @@ fn compute_light_direction(light_index: u32, position: vec3<f32>) -> vec3<f32> {
 fn vertex_main(input : VertexInput) -> VertexOutput {
     var output : VertexOutput;
     let instance = instances[input.instance];
-    let model_matrix = instance.model_matrix;
+    let model_matrix = model_transform * instance.model_matrix;
     let world_position = model_matrix * vec4(input.position, 1.0);
     let world_normal = normalize((model_matrix * vec4(input.normal, 0.0)).xyz);
 
