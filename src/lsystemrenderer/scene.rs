@@ -1,25 +1,27 @@
-use glam::{Mat4, Vec3};
-use std::collections::HashMap;
-use std::sync::Arc;
-use wgpu::BufferUsages;
 use crate::framework::camera::{CameraView, Projection};
 use crate::framework::context::Gpu;
 use crate::framework::event::lifecycle::Update;
 use crate::framework::event::window::OnResize;
 use crate::framework::gpu::buffer::Buffer;
 use crate::framework::input::Input;
-use crate::framework::mesh::{Mesh, vertex::Vertex};
+use crate::framework::mesh::{vertex::Vertex, Mesh};
 use crate::framework::renderer::drawable::GpuMesh;
 use crate::framework::scene::light::LightSource;
 use crate::framework::scene::transform::Transform;
 use crate::lindenmayer::LSystem;
 use crate::lsystemrenderer::camera::OrbitCamera;
+use crate::lsystemrenderer::instancing::Instance;
+use crate::lsystemrenderer::l_system_manager::{turtle::MaterialState, LSystemManager};
 use crate::lsystemrenderer::renderer::{
     LightSourcesBindGroup, LightSourcesBindGroupCreator, RenderObject, RenderObjectCreator,
 };
-use crate::lsystemrenderer::scene_descriptor::{LSystemSceneDescriptor, SceneObjectDescriptor, SceneResource};
-use crate::lsystemrenderer::l_system_manager::{LSystemManager, turtle::MaterialState};
-use crate::lsystemrenderer::instancing::Instance;
+use crate::lsystemrenderer::scene_descriptor::{
+    LSystemSceneDescriptor, SceneObjectDescriptor, SceneResource,
+};
+use glam::{Mat4, Vec3};
+use std::collections::HashMap;
+use std::sync::Arc;
+use wgpu::BufferUsages;
 
 struct MeshResource {
     mesh: Arc<GpuMesh>,
@@ -114,10 +116,10 @@ impl LSystemScene {
                                     resource_id.to_string(),
                                     Arc::new(MeshResource {
                                         mesh: Arc::new(gpu_mesh),
-                                        transform: descriptor.transform()
-                                    })
+                                        transform: descriptor.transform(),
+                                    }),
                                 );
-                            },
+                            }
                             Err(error) => {
                                 log::error!("Could not parse OJB source: {}", error);
                             }
@@ -202,7 +204,8 @@ impl LSystemScene {
                     );
                 }
                 SceneObjectDescriptor::Obj(d) => {
-                    let mesh = meshes.get(d.obj())
+                    let mesh = meshes
+                        .get(d.obj())
                         .unwrap_or_else(|| panic!("Object references unknown mesh: {}", d.obj()));
                     objects.insert(
                         object_id.to_string(),
@@ -217,18 +220,15 @@ impl LSystemScene {
                                 mesh: mesh.mesh.clone(),
                                 instance_buffer: Buffer::new_single_element(
                                     "instance buffer",
-                                    Instance::new(
-                                        mesh.transform.as_mat4(),
-                                        d.material(),
-                                    ),
+                                    Instance::new(mesh.transform.as_mat4(), d.material()),
                                     BufferUsages::STORAGE,
-                                    gpu
+                                    gpu,
                                 ),
-                                render_objects: None
-                            })
-                        }
+                                render_objects: None,
+                            }),
+                        },
                     );
-                },
+                }
             }
         }
 
@@ -259,9 +259,7 @@ impl LSystemScene {
                         None
                     }
                 }
-                Primitive::Mesh(mesh) => {
-                    mesh.render_objects.as_ref()
-                }
+                Primitive::Mesh(mesh) => mesh.render_objects.as_ref(),
             })
             .collect()
     }
@@ -318,9 +316,12 @@ impl LSystemScene {
                 }
                 Primitive::Mesh(mesh) => {
                     if mesh.render_objects.is_none() {
-                        mesh.render_objects = Some(vec![render_object_creator.create_render_object(
-                            &mesh.mesh, &o.transform_buffer, &mesh.instance_buffer
-                        )]);
+                        mesh.render_objects = Some(vec![render_object_creator
+                            .create_render_object(
+                                &mesh.mesh,
+                                &o.transform_buffer,
+                                &mesh.instance_buffer,
+                            )]);
                     }
                 }
             };

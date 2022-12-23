@@ -16,7 +16,7 @@ impl<V: VertexType> Mesh<V> {
     pub fn from_obj_source(source: &str) -> Result<Self, ObjError> {
         match load_obj(source.as_bytes()) {
             Ok(obj) => Ok(Self::from_obj(obj)),
-            Err(error) => Err(error)
+            Err(error) => Err(error),
         }
     }
 

@@ -26,11 +26,11 @@ use winit::window::Window;
 
 pub mod camera;
 pub mod event;
+pub mod instancing;
+pub mod l_system_manager;
 pub mod renderer;
 pub mod scene;
 pub mod scene_descriptor;
-pub mod l_system_manager;
-pub mod instancing;
 
 pub struct App {
     gpu: Arc<Gpu>,

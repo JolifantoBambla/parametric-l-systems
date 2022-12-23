@@ -2,13 +2,13 @@ use crate::framework::context::Gpu;
 use crate::framework::geometry::bounds::{Bounds, Bounds3};
 use crate::framework::gpu::buffer::Buffer;
 use crate::framework::scene::transform::{Orientation, Transform, Transformable};
-use crate::lsystemrenderer::scene_descriptor::LSystemInstance;
+use crate::lsystemrenderer::instancing::{Instance, Material};
 use crate::lsystemrenderer::l_system_manager::command::TurtleCommand;
+use crate::lsystemrenderer::scene_descriptor::LSystemInstance;
 use glam::{Mat4, Quat, Vec3};
 use std::collections::VecDeque;
 use std::sync::Arc;
 use wgpu::BufferUsages;
-use crate::lsystemrenderer::instancing::{Instance, Material};
 
 pub struct LSystemModel {
     aabb: Bounds3,
@@ -179,10 +179,11 @@ impl LSystemModel {
         let model_scale = Mat4::from_scale(Vec3::new(scale_value, scale_value, scale_value));
 
         cylinder_instances.iter_mut().for_each(|c| {
-            c.set_matrix(model_transform
-                .mul_mat4(&model_scale)
-                .mul_mat4(&model_translation)
-                .mul_mat4(&c.matrix())
+            c.set_matrix(
+                model_transform
+                    .mul_mat4(&model_scale)
+                    .mul_mat4(&model_translation)
+                    .mul_mat4(&c.matrix()),
             );
         });
 
