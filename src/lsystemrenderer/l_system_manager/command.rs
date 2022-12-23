@@ -17,11 +17,11 @@ impl AddCylinder {
         }
     }
 
-    pub fn radius(&self) -> f32 {
+    pub fn radius(&self, default_radius: f32) -> f32 {
         if let Some(radius) = self.parameters.get(1) {
             *radius
         } else {
-            0.5
+            default_radius
         }
     }
 }
@@ -88,6 +88,17 @@ impl RotateRoll {
 // Der letzte Zustand wird vom Stack entfernt und die Turtle in diesen Zustand versetzt
 
 #[derive(Debug, Deserialize)]
+pub struct SetDefaultCylinderRadius {
+    parameters: [f32; 1],
+}
+
+impl SetDefaultCylinderRadius {
+    pub fn radius(&self) -> f32 {
+        *self.parameters.first().expect("SetDefaultCylinderRadius has no radius")
+    }
+}
+
+#[derive(Debug, Deserialize)]
 pub struct SurfaceCommand {
     parameters: Vec<String>,
 }
@@ -126,11 +137,20 @@ pub enum TurtleCommand {
     #[serde(rename = "+")]
     RotateYaw(RotateYaw),
 
+    #[serde(rename = "-")]
+    RotateYawNegative(RotateYaw),
+
     #[serde(rename = "&")]
     RotatePitch(RotatePitch),
 
+    #[serde(rename = "^")]
+    RotatePitchNegative(RotatePitch),
+
     #[serde(rename = "/")]
     RotateRoll(RotateRoll),
+
+    #[serde(rename = "\\")]
+    RotateRollNegative(RotateRoll),
 
     #[serde(rename = "|")]
     Yaw180,
@@ -144,6 +164,9 @@ pub enum TurtleCommand {
     // every command below this line is not needed for the exercise
     #[serde(rename = "$")]
     ToHorizontal,
+
+    #[serde(rename = "!")]
+    SetDefaultCylinderRadius(SetDefaultCylinderRadius),
 
     #[serde(rename = "~")]
     AddPredefinedSurface(SurfaceCommand),
@@ -160,11 +183,17 @@ pub enum TurtleCommand {
     #[serde(rename = "}")]
     EndPolygon,
 
+    #[serde(rename = "G")]
+    MoveAlongEdge(MoveForward),
+
     #[serde(rename = ".")]
     RecordVertex,
 
     #[serde(rename = "´")]
     SetMaterialIndex(SetMaterialIndex),
+
+    #[serde(rename = "%")]
+    IgnoreRemainingBranch,
 
     #[serde(other)]
     Unknown,

@@ -45,11 +45,13 @@ impl From<&LSystemInstance> for MaterialState {
     }
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 struct TurtleState {
     transform: Transform,
     initial_orientation: Orientation,
     material_state: MaterialState,
+    default_cylinder_radius: f32,
+    ignoring_branch: bool,
 }
 
 impl TurtleState {
@@ -82,6 +84,22 @@ impl TurtleState {
             MaterialMode::Random => self.make_random_material(),
         }
     }
+
+    pub fn set_default_cylinder_radius(&mut self, default_cylinder_radius: f32) {
+        self.default_cylinder_radius = default_cylinder_radius;
+    }
+}
+
+impl Default for TurtleState {
+    fn default() -> Self {
+        Self {
+            transform: Default::default(),
+            initial_orientation: Default::default(),
+            material_state: Default::default(),
+            default_cylinder_radius: 0.5,
+            ignoring_branch: false,
+        }
+    }
 }
 
 impl LSystemModel {
@@ -102,10 +120,19 @@ impl LSystemModel {
 
         let cylinder_base_rotation = Quat::from_rotation_x(f32::to_radians(-90.));
         for c in commands {
+            if state.ignoring_branch {
+                match c {
+                    TurtleCommand::PopFromStack => {
+                        state.ignoring_branch = false;
+                    },
+                    _ => continue
+                }
+            }
             match c {
                 TurtleCommand::AddCylinder(cylinder) => {
+                    let radius = cylinder.radius(state.default_cylinder_radius);
                     let scale_vec =
-                        Vec3::new(cylinder.radius(), cylinder.length(), cylinder.radius());
+                        Vec3::new(radius, cylinder.length(), radius);
                     let cylinder_transform =
                         Transform::from_scale_rotation(scale_vec, cylinder_base_rotation);
 
@@ -125,11 +152,20 @@ impl LSystemModel {
                 TurtleCommand::RotateYaw(yaw) => {
                     state.transform.yaw_deg(yaw.angle());
                 }
+                TurtleCommand::RotateYawNegative(yaw) => {
+                    state.transform.yaw_deg(-yaw.angle());
+                }
                 TurtleCommand::RotatePitch(pitch) => {
                     state.transform.pitch_deg(pitch.angle());
                 }
+                TurtleCommand::RotatePitchNegative(pitch) => {
+                    state.transform.pitch_deg(-pitch.angle());
+                }
                 TurtleCommand::RotateRoll(roll) => {
                     state.transform.roll_deg(roll.angle());
+                }
+                TurtleCommand::RotateRollNegative(roll) => {
+                    state.transform.roll_deg(-roll.angle());
                 }
                 TurtleCommand::Yaw180 => {
                     state.transform.yaw_deg(180.);
@@ -145,9 +181,15 @@ impl LSystemModel {
                 TurtleCommand::ToHorizontal => {
                     state.rotate_to_horizontal();
                 }
+                TurtleCommand::SetDefaultCylinderRadius(set_default_cylinder_radius) => {
+                    state.set_default_cylinder_radius(set_default_cylinder_radius.radius());
+                },
                 TurtleCommand::SetMaterialIndex(set_material_index) => {
                     state.material_state.material_mode =
                         MaterialMode::MaterialIndex(set_material_index.material_index());
+                }
+                TurtleCommand::IgnoreRemainingBranch => {
+                    state.ignoring_branch = true;
                 }
                 TurtleCommand::AddPredefinedSurface(surface_command) => {
                     log::debug!("unhandled add surface command {:?}", surface_command);
@@ -162,6 +204,9 @@ impl LSystemModel {
                     log::debug!("unhandled begin polygon command");
                 }
                 TurtleCommand::EndPolygon => {
+                    log::debug!("unhandled end polygon command");
+                }
+                TurtleCommand::MoveAlongEdge(_) => {
                     log::debug!("unhandled end polygon command");
                 }
                 TurtleCommand::RecordVertex => {
