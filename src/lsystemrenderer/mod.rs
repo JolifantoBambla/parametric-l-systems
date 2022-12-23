@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use crate::framework::app::GpuApp;
 use crate::framework::context::{ContextDescriptor, Gpu, SurfaceContext};
 use crate::framework::event::lifecycle::{OnCommandsSubmitted, PrepareRender, Update};
@@ -12,6 +11,8 @@ use crate::lindenmayer::LSystem;
 use crate::lsystemrenderer::event::{LSystemEvent, SceneEvent, UiEvent};
 use crate::lsystemrenderer::renderer::Renderer;
 use crate::lsystemrenderer::scene::LSystemScene;
+use crate::lsystemrenderer::scene_descriptor::LSystemSceneDescriptor;
+use std::collections::HashMap;
 use std::sync::Arc;
 use wgpu::{
     CommandEncoderDescriptor, DownlevelCapabilities, DownlevelFlags, Label, Limits, ShaderModel,
@@ -22,7 +23,6 @@ use winit::event_loop::EventLoop;
 #[cfg(target_arch = "wasm32")]
 use winit::platform::web::WindowExtWebSys;
 use winit::window::Window;
-use crate::lsystemrenderer::scene_descriptor::LSystemSceneDescriptor;
 
 pub mod camera;
 pub mod event;
@@ -69,7 +69,11 @@ impl GpuApp for App {
         #[cfg(target_arch = "wasm32")]
         {
             let canvas = window.canvas();
-            register_custom_canvas_event_dispatcher("ui::scene::background-color", &canvas, event_loop);
+            register_custom_canvas_event_dispatcher(
+                "ui::scene::background-color",
+                &canvas,
+                event_loop,
+            );
             register_custom_canvas_event_dispatcher("ui::scene::new", &canvas, event_loop);
             register_custom_canvas_event_dispatcher("ui::lsystem::iteration", &canvas, event_loop);
             if dispatch_canvas_event("app::initialized", &canvas).is_err() {
@@ -116,17 +120,18 @@ impl OnUserEvent for App {
     fn on_user_event(&mut self, event: &Self::UserEvent) {
         match event {
             UiEvent::LSystem(LSystemEvent::Iteration(iteration)) => {
-                self.scene.set_target_iteration(iteration.object_name(), iteration.iteration());
+                self.scene
+                    .set_target_iteration(iteration.object_name(), iteration.iteration());
             }
             UiEvent::Scene(SceneEvent::BackgroundColor(color)) => {
                 self.scene.set_background_color(*color);
-            },
+            }
             UiEvent::Scene(SceneEvent::New(new_scene)) => {
                 self.scene = LSystemScene::new(
                     LSystem::from_l_system_definitions(new_scene.l_system_definitions()),
                     new_scene.scene_descriptor(),
                     self.scene.aspect_ratio(),
-                    &self.gpu
+                    &self.gpu,
                 );
             }
         }

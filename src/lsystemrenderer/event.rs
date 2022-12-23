@@ -1,8 +1,8 @@
-use std::collections::HashMap;
-use glam::Vec3;
-use serde::Deserialize;
 use crate::lindenmayer::LSystemDefinition;
 use crate::LSystemSceneDescriptor;
+use glam::Vec3;
+use serde::Deserialize;
+use std::collections::HashMap;
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct IterationEvent {
@@ -44,12 +44,12 @@ impl NewSceneEvent {
 }
 
 #[derive(Clone, Debug, Deserialize)]
-#[allow(variant_size_differences)]
 pub enum SceneEvent {
     #[serde(rename = "backgroundColor")]
     BackgroundColor(Vec3),
+
     #[serde(rename = "new")]
-    New(NewSceneEvent),
+    New(Box<NewSceneEvent>),
 }
 
 #[derive(Clone, Debug, Deserialize)]

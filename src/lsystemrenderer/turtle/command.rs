@@ -94,7 +94,8 @@ pub struct SurfaceCommand {
 
 impl SurfaceCommand {
     pub fn name(&self) -> &str {
-        self.parameters.get(0)
+        self.parameters
+            .get(0)
             .expect("SurfaceCommand has no surface name")
     }
 }
@@ -106,7 +107,9 @@ pub struct SetMaterialIndex {
 
 impl SetMaterialIndex {
     pub fn material_index(&self) -> usize {
-        *self.parameters.get(0)
+        *self
+            .parameters
+            .get(0)
             .expect("SetMaterialIndex has no material index") as usize
     }
 }

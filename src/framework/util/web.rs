@@ -90,8 +90,7 @@ pub fn get_or_create_window<T>(
     window_config: &WindowConfig,
     event_loop: &EventLoop<T>,
 ) -> window::Window {
-    let mut builder = WindowBuilder::new()
-        .with_title(window_config.title());
+    let mut builder = WindowBuilder::new().with_title(window_config.title());
     if let Some(canvas_id) = window_config.canvas_id() {
         let canvas = get_canvas_by_id(canvas_id.as_str());
         let canvas_size = PhysicalSize {
@@ -103,8 +102,7 @@ pub fn get_or_create_window<T>(
             .with_canvas(Some(canvas))
             .with_inner_size(canvas_size);
     } else {
-        builder = builder
-            .with_inner_size(window_config.size());
+        builder = builder.with_inner_size(window_config.size());
     }
 
     let window = builder.build(event_loop).unwrap();

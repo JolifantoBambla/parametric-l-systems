@@ -62,7 +62,7 @@ impl RenderObjectCreator {
                 BindGroupEntry {
                     binding: 1,
                     resource: instances.buffer().as_entire_binding(),
-                }
+                },
             ],
         });
         RenderObject {
@@ -107,14 +107,14 @@ impl From<&LightSource> for LightSourceUniforms {
                 LightSourceType::Point(p) => p.position(),
                 LightSourceType::Ambient => {
                     panic!("Ambient light source does not have a position or direction");
-                },
+                }
             },
             light_type: match light_source.source() {
                 LightSourceType::Directional(_) => 0,
                 LightSourceType::Point(_) => 1,
                 LightSourceType::Ambient => {
                     panic!("Ambient light source can not be mapped to a LightSourceUniform");
-                },
+                }
             },
         }
     }
@@ -143,7 +143,7 @@ impl LightSourcesBindGroupCreator {
             "light sources buffer",
             &lights.iter().map(|l| l.into()).collect(),
             BufferUsages::STORAGE,
-            &self.gpu
+            &self.gpu,
         );
         let bind_group = self.gpu.device().create_bind_group(&BindGroupDescriptor {
             label: Label::from("light sources bind group"),
@@ -249,9 +249,10 @@ impl Renderer {
                         ty: BindingType::Buffer {
                             ty: BufferBindingType::Storage { read_only: true },
                             has_dynamic_offset: false,
-                            min_binding_size: wgpu::BufferSize::new(
-                                mem::size_of::<LightSourceUniforms>() as _
-                            ),
+                            min_binding_size: wgpu::BufferSize::new(mem::size_of::<
+                                LightSourceUniforms,
+                            >()
+                                as _),
                         },
                         count: None,
                     }],
@@ -329,7 +330,7 @@ impl Renderer {
                 gpu: gpu.clone(),
                 bind_group_index: 2,
                 bind_group_layout: light_sources_bind_group_layout,
-            }
+            },
         }
     }
 
@@ -373,7 +374,9 @@ impl Renderer {
         render_pass.set_pipeline(&self.render_pipeline);
         render_pass.set_bind_group(0, &self.uniforms_bind_group, &[]);
 
-        scene.get_light_sources_bind_group().set_bind_group(&mut render_pass);
+        scene
+            .get_light_sources_bind_group()
+            .set_bind_group(&mut render_pass);
 
         for render_objects in scene.get_active_render_objects() {
             for render_object in render_objects {

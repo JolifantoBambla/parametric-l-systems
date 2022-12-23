@@ -1,8 +1,8 @@
-use std::f32::consts::TAU;
 use crate::framework::mesh::vertex::VertexType;
 use crate::framework::util::math::f32::PHI;
 use glam::{Vec2, Vec3};
 use obj::{Obj, TexturedVertex};
+use std::f32::consts::TAU;
 
 pub struct Mesh<V: VertexType> {
     name: String,
@@ -13,7 +13,9 @@ pub struct Mesh<V: VertexType> {
 impl<V: VertexType> Mesh<V> {
     pub fn from_obj(obj: Obj<TexturedVertex, u32>) -> Self {
         assert_eq!(obj.indices.len() % 3, 0);
-        let vertices = obj.vertices.iter()
+        let vertices = obj
+            .vertices
+            .iter()
             .map(|v| {
                 V::from_pos_normal_tex_coords(
                     Vec3::new(v.position[0], v.position[1], v.position[2]),
@@ -25,7 +27,11 @@ impl<V: VertexType> Mesh<V> {
         let mut faces = Vec::new();
         for i in 0..obj.indices.len() / 3 {
             let base_index = i * 3;
-            faces.push([obj.indices[base_index], obj.indices[base_index + 1], obj.indices[base_index + 2]]);
+            faces.push([
+                obj.indices[base_index],
+                obj.indices[base_index + 1],
+                obj.indices[base_index + 2],
+            ]);
         }
         Self {
             name: obj.name.unwrap_or_else(|| "unnamed obj".to_string()),
@@ -219,7 +225,8 @@ impl<V: VertexType> Mesh<V> {
             Vec3::new(-inv_phi, -1., 0.),
         ];
 
-        let vertices = vertex_positions.iter()
+        let vertices = vertex_positions
+            .iter()
             .map(|&v| V::from_pos_normal_tex_coords(v, v.normalize(), Vec2::ZERO))
             .collect();
 

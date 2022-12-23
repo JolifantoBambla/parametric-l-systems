@@ -8,8 +8,8 @@ pub mod lsystemrenderer;
 use crate::framework::app::AppRunner;
 use crate::framework::util::window::WindowConfig;
 use crate::lindenmayer::LSystem;
-use crate::lsystemrenderer::App;
 use crate::lsystemrenderer::scene_descriptor::LSystemSceneDescriptor;
+use crate::lsystemrenderer::App;
 
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
 // allocator.
@@ -29,18 +29,19 @@ pub fn initialize() {
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen()]
 pub fn main(canvas_id: String, scene: JsValue, l_system_definitions: JsValue) {
-    let scene_descriptor: LSystemSceneDescriptor = serde_wasm_bindgen::from_value(scene)
-        .expect("Could not deserialize scene descriptor");
+    let scene_descriptor: LSystemSceneDescriptor =
+        serde_wasm_bindgen::from_value(scene).expect("Could not deserialize scene descriptor");
     let l_systems = LSystem::from_js_systems(l_system_definitions);
     wasm_bindgen_futures::spawn_local(run(canvas_id, scene_descriptor, l_systems));
 }
 
 #[cfg(target_arch = "wasm32")]
-async fn run(canvas_id: String, scene_descriptor: LSystemSceneDescriptor, l_systems: HashMap<String, HashMap<String, LSystem>>) {
-    let window_config = WindowConfig::new_with_canvas(
-        "L-System Viewer".to_string(),
-        canvas_id
-    );
+async fn run(
+    canvas_id: String,
+    scene_descriptor: LSystemSceneDescriptor,
+    l_systems: HashMap<String, HashMap<String, LSystem>>,
+) {
+    let window_config = WindowConfig::new_with_canvas("L-System Viewer".to_string(), canvas_id);
     let app_runner = AppRunner::<App>::new(window_config).await;
     let app = App::new(
         app_runner.ctx().gpu(),

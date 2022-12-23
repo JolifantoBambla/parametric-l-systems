@@ -1,9 +1,9 @@
-use std::collections::HashMap;
-use glam::Vec3;
-use serde::Deserialize;
 use crate::framework::camera::CameraView;
 use crate::framework::scene::transform::Transform;
 use crate::lsystemrenderer::turtle::turtle::Material;
+use glam::Vec3;
+use serde::Deserialize;
+use std::collections::HashMap;
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct LSystemInstance {
@@ -222,7 +222,7 @@ impl ObjResource {
 #[serde(tag = "type")]
 pub enum SceneResource {
     #[serde(rename = "obj")]
-    Obj(ObjResource)
+    Obj(ObjResource),
 }
 
 #[derive(Clone, Debug, Deserialize)]

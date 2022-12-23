@@ -15,12 +15,22 @@ pub struct WindowConfig {
 impl WindowConfig {
     #[cfg(target_arch = "wasm32")]
     pub fn new_with_canvas(title: String, canvas_id: String) -> Self {
-        Self { title, size: Default::default(), canvas_id: Some(canvas_id), parent_id: None }
+        Self {
+            title,
+            size: Default::default(),
+            canvas_id: Some(canvas_id),
+            parent_id: None,
+        }
     }
 
     #[cfg(target_arch = "wasm32")]
     pub fn new_with_parent(title: String, size: PhysicalSize<u32>, parent_id: String) -> Self {
-        Self { title, size, canvas_id: None, parent_id: Some(parent_id) }
+        Self {
+            title,
+            size,
+            canvas_id: None,
+            parent_id: Some(parent_id),
+        }
     }
 
     pub fn title(&self) -> &str {

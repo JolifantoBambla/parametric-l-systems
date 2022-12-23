@@ -1,8 +1,3 @@
-use glam::{Mat4, Quat, Vec3, Vec4};
-use serde::Deserialize;
-use std::collections::VecDeque;
-use std::sync::Arc;
-use wgpu::BufferUsages;
 use crate::framework::context::Gpu;
 use crate::framework::event::lifecycle::Update;
 use crate::framework::geometry::bounds::{Bounds, Bounds3};
@@ -12,6 +7,11 @@ use crate::framework::scene::transform::{Orientation, Transform, Transformable};
 use crate::lindenmayer::LSystem;
 use crate::lsystemrenderer::scene_descriptor::LSystemInstance;
 use crate::lsystemrenderer::turtle::command::TurtleCommand;
+use glam::{Mat4, Quat, Vec3, Vec4};
+use serde::Deserialize;
+use std::collections::VecDeque;
+use std::sync::Arc;
+use wgpu::BufferUsages;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Deserialize, bytemuck::Pod, bytemuck::Zeroable)]
@@ -21,9 +21,7 @@ pub struct Material {
 
 impl Default for Material {
     fn default() -> Self {
-        Self {
-            color: Vec4::ONE,
-        }
+        Self { color: Vec4::ONE }
     }
 }
 
@@ -55,13 +53,16 @@ pub struct MaterialState {
 impl From<&LSystemInstance> for MaterialState {
     fn from(instance: &LSystemInstance) -> Self {
         let (materials, material_mode) = if let Some(materials) = instance.materials() {
-            (materials.clone(), MaterialMode::MaterialIndex(instance.start_material()))
+            (
+                materials.clone(),
+                MaterialMode::MaterialIndex(instance.start_material()),
+            )
         } else {
             (Vec::new(), MaterialMode::default())
         };
         Self {
             materials,
-            material_mode
+            material_mode,
         }
     }
 }
@@ -75,10 +76,7 @@ struct TurtleState {
 
 impl TurtleState {
     pub fn rotate_to_horizontal(&mut self) {
-        let orientation = Orientation::new(
-            self.transform.forward(),
-            self.initial_orientation.up(),
-        );
+        let orientation = Orientation::new(self.transform.forward(), self.initial_orientation.up());
         self.transform.set_orientation(orientation);
     }
     pub fn transform(&self) -> Transform {
@@ -91,17 +89,19 @@ impl TurtleState {
                 js_sys::Math::random() as f32,
                 js_sys::Math::random() as f32,
                 js_sys::Math::random() as f32,
-            ).extend(1.)
+            )
+            .extend(1.),
         }
     }
 
     pub fn get_material(&self) -> Material {
         match self.material_state.material_mode {
-            MaterialMode::MaterialIndex(idx) => {
-                *self.material_state.materials.get(idx)
-                    .unwrap_or(&self.make_random_material())
-            }
-            MaterialMode::Random => self.make_random_material()
+            MaterialMode::MaterialIndex(idx) => *self
+                .material_state
+                .materials
+                .get(idx)
+                .unwrap_or(&self.make_random_material()),
+            MaterialMode::Random => self.make_random_material(),
         }
     }
 }
@@ -111,7 +111,7 @@ impl LSystemModel {
         commands: &Vec<TurtleCommand>,
         l_system_transform: Transform,
         initial_material_state: MaterialState,
-        gpu: &Arc<Gpu>
+        gpu: &Arc<Gpu>,
     ) -> Self {
         let mut aabb = Bounds3::new(Vec3::ZERO, Vec3::ZERO);
         let mut cylinder_instances: Vec<Instance> = Vec::new();
@@ -133,7 +133,7 @@ impl LSystemModel {
 
                     cylinder_instances.push(Instance {
                         matrix: state.transform().as_mat4_with_child(&cylinder_transform), //matrix,
-                        material: state.get_material()
+                        material: state.get_material(),
                     });
 
                     state.transform.move_forward(cylinder.length());
@@ -168,28 +168,27 @@ impl LSystemModel {
                     state.rotate_to_horizontal();
                 }
                 TurtleCommand::SetMaterialIndex(set_material_index) => {
-                    state.material_state.material_mode = MaterialMode::MaterialIndex(
-                        set_material_index.material_index()
-                    );
+                    state.material_state.material_mode =
+                        MaterialMode::MaterialIndex(set_material_index.material_index());
                 }
                 TurtleCommand::AddPredefinedSurface(surface_command) => {
                     log::debug!("unhandled add surface command {:?}", surface_command);
-                },
+                }
                 TurtleCommand::BeginSurface(surface_command) => {
                     log::debug!("unhandled begin surface command {:?}", surface_command);
-                },
+                }
                 TurtleCommand::EndSurface(surface_command) => {
                     log::debug!("unhandled end surface command {:?}", surface_command);
-                },
+                }
                 TurtleCommand::BeginPolygon => {
                     log::debug!("unhandled begin polygon command");
                 }
                 TurtleCommand::EndPolygon => {
                     log::debug!("unhandled end polygon command");
-                },
+                }
                 TurtleCommand::RecordVertex => {
                     log::debug!("unhandled record vertex command");
-                },
+                }
                 TurtleCommand::Unknown => {
                     log::debug!("encountered unknown command");
                 }
@@ -199,12 +198,11 @@ impl LSystemModel {
         let model_transform = l_system_transform.as_mat4();
         let scale_value = 1. / aabb.diagonal().max_element();
         let model_translation = Mat4::from_translation(-aabb.center());
-        let model_scale = Mat4::from_scale(
-            Vec3::new(scale_value, scale_value, scale_value),
-        );
+        let model_scale = Mat4::from_scale(Vec3::new(scale_value, scale_value, scale_value));
 
         cylinder_instances.iter_mut().for_each(|c| {
-            c.matrix = model_transform.mul_mat4(&model_scale)
+            c.matrix = model_transform
+                .mul_mat4(&model_scale)
                 .mul_mat4(&model_translation)
                 .mul_mat4(&c.matrix);
         });
@@ -242,18 +240,18 @@ impl LSystemManager {
         l_system: LSystem,
         transform: Transform,
         initial_material_state: Option<MaterialState>,
-        gpu: &Arc<Gpu>
+        gpu: &Arc<Gpu>,
     ) -> Self {
         let mut iterations = Vec::new();
         let commands: Vec<TurtleCommand> = serde_wasm_bindgen::from_value(l_system.next_raw())
             .expect("Could not parse turtle commands");
 
-        let material_state = initial_material_state.unwrap_or(MaterialState::default());
+        let material_state = initial_material_state.unwrap_or_default();
         iterations.push(LSystemModel::from_turtle_commands(
             &commands,
             transform,
             material_state.clone(),
-            gpu
+            gpu,
         ));
 
         Self {
@@ -287,13 +285,12 @@ impl Update for LSystemManager {
             let commands: Vec<TurtleCommand> =
                 serde_wasm_bindgen::from_value(self.l_system.next_raw())
                     .expect("Could not parse turtle commands");
-            self.iterations
-                .push(LSystemModel::from_turtle_commands(
-                    &commands,
-                    self.transform,
-                    self.material_state.clone(),
-                    &self.gpu
-                ));
+            self.iterations.push(LSystemModel::from_turtle_commands(
+                &commands,
+                self.transform,
+                self.material_state.clone(),
+                &self.gpu,
+            ));
             if instant::now() as f32 - input.time().now() >= self.max_time_to_iterate {
                 break;
             }
