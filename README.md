@@ -18,12 +18,21 @@ Open `index.html` in a browser that supports WebGPU.
 
 # Scene file format
 
+Scenes are defined in JSON files.
+On the top level they define three properties:
+ - L-Systems
+ - Scene
+ - Resources
+
 ```
 {
   "systems": { ... },
-  "scene": { ... }
+  "scene": { ... },
+  "resources": { ... } // optional
 }
 ```
+
+## L-Systems
 
 ```
 {
@@ -57,6 +66,8 @@ Open `index.html` in a browser that supports WebGPU.
 }
 ```
 
+## Scene
+
 ```json
 {
   ...
@@ -68,6 +79,9 @@ Open `index.html` in a browser that supports WebGPU.
   ...
 }
 ```
+
+## Resources
+
 
 # Specification
 
