@@ -94,20 +94,45 @@ pub struct SetDefaultCylinderRadius {
 
 impl SetDefaultCylinderRadius {
     pub fn radius(&self) -> f32 {
-        *self.parameters.first().expect("SetDefaultCylinderRadius has no radius")
+        *self
+            .parameters
+            .first()
+            .expect("SetDefaultCylinderRadius has no radius")
     }
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(untagged)]
+pub enum SurfaceCommandParameter {
+    String(String),
+    Usize(usize)
+}
+
+#[derive(Debug, Deserialize)]
 pub struct SurfaceCommand {
-    parameters: Vec<String>,
+    parameters: Vec<SurfaceCommandParameter>,
 }
 
 impl SurfaceCommand {
     pub fn name(&self) -> &str {
-        self.parameters
+        match self.parameters
             .get(0)
-            .expect("SurfaceCommand has no surface name")
+            .expect("SurfaceCommand has no surface name") {
+            SurfaceCommandParameter::String(name) => name,
+            _ => panic!("SurfaceCommand's first parameter is not a String")
+        }
+    }
+
+    pub fn iteration(&self) -> usize {
+        match self.parameters.get(1) {
+            None => 0,
+            Some(parameter) => {
+                match parameter {
+                    SurfaceCommandParameter::Usize(iteration) => *iteration,
+                    _ => panic!("SurfaceCommand's second parameter is a String")
+                }
+            }
+        }
     }
 }
 

@@ -1,6 +1,7 @@
 use crate::framework::camera::CameraView;
 use crate::framework::scene::transform::Transform;
 use crate::lsystemrenderer::instancing::Material;
+use crate::lsystemrenderer::l_system_manager::turtle::LSystemPrimitive;
 use glam::Vec3;
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -38,6 +39,8 @@ pub struct LSystemDescriptor {
     system_type: String,
     instances: HashMap<String, LSystemInstance>,
     transform: Option<Transform>,
+    #[serde(default)]
+    primitives: HashMap<String, LSystemPrimitive>,
 }
 
 impl LSystemDescriptor {
@@ -49,6 +52,9 @@ impl LSystemDescriptor {
     }
     pub fn transform(&self) -> Transform {
         self.transform.unwrap_or_default()
+    }
+    pub fn primitives(&self) -> &HashMap<String, LSystemPrimitive> {
+        &self.primitives
     }
 }
 

@@ -1,9 +1,10 @@
+use std::collections::HashMap;
 use crate::framework::context::Gpu;
 use crate::framework::event::lifecycle::Update;
 use crate::framework::input::Input;
 use crate::framework::scene::transform::Transform;
 use crate::lsystemrenderer::l_system_manager::command::TurtleCommand;
-use crate::lsystemrenderer::l_system_manager::turtle::{LSystemModel, MaterialState};
+use crate::lsystemrenderer::l_system_manager::turtle::{LSystemModel, LSystemPrimitive, MaterialState};
 use crate::LSystem;
 use std::sync::Arc;
 
@@ -18,6 +19,7 @@ pub struct LSystemManager {
     max_target_iteration: u32,
     iterations: Vec<LSystemModel>,
     material_state: MaterialState,
+    primitives: HashMap<String, LSystemPrimitive>,
 }
 
 impl LSystemManager {
@@ -25,6 +27,7 @@ impl LSystemManager {
         l_system: LSystem,
         transform: Transform,
         initial_material_state: Option<MaterialState>,
+        primitives: HashMap<String, LSystemPrimitive>,
         gpu: &Arc<Gpu>,
     ) -> Self {
         let mut iterations = Vec::new();
@@ -36,6 +39,7 @@ impl LSystemManager {
             &commands,
             transform,
             material_state.clone(),
+            &primitives,
             gpu,
         ));
 
@@ -47,6 +51,7 @@ impl LSystemManager {
             max_target_iteration: 0,
             iterations,
             material_state,
+            primitives,
         }
     }
 
@@ -74,6 +79,7 @@ impl Update for LSystemManager {
                 &commands,
                 self.transform,
                 self.material_state.clone(),
+                &self.primitives,
                 &self.gpu,
             ));
             if instant::now() as f32 - input.time().now() >= self.max_time_to_iterate {

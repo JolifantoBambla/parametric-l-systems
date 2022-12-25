@@ -28,6 +28,28 @@ struct MeshResource {
     transform: Transform,
 }
 
+enum Resource {
+    Mesh(MeshResource),
+}
+
+impl Resource {
+    pub fn mesh(&self) -> &Arc<GpuMesh> {
+        match self {
+            Resource::Mesh(m) => &m.mesh
+        }
+    }
+    pub fn get_or_create_mesh(&mut self, _iteration: &usize) -> &Arc<GpuMesh> {
+        match self {
+            Resource::Mesh(m) => &m.mesh
+        }
+    }
+    pub fn transform(&self) -> &Transform {
+        match self {
+            Resource::Mesh(m) => &m.transform,
+        }
+    }
+}
+
 struct SceneMesh {
     mesh: Arc<GpuMesh>,
     instance_buffer: Buffer<Instance>,
@@ -61,7 +83,7 @@ pub struct LSystemScene {
     light_sources_bind_group: Option<LightSourcesBindGroup>,
     objects: HashMap<String, SceneObject>,
     cylinder_mesh: Arc<GpuMesh>,
-    meshes: HashMap<String, Arc<MeshResource>>,
+    resources: HashMap<String, Resource>,
     l_systems: HashMap<String, HashMap<String, LSystemManager>>,
 }
 
@@ -104,17 +126,17 @@ impl LSystemScene {
             gpu.device(),
         ));
 
-        let mut meshes: HashMap<String, Arc<MeshResource>> = HashMap::new();
-        if let Some(resources) = scene_descriptor.resources() {
-            for (resource_id, resource) in resources.iter() {
+        let mut resources: HashMap<String, Resource> = HashMap::new();
+        if let Some(scene_resources) = scene_descriptor.resources() {
+            for (resource_id, resource) in scene_resources.iter() {
                 match resource {
                     SceneResource::Obj(descriptor) => {
                         match Mesh::from_obj_source(descriptor.source()) {
                             Ok(mesh) => {
                                 let gpu_mesh = GpuMesh::from_mesh::<Vertex>(&mesh, gpu.device());
-                                meshes.insert(
+                                resources.insert(
                                     resource_id.to_string(),
-                                    Arc::new(MeshResource {
+                                    Resource::Mesh(MeshResource {
                                         mesh: Arc::new(gpu_mesh),
                                         transform: descriptor.transform(),
                                     }),
@@ -147,6 +169,7 @@ impl LSystemScene {
                         instance,
                         system_descriptor.transform(),
                         Some(MaterialState::from(instance_descriptor)),
+                        system_descriptor.primitives().clone(),
                         gpu,
                     ),
                 );
@@ -204,7 +227,7 @@ impl LSystemScene {
                     );
                 }
                 SceneObjectDescriptor::Obj(d) => {
-                    let mesh = meshes
+                    let mesh = resources
                         .get(d.obj())
                         .unwrap_or_else(|| panic!("Object references unknown mesh: {}", d.obj()));
                     objects.insert(
@@ -217,10 +240,10 @@ impl LSystemScene {
                                 gpu,
                             ),
                             primitive: Primitive::Mesh(SceneMesh {
-                                mesh: mesh.mesh.clone(),
+                                mesh: mesh.mesh().clone(),
                                 instance_buffer: Buffer::new_single_element(
                                     "instance buffer",
-                                    Instance::new(mesh.transform.as_mat4(), d.material()),
+                                    Instance::new(mesh.transform().as_mat4(), d.material()),
                                     BufferUsages::STORAGE,
                                     gpu,
                                 ),
@@ -241,7 +264,7 @@ impl LSystemScene {
             light_sources_bind_group: None,
             objects,
             cylinder_mesh: l_system_cylinder_mesh,
-            meshes,
+            resources,
             l_systems: l_system_managers,
         }
     }
@@ -306,10 +329,21 @@ impl LSystemScene {
                                     &o.transform_buffer,
                                     iteration.1.cylinder_instances_buffer(),
                                 );
-                            // todo: add other meshes that are used by the iteration
-                            l_system
-                                .render_objects
-                                .insert(iteration.0, vec![cylinder_render_object]);
+
+                            let mut render_objects = vec![cylinder_render_object];
+                            for (primitive_id, primitive_instances) in iteration.1.primitive_instances().iter() {
+                                if let Some(resource) = self.resources.get_mut(primitive_id) {
+                                    for (iteration, instance_buffer) in primitive_instances.iter() {
+                                        render_objects.push(render_object_creator.create_render_object(
+                                            &resource.get_or_create_mesh(iteration),
+                                            &o.transform_buffer,
+                                            instance_buffer,
+                                        ));
+                                    }
+                                }
+                            }
+
+                            l_system.render_objects.insert(iteration.0, render_objects);
                             l_system.active_iteration = Some(iteration.0)
                         }
                     }

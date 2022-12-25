@@ -6,13 +6,24 @@ use crate::lsystemrenderer::instancing::{Instance, Material};
 use crate::lsystemrenderer::l_system_manager::command::TurtleCommand;
 use crate::lsystemrenderer::scene_descriptor::LSystemInstance;
 use glam::{Mat4, Quat, Vec3};
-use std::collections::VecDeque;
+use serde::Deserialize;
+use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 use wgpu::BufferUsages;
 
-pub struct LSystemModel {
-    aabb: Bounds3,
-    cylinder_instances_buffer: Buffer<Instance>,
+#[derive(Clone, Debug, Deserialize)]
+pub struct LSystemPrimitive {
+    transform: Option<Transform>,
+    material: Option<Material>,
+}
+
+impl LSystemPrimitive {
+    pub fn transform(&self) -> Transform {
+        self.transform.unwrap_or_default()
+    }
+    pub fn material(&self) -> Option<Material> {
+        self.material
+    }
 }
 
 #[derive(Copy, Clone, Debug, Default)]
@@ -63,6 +74,7 @@ impl TurtleState {
         self.transform
     }
 
+    #[cfg(target_arch = "wasm32")]
     fn make_random_material(&self) -> Material {
         Material::new(
             Vec3::new(
@@ -102,15 +114,23 @@ impl Default for TurtleState {
     }
 }
 
+pub struct LSystemModel {
+    aabb: Bounds3,
+    cylinder_instances_buffer: Buffer<Instance>,
+    primitive_instances_buffers: HashMap<String, HashMap<usize, Buffer<Instance>>>,
+}
+
 impl LSystemModel {
     pub fn from_turtle_commands(
         commands: &Vec<TurtleCommand>,
         l_system_transform: Transform,
         initial_material_state: MaterialState,
+        primitives: &HashMap<String, LSystemPrimitive>,
         gpu: &Arc<Gpu>,
     ) -> Self {
         let mut aabb = Bounds3::new(Vec3::ZERO, Vec3::ZERO);
         let mut cylinder_instances: Vec<Instance> = Vec::new();
+        let mut primitive_instances: HashMap<String, HashMap<usize, Vec<Instance>>> = HashMap::new();
 
         let mut stack = VecDeque::new();
         let mut state = TurtleState {
@@ -124,15 +144,14 @@ impl LSystemModel {
                 match c {
                     TurtleCommand::PopFromStack => {
                         state.ignoring_branch = false;
-                    },
-                    _ => continue
+                    }
+                    _ => continue,
                 }
             }
             match c {
                 TurtleCommand::AddCylinder(cylinder) => {
                     let radius = cylinder.radius(state.default_cylinder_radius);
-                    let scale_vec =
-                        Vec3::new(radius, cylinder.length(), radius);
+                    let scale_vec = Vec3::new(radius, cylinder.length(), radius);
                     let cylinder_transform =
                         Transform::from_scale_rotation(scale_vec, cylinder_base_rotation);
 
@@ -183,7 +202,7 @@ impl LSystemModel {
                 }
                 TurtleCommand::SetDefaultCylinderRadius(set_default_cylinder_radius) => {
                     state.set_default_cylinder_radius(set_default_cylinder_radius.radius());
-                },
+                }
                 TurtleCommand::SetMaterialIndex(set_material_index) => {
                     state.material_state.material_mode =
                         MaterialMode::MaterialIndex(set_material_index.material_index());
@@ -192,7 +211,29 @@ impl LSystemModel {
                     state.ignoring_branch = true;
                 }
                 TurtleCommand::AddPredefinedSurface(surface_command) => {
-                    log::debug!("unhandled add surface command {:?}", surface_command);
+                    let surface_id = surface_command.name();
+                    let surface_iteration = surface_command.iteration();
+                    if let Some(primitive) = primitives.get(surface_id) {
+                        if !primitive_instances.contains_key(surface_id) {
+                            primitive_instances.insert(surface_id.to_string(), HashMap::new());
+                        }
+                        if !primitive_instances.get(surface_id).unwrap().contains_key(&surface_iteration) {
+                            primitive_instances.get_mut(surface_id)
+                                .unwrap()
+                                .insert(surface_iteration, Vec::new());
+                        }
+
+                        let instance = Instance::new(
+                            state.transform().as_mat4_with_child(&primitive.transform()), //matrix,
+                            primitive.material.unwrap_or_else(|| state.get_material()),
+                        );
+
+                        primitive_instances.get_mut(surface_id)
+                            .unwrap()
+                            .get_mut(&surface_iteration)
+                            .unwrap()
+                            .push(instance);
+                    }
                 }
                 TurtleCommand::BeginSurface(surface_command) => {
                     log::debug!("unhandled begin surface command {:?}", surface_command);
@@ -218,26 +259,41 @@ impl LSystemModel {
             }
         }
 
-        let model_transform = l_system_transform.as_mat4();
         let scale_value = 1. / aabb.diagonal().max_element();
-        let model_translation = Mat4::from_translation(-aabb.center());
-        let model_scale = Mat4::from_scale(Vec3::new(scale_value, scale_value, scale_value));
+        let model_transform = l_system_transform.as_mat4()
+            .mul_mat4(&Mat4::from_scale(Vec3::new(scale_value, scale_value, scale_value)))
+            .mul_mat4(&Mat4::from_translation(-aabb.center()));
 
         cylinder_instances.iter_mut().for_each(|c| {
             c.set_matrix(
                 model_transform
-                    .mul_mat4(&model_scale)
-                    .mul_mat4(&model_translation)
                     .mul_mat4(&c.matrix()),
             );
         });
 
-        let instances_buffer =
+        let cylinder_instances_buffer =
             Buffer::from_data("", &cylinder_instances, BufferUsages::STORAGE, gpu);
+
+        let mut primitive_instances_buffers = HashMap::new();
+        for (id, primitive) in primitive_instances.iter_mut() {
+            let mut instances_buffers = HashMap::new();
+            for (&iteration, instances) in primitive.iter_mut() {
+                instances.iter_mut().for_each(|c| {
+                    c.set_matrix(model_transform.mul_mat4(&c.matrix()));
+                });
+
+                instances_buffers.insert(
+                    iteration,
+                    Buffer::from_data("", instances, BufferUsages::STORAGE, gpu)
+                );
+            }
+            primitive_instances_buffers.insert(id.clone(), instances_buffers);
+        }
 
         Self {
             aabb,
-            cylinder_instances_buffer: instances_buffer,
+            cylinder_instances_buffer,
+            primitive_instances_buffers,
         }
     }
 
@@ -247,5 +303,9 @@ impl LSystemModel {
 
     pub fn cylinder_instances_buffer(&self) -> &Buffer<Instance> {
         &self.cylinder_instances_buffer
+    }
+
+    pub fn primitive_instances(&self) -> &HashMap<String, HashMap<usize, Buffer<Instance>>> {
+        &self.primitive_instances_buffers
     }
 }
