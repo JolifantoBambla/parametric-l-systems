@@ -151,6 +151,7 @@ impl LSystemScene {
             }
         }
 
+        // todo: graceful error handling
         let mut l_system_managers = HashMap::new();
         for (name, mut system) in l_systems.drain() {
             let system_descriptor = scene_descriptor
@@ -177,6 +178,7 @@ impl LSystemScene {
             l_system_managers.insert(name, instances);
         }
 
+        // todo: graceful error handling
         let mut objects = HashMap::new();
         for (object_id, descriptor) in scene_descriptor.scene().objects() {
             match descriptor {

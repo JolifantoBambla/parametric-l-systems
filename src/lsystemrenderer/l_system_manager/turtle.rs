@@ -210,7 +210,7 @@ impl LSystemModel {
                 TurtleCommand::IgnoreRemainingBranch => {
                     state.ignoring_branch = true;
                 }
-                TurtleCommand::AddPredefinedSurface(surface_command) => {
+                TurtleCommand::AddPredefinedPrimitive(surface_command) => {
                     let surface_id = surface_command.name();
                     let surface_iteration = surface_command.iteration();
                     if let Some(primitive) = primitives.get(surface_id) {
@@ -235,10 +235,10 @@ impl LSystemModel {
                             .push(instance);
                     }
                 }
-                TurtleCommand::BeginSurface(surface_command) => {
+                TurtleCommand::BeginPrimitive(surface_command) => {
                     log::debug!("unhandled begin surface command {:?}", surface_command);
                 }
-                TurtleCommand::EndSurface(surface_command) => {
+                TurtleCommand::EndPrimitive(surface_command) => {
                     log::debug!("unhandled end surface command {:?}", surface_command);
                 }
                 TurtleCommand::BeginPolygon => {

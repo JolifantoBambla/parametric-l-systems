@@ -103,22 +103,22 @@ impl SetDefaultCylinderRadius {
 
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]
-pub enum SurfaceCommandParameter {
+pub enum PrimitiveCommandParameter {
     String(String),
     Usize(usize)
 }
 
 #[derive(Debug, Deserialize)]
-pub struct SurfaceCommand {
-    parameters: Vec<SurfaceCommandParameter>,
+pub struct PrimitiveCommand {
+    parameters: Vec<PrimitiveCommandParameter>,
 }
 
-impl SurfaceCommand {
+impl PrimitiveCommand {
     pub fn name(&self) -> &str {
         match self.parameters
             .get(0)
             .expect("SurfaceCommand has no surface name") {
-            SurfaceCommandParameter::String(name) => name,
+            PrimitiveCommandParameter::String(name) => name,
             _ => panic!("SurfaceCommand's first parameter is not a String")
         }
     }
@@ -128,7 +128,7 @@ impl SurfaceCommand {
             None => 0,
             Some(parameter) => {
                 match parameter {
-                    SurfaceCommandParameter::Usize(iteration) => *iteration,
+                    PrimitiveCommandParameter::Usize(iteration) => *iteration,
                     _ => panic!("SurfaceCommand's second parameter is a String")
                 }
             }
@@ -194,13 +194,13 @@ pub enum TurtleCommand {
     SetDefaultCylinderRadius(SetDefaultCylinderRadius),
 
     #[serde(rename = "~")]
-    AddPredefinedSurface(SurfaceCommand),
+    AddPredefinedPrimitive(PrimitiveCommand),
 
     #[serde(rename = "BeginSurface")]
-    BeginSurface(SurfaceCommand),
+    BeginPrimitive(PrimitiveCommand),
 
     #[serde(rename = "EndSurface")]
-    EndSurface(SurfaceCommand),
+    EndPrimitive(PrimitiveCommand),
 
     #[serde(rename = "{")]
     BeginPolygon,
