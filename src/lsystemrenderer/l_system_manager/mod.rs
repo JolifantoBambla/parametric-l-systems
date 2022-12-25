@@ -4,7 +4,7 @@ use crate::framework::event::lifecycle::Update;
 use crate::framework::input::Input;
 use crate::framework::scene::transform::Transform;
 use crate::lsystemrenderer::l_system_manager::command::TurtleCommand;
-use crate::lsystemrenderer::l_system_manager::turtle::{LSystemModel, LSystemPrimitive, MaterialState};
+use crate::lsystemrenderer::l_system_manager::turtle::{LSystemModel, LSystemPrimitive, MaterialState, Tropism};
 use crate::LSystem;
 use std::sync::Arc;
 
@@ -20,6 +20,7 @@ pub struct LSystemManager {
     iterations: Vec<LSystemModel>,
     material_state: MaterialState,
     primitives: HashMap<String, LSystemPrimitive>,
+    tropism: Option<Tropism>,
 }
 
 impl LSystemManager {
@@ -28,6 +29,7 @@ impl LSystemManager {
         transform: Transform,
         initial_material_state: Option<MaterialState>,
         primitives: HashMap<String, LSystemPrimitive>,
+        tropism: Option<Tropism>,
         gpu: &Arc<Gpu>,
     ) -> Self {
         let mut iterations = Vec::new();
@@ -40,6 +42,7 @@ impl LSystemManager {
             transform,
             material_state.clone(),
             &primitives,
+            &tropism,
             gpu,
         ));
 
@@ -52,6 +55,7 @@ impl LSystemManager {
             iterations,
             material_state,
             primitives,
+            tropism,
         }
     }
 
@@ -80,6 +84,7 @@ impl Update for LSystemManager {
                 self.transform,
                 self.material_state.clone(),
                 &self.primitives,
+                &self.tropism,
                 &self.gpu,
             ));
             if instant::now() as f32 - input.time().now() >= self.max_time_to_iterate {

@@ -171,6 +171,7 @@ impl LSystemScene {
                         system_descriptor.transform(),
                         Some(MaterialState::from(instance_descriptor)),
                         system_descriptor.primitives().clone(),
+                        instance_descriptor.tropism(),
                         gpu,
                     ),
                 );

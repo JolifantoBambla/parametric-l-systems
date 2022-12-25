@@ -5,7 +5,7 @@ use serde::Deserialize;
 // Translation entlang der h-Achse um die Länge d (an den Endpunkt des Zylinders).
 #[derive(Debug, Deserialize)]
 pub struct AddCylinder {
-    parameters: [f32; 2],
+    parameters: Vec<f32>,
 }
 
 impl AddCylinder {
@@ -30,7 +30,7 @@ impl AddCylinder {
 // Translation entlang der H-Achse um die Länge d ohne Konstruktion.
 #[derive(Debug, Deserialize)]
 pub struct MoveForward {
-    parameters: [f32; 1],
+    parameters: Vec<f32>,
 }
 
 impl MoveForward {
@@ -51,7 +51,7 @@ impl MoveForward {
 // Rotation um die h-Achse um den Winkel  (Roll).
 #[derive(Debug, Deserialize)]
 pub struct AngleCommand {
-    parameters: [f32; 1],
+    parameters: Vec<f32>,
 }
 
 impl AngleCommand {
@@ -124,15 +124,12 @@ impl PrimitiveCommand {
 
 #[derive(Debug, Deserialize)]
 pub struct SetMaterialIndex {
-    parameters: [f32; 1],
+    parameters: Vec<usize>,
 }
 
 impl SetMaterialIndex {
-    pub fn material_index(&self) -> usize {
-        *self
-            .parameters
-            .first()
-            .expect("SetMaterialIndex has no material index") as usize
+    pub fn material_index(&self) -> Option<&usize> {
+        self.parameters.first()
     }
 }
 

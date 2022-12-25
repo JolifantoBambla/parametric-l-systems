@@ -114,7 +114,8 @@
         const lSystemIterations = document.getElementById('l-system-iterations');
 
         const testSystems = (scene) => {
-            return Object.keys(scene.systems).map(systemName => {
+            let hadErrors = false;
+            const results = Object.keys(scene.systems).map(systemName => {
                 const s = scene.systems[systemName];
                 const definition = s.definition;
                 const results = [
@@ -123,25 +124,38 @@
                 for (const instanceName in s.instances) {
                     const instance = s.instances[instanceName];
                     results.push(`  ${instanceName}:`);
-                    const iterator = LSystemIterator.createLSystemIterator({
-                        ...definition,
-                        parameters: {
-                            ...definition.parameters,
-                            ...instance.parameters,
+                    try {
+                        const iterator = LSystemIterator.createLSystemIterator({
+                            ...definition,
+                            parameters: {
+                                ...definition.parameters,
+                                ...instance.parameters,
+                            }
+                        });
+                        results.push(`    0: ${iterator.current()}`);
+                        const iterations = instance.unlimitedTestIterations ? instance.iterations : Math.min(3, instance.iterations);
+                        for (let i = 0; i < iterations; ++i) {
+                            results.push(`    ${i + 1}: ${iterator.next()}`);
                         }
-                    });
-                    results.push(`    0: ${iterator.current()}`);
-                    const iterations = instance.unlimitedTestIterations ? instance.iterations : Math.min(3, instance.iterations);
-                    for (let i = 0; i < iterations; ++i) {
-                        results.push(`    ${i + 1}: ${iterator.next()}`);
+                    } catch (err) {
+                        hadErrors = true;
+                        results.push(`    ${err.message}`);
                     }
                     results.push('\n');
                 }
                 return results.join('\n');
             });
+            return {
+                results,
+                hadErrors
+            };
         };
         const testAndPrintSystems = (scene) => {
-            lSystemIterations.value = testSystems(scene).join('\n\n');
+            const { results, hadErrors } = testSystems(scene);
+            lSystemIterations.value = results.join('\n\n');
+            if (hadErrors) {
+                throw new Error("L-Systems had errors");
+            }
         }
 
         const sceneToViewerInputs = (scene) => {

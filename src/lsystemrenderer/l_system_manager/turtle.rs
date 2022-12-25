@@ -11,6 +11,19 @@ use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 use wgpu::BufferUsages;
 
+#[derive(Copy, Clone, Debug, Deserialize)]
+pub struct Tropism {
+    tropism: Vec3,
+    e: f32,
+}
+
+impl Tropism {
+    pub fn correct_direction(&self, direction: &Vec3) -> Vec3 {
+        let alpha = self.e * (direction.cross(self.tropism)).length();
+        (*direction + (self.tropism * alpha)).normalize()
+    }
+}
+
 #[derive(Clone, Debug, Deserialize)]
 pub struct LSystemPrimitive {
     transform: Option<Transform>,
@@ -70,6 +83,12 @@ impl TurtleState {
         let orientation = Orientation::new(self.transform.forward(), self.initial_orientation.up());
         self.transform.set_orientation(orientation);
     }
+
+    pub fn set_forward(&mut self, forward: Vec3) {
+        let orientation = Orientation::new(forward, self.transform.up());
+        self.transform.set_orientation(orientation);
+    }
+
     pub fn transform(&self) -> Transform {
         self.transform
     }
@@ -126,6 +145,7 @@ impl LSystemModel {
         l_system_transform: Transform,
         initial_material_state: MaterialState,
         primitives: &HashMap<String, LSystemPrimitive>,
+        tropism: &Option<Tropism>,
         gpu: &Arc<Gpu>,
     ) -> Self {
         let mut aabb = Bounds3::new(Vec3::ZERO, Vec3::ZERO);
@@ -164,6 +184,10 @@ impl LSystemModel {
 
                     // the bounding box is only approximated by the turtle's position
                     aabb.grow(state.transform().position());
+
+                    if tropism.is_some() {
+                        state.set_forward(tropism.unwrap().correct_direction(&state.transform.forward()));
+                    }
                 }
                 TurtleCommand::MoveForward(t) => {
                     state.transform.move_forward(t.length());
@@ -204,8 +228,18 @@ impl LSystemModel {
                     state.set_default_cylinder_radius(set_default_cylinder_radius.radius());
                 }
                 TurtleCommand::SetMaterialIndex(set_material_index) => {
-                    state.material_state.material_mode =
-                        MaterialMode::MaterialIndex(set_material_index.material_index());
+                    if !state.material_state.materials.is_empty() {
+                        let new_index = if let Some(index) = set_material_index.material_index() {
+                            *index
+                        } else {
+                            let current_index = match state.material_state.material_mode {
+                                MaterialMode::MaterialIndex(i) => i,
+                                _ => 0
+                            };
+                            current_index + 1
+                        };
+                        state.material_state.material_mode = MaterialMode::MaterialIndex(new_index);
+                    }
                 }
                 TurtleCommand::IgnoreRemainingBranch => {
                     state.ignoring_branch = true;

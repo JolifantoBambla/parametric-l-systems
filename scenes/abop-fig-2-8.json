@@ -1,0 +1,159 @@
+{
+  "systems": {
+    "tree": {
+      "type": "object",
+      "definition": {
+        "alphabet": [
+          "A",
+          "F(l)",
+          "!(l)",
+          "[",
+          "]",
+          "+(a)",
+          "/(a)",
+          "&(a)"
+        ],
+        "parameters": {
+          "d1": 94.74,
+          "d2": 132.63,
+          "a": 18.95,
+          "lr": 1.109,
+          "vr": 1.732
+        },
+        "productions": [
+          "A -> !(vr)F(50)[&(a)F(50)A]/(d1)[&(a)F(50)A]/(d2)[&(a)F(50)A]",
+          "F(l) -> F(l*lr)",
+          "!(w) -> !(w*vr)"
+        ],
+        "axiom": "!(1)F(200)/(45)A"
+      },
+      "instances": {
+        "a": {
+          "iterations": 6,
+          "parameters": {
+            "d1": 94.74,
+            "d2": 132.63,
+            "a": 18.95,
+            "lr": 1.109
+          },
+          "materials": [
+            {"color":  [1.0, 1.0, 1.0, 1.0]}
+          ],
+          "tropism": {
+            "tropism": [0.0, -1.0, 0.0],
+            "e": 0.22
+          }
+        },
+        "b": {
+          "iterations": 8,
+          "parameters": {
+            "d1": 137.5,
+            "d2": 137.5,
+            "a": 18.95,
+            "lr": 1.109
+          },
+          "materials": [
+            {"color":  [1.0, 1.0, 1.0, 1.0]}
+          ],
+          "tropism": {
+            "tropism": [0.0, -1.0, 0.0],
+            "e": 0.14
+          }
+        },
+        "c": {
+          "iterations": 8,
+          "parameters": {
+            "d1": 112.5,
+            "d2": 157.5,
+            "a": 22.5,
+            "lr": 1.79
+          },
+          "materials": [
+            {"color":  [1.0, 1.0, 1.0, 1.0]}
+          ],
+          "tropism": {
+            "tropism": [-0.02, -1.0, 0.0],
+            "e": 0.27
+          }
+        },
+        "d": {
+          "iterations": 6,
+          "parameters": {
+            "d1": 180.0,
+            "d2": 252.0,
+            "a": 36.0,
+            "lr": 1.07
+          },
+          "materials": [
+            {"color":  [1.0, 1.0, 1.0, 1.0]}
+          ],
+          "tropism": {
+            "tropism": [-0.61, 0.77, -0.19],
+            "e": 0.40
+          }
+        }
+      },
+      "transform": [
+        1, 0, 0, 0,
+        0, 0, 1, 0,
+        0, -1, 0, 0,
+        0, 0, 0, 1
+      ]
+    }
+  },
+  "scene": {
+    "camera": {
+      "eye": [0, 0, -1.5],
+      "lookAt": [0, 0, 0],
+      "up": [0, 1, 0]
+    },
+    "objects": {
+      "Tree": {
+        "type": "lSystem",
+        "system": "tree",
+        "instance": "c",
+        "transform": [
+          1, 0, 0, 0,
+          0, 1, 0, 0,
+          0, 0, 1, 0,
+          0, 0, 0, 1
+        ]
+      }
+    },
+    "lights": {
+      "ambient": {
+        "color": [
+          0.1,
+          0.1,
+          0.1
+        ]
+      },
+      "pointLights": [
+        {
+          "color": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "position": [
+            1.0,
+            1.0,
+            0.0
+          ]
+        },
+        {
+          "color": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "position": [
+            -1.0,
+            1.0,
+            0.0
+          ]
+        }
+      ]
+    }
+  }
+}

@@ -1,7 +1,7 @@
 use crate::framework::camera::CameraView;
 use crate::framework::scene::transform::Transform;
 use crate::lsystemrenderer::instancing::Material;
-use crate::lsystemrenderer::l_system_manager::turtle::LSystemPrimitive;
+use crate::lsystemrenderer::l_system_manager::turtle::{LSystemPrimitive, Tropism};
 use glam::Vec3;
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -16,6 +16,8 @@ pub struct LSystemInstance {
     start_material: Option<usize>,
 
     materials: Option<Vec<Material>>,
+
+    tropism: Option<Tropism>,
 }
 
 impl LSystemInstance {
@@ -30,6 +32,9 @@ impl LSystemInstance {
     }
     pub fn materials(&self) -> &Option<Vec<Material>> {
         &self.materials
+    }
+    pub fn tropism(&self) -> Option<Tropism> {
+        self.tropism
     }
 }
 
