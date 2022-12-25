@@ -48,7 +48,11 @@ pub struct RotateYaw {
 
 impl RotateYaw {
     pub fn angle(&self) -> f32 {
-        *self.parameters.first().expect("RotateYaw has no angle")
+        if let Some(&angle) = self.parameters.first() {
+            angle
+        } else {
+            f32::to_radians(90.)
+        }
     }
 }
 
@@ -61,7 +65,11 @@ pub struct RotatePitch {
 
 impl RotatePitch {
     pub fn angle(&self) -> f32 {
-        *self.parameters.first().expect("RotatePitch has no angle")
+        if let Some(&angle) = self.parameters.first() {
+            angle
+        } else {
+            f32::to_radians(90.)
+        }
     }
 }
 
@@ -74,7 +82,11 @@ pub struct RotateRoll {
 
 impl RotateRoll {
     pub fn angle(&self) -> f32 {
-        *self.parameters.first().expect("RotateRoll has no angle")
+        if let Some(&angle) = self.parameters.first() {
+            angle
+        } else {
+            f32::to_radians(90.)
+        }
     }
 }
 
