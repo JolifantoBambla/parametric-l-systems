@@ -35,52 +35,26 @@ pub struct MoveForward {
 
 impl MoveForward {
     pub fn length(&self) -> f32 {
-        *self.parameters.first().expect("MoveForward has no length")
+        if let Some(length) = self.parameters.first() {
+            *length
+        } else {
+            1.
+        }
     }
 }
 
 // +()
 // Rotation um die u-Achse um den Winkel  (Yaw).
-#[derive(Debug, Deserialize)]
-pub struct RotateYaw {
-    parameters: [f32; 1],
-}
-
-impl RotateYaw {
-    pub fn angle(&self) -> f32 {
-        if let Some(&angle) = self.parameters.first() {
-            angle
-        } else {
-            f32::to_radians(90.)
-        }
-    }
-}
-
 // &()
 // Rotation um die r-Achse um den Winkel  (Pitch).
-#[derive(Debug, Deserialize)]
-pub struct RotatePitch {
-    parameters: [f32; 1],
-}
-
-impl RotatePitch {
-    pub fn angle(&self) -> f32 {
-        if let Some(&angle) = self.parameters.first() {
-            angle
-        } else {
-            f32::to_radians(90.)
-        }
-    }
-}
-
 // /(d)
 // Rotation um die h-Achse um den Winkel  (Roll).
 #[derive(Debug, Deserialize)]
-pub struct RotateRoll {
+pub struct AngleCommand {
     parameters: [f32; 1],
 }
 
-impl RotateRoll {
+impl AngleCommand {
     pub fn angle(&self) -> f32 {
         if let Some(&angle) = self.parameters.first() {
             angle
@@ -172,22 +146,22 @@ pub enum TurtleCommand {
     MoveForward(MoveForward),
 
     #[serde(rename = "+")]
-    RotateYaw(RotateYaw),
+    RotateYaw(AngleCommand),
 
     #[serde(rename = "-")]
-    RotateYawNegative(RotateYaw),
+    RotateYawNegative(AngleCommand),
 
     #[serde(rename = "&")]
-    RotatePitch(RotatePitch),
+    RotatePitch(AngleCommand),
 
     #[serde(rename = "^")]
-    RotatePitchNegative(RotatePitch),
+    RotatePitchNegative(AngleCommand),
 
     #[serde(rename = "/")]
-    RotateRoll(RotateRoll),
+    RotateRoll(AngleCommand),
 
     #[serde(rename = "\\")]
-    RotateRollNegative(RotateRoll),
+    RotateRollNegative(AngleCommand),
 
     #[serde(rename = "|")]
     Yaw180,
