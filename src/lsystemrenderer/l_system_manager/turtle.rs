@@ -86,9 +86,15 @@ struct TurtleState {
 impl TurtleState {
     pub fn rotate_towards_up_plane(&mut self) {
         let orientation = if self.initial_orientation.is_left_handed() {
-            OrthonormalBasis::new_left_handed(self.transform.forward(), self.initial_orientation.forward())
+            OrthonormalBasis::new_left_handed(
+                self.transform.forward(),
+                self.initial_orientation.forward(),
+            )
         } else {
-            OrthonormalBasis::new_right_handed(self.transform.forward(), self.initial_orientation.forward())
+            OrthonormalBasis::new_right_handed(
+                self.transform.forward(),
+                self.initial_orientation.forward(),
+            )
         };
         self.transform.set_orientation(orientation);
     }
@@ -190,7 +196,7 @@ impl LSystemModel {
                     TurtleCommand::PopFromStack => {
                         state.ignoring_branch_depth -= 1;
                         if state.ignoring_branch_depth > 0 {
-                            continue
+                            continue;
                         }
                     }
                     _ => continue,

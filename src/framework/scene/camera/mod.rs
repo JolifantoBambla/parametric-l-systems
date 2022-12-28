@@ -100,10 +100,10 @@ impl CameraView {
         if distance > f32::EPSILON || delta < 0.0 {
             let movement = self.transform.forward()
                 * if distance <= delta {
-                distance - f32::EPSILON
-            } else {
-                delta
-            };
+                    distance - f32::EPSILON
+                } else {
+                    delta
+                };
             self.translate(movement);
         }
     }

@@ -59,7 +59,7 @@ impl AngleCommand {
         if let Some(&angle) = self.parameters.first() {
             angle
         } else {
-            f32::to_radians(90.)
+            90.
         }
     }
 }

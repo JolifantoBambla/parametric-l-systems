@@ -1,0 +1,101 @@
+{
+  "systems": {
+    "hilbert3d": {
+      "type": "object",
+      "definition": {
+        "alphabet": [
+          "A",
+          "B",
+          "C",
+          "D",
+          "F",
+          "+",
+          "-",
+          "&",
+          "^",
+          "/",
+          "|"
+        ],
+        "parameters": {},
+        "productions": [
+          "A -> B-F+CFC+F-D&F^D-F+&&CFC+F+B//",
+          "B -> A&F^CFB^F^D^^-F-D^|F^B|FC^F^A//",
+          "C -> |D^|F^B-F+C^F^A&&FA&F^C+F+B^F^D//",
+          "D -> |CFB-F+B|FA&F^A&&FB-F+B|FC//"
+        ],
+        "axiom": "A"
+      },
+      "instances": {
+        "two": {
+          "iterations": 2,
+          "parameters": {},
+          "materials": [
+            {"color":  [1.0, 1.0, 1.0, 1.0]}
+          ]
+        },
+        "four": {
+          "iterations": 4,
+          "parameters": {},
+          "materials": [
+            {"color":  [1.0, 1.0, 1.0, 1.0]}
+          ]
+        }
+      },
+      "transform": [
+        1, 0, 0, 0,
+        0, 0, 1, 0,
+        0, -1, 0, 0,
+        0, 0, 0, 1
+      ]
+    }
+  },
+  "scene": {
+    "camera": {
+      "eye": [0, 0, 1.5],
+      "lookAt": [0, 0, 0],
+      "up": [0, 1, 0]
+    },
+    "objects": {
+      "Tree": {
+        "type": "lSystem",
+        "system": "hilbert3d",
+        "instance": "two"
+      }
+    },
+    "lights": {
+      "ambient": {
+        "color": [
+          0.1,
+          0.1,
+          0.1
+        ]
+      },
+      "pointLights": [
+        {
+          "color": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "position": [
+            1.0,
+            1.0,
+            0.0
+          ]
+        },
+        {
+          "color": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "position": [
+            -1.0,
+            1.0,
+            0.0
+          ]
+        }
+      ]
+    }
+  }
+}

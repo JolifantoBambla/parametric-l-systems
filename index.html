@@ -288,7 +288,7 @@
 
                         const instance = scene.systems[obj.system].instances[obj.instance];
                         const settings = {
-                            iteration: obj.iteration || instance.iterations,
+                            iteration: (obj.iteration || instance.iterations) + 1,
                         };
 
                         const iterationsSlider = objectFolder.addInput(settings, 'iteration', {
