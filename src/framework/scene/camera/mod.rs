@@ -1,6 +1,6 @@
 use crate::framework::event::window::OnResize;
 use crate::framework::geometry::bounds::{Bounds, Bounds2, Bounds3};
-use crate::framework::scene::transform::{Orientation, Transform, Transformable};
+use crate::framework::scene::transform::{OrthonormalBasis, Transform, Transformable};
 use glam::{Mat4, Vec2, Vec3};
 
 #[derive(Copy, Clone, Debug)]
@@ -54,7 +54,7 @@ impl CameraView {
         Self {
             transform: Transform::new(
                 position,
-                Orientation::new(center_of_projection - position, up),
+                OrthonormalBasis::new_right_handed(center_of_projection - position, up),
                 Vec3::ONE,
             ),
             center_of_projection,
@@ -70,11 +70,19 @@ impl CameraView {
     }
 
     pub fn view(&self) -> Mat4 {
-        Mat4::look_at_rh(
-            self.transform.position(),
-            self.center_of_projection,
-            self.transform.up(),
-        )
+        if self.transform.orientation().is_left_handed() {
+            Mat4::look_at_lh(
+                self.transform.position(),
+                self.center_of_projection,
+                self.transform.up(),
+            )
+        } else {
+            Mat4::look_at_rh(
+                self.transform.position(),
+                self.center_of_projection,
+                self.transform.up(),
+            )
+        }
     }
 
     pub fn zoom_in(&mut self, delta: f32) {

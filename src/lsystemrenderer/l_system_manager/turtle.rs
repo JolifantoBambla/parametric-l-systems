@@ -1,7 +1,7 @@
 use crate::framework::context::Gpu;
 use crate::framework::geometry::bounds::{Bounds, Bounds3};
 use crate::framework::gpu::buffer::Buffer;
-use crate::framework::scene::transform::{Orientation, Transform, Transformable};
+use crate::framework::scene::transform::{OrthonormalBasis, Transform, Transformable};
 use crate::lsystemrenderer::instancing::{Instance, Material};
 use crate::lsystemrenderer::l_system_manager::command::TurtleCommand;
 use crate::lsystemrenderer::scene_descriptor::LSystemInstance;
@@ -72,7 +72,7 @@ impl From<&LSystemInstance> for MaterialState {
 #[derive(Clone, Debug)]
 struct TurtleState {
     transform: Transform,
-    initial_orientation: Orientation,
+    initial_orientation: OrthonormalBasis,
     material_state: MaterialState,
     default_cylinder_diameter: f32,
     ignoring_branch: bool,
@@ -80,14 +80,15 @@ struct TurtleState {
 
 impl TurtleState {
     pub fn rotate_to_horizontal(&mut self) {
-        self.transform.set_orientation(Orientation::new(
-            self.transform.forward(),
-            self.initial_orientation.up(),
-        ));
+        self.transform
+            .set_orientation(OrthonormalBasis::new_right_handed(
+                self.transform.forward(),
+                self.initial_orientation.up(),
+            ));
     }
 
     pub fn set_forward(&mut self, forward: Vec3) {
-        let orientation = Orientation::new(forward, self.transform.up());
+        let orientation = OrthonormalBasis::new_right_handed(forward, self.transform.up());
         self.transform.set_orientation(orientation);
     }
 

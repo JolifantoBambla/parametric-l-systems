@@ -48,16 +48,23 @@ pub trait Transformable {
     }
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Handedness {
+    LeftHanded,
+    RightHanded,
+}
+
 #[derive(Copy, Clone, Debug, Deserialize)]
 #[serde(from = "Mat3")]
-pub struct Orientation {
+pub struct OrthonormalBasis {
     forward: Vec3,
     right: Vec3,
     up: Vec3,
+    handedness: Handedness,
 }
 
-impl Orientation {
-    pub fn new(forward: Vec3, up: Vec3) -> Self {
+impl OrthonormalBasis {
+    pub fn new_right_handed(forward: Vec3, up: Vec3) -> Self {
         let forward_unit = forward.normalize();
         let up_unit = up.normalize();
         let right = forward_unit.cross(up_unit).normalize();
@@ -65,6 +72,18 @@ impl Orientation {
             forward: forward_unit,
             right,
             up: right.cross(forward_unit).normalize(),
+            handedness: Handedness::RightHanded,
+        }
+    }
+    pub fn new_left_handed(forward: Vec3, up: Vec3) -> Self {
+        let forward_unit = forward.normalize();
+        let up_unit = up.normalize();
+        let right = up_unit.cross(forward_unit).normalize();
+        Self {
+            forward: forward_unit,
+            right,
+            up: forward_unit.cross(right).normalize(),
+            handedness: Handedness::LeftHanded,
         }
     }
     pub fn rotate(&mut self, rotation: Quat) {
@@ -108,21 +127,30 @@ impl Orientation {
     pub fn up(&self) -> Vec3 {
         self.up
     }
+    pub fn handedness(&self) -> &Handedness {
+        &self.handedness
+    }
+    pub fn is_left_handed(&self) -> bool {
+        self.handedness == Handedness::LeftHanded
+    }
+    pub fn is_right_handed(&self) -> bool {
+        !self.is_left_handed()
+    }
 }
 
-impl Default for Orientation {
+impl Default for OrthonormalBasis {
     fn default() -> Self {
         Self::from(Mat3::IDENTITY)
     }
 }
 
-impl From<Mat3> for Orientation {
+impl From<Mat3> for OrthonormalBasis {
     fn from(m: Mat3) -> Self {
-        Self::new(-m.z_axis, m.y_axis)
+        Self::new_right_handed(-m.z_axis, m.y_axis)
     }
 }
 
-impl From<Quat> for Orientation {
+impl From<Quat> for OrthonormalBasis {
     fn from(q: Quat) -> Self {
         Self::from(Mat3::from_quat(q))
     }
@@ -132,12 +160,12 @@ impl From<Quat> for Orientation {
 #[serde(from = "Mat4")]
 pub struct Transform {
     position: Vec3,
-    orientation: Orientation,
+    orientation: OrthonormalBasis,
     scale: Vec3,
 }
 
 impl Transform {
-    pub fn new(position: Vec3, orientation: Orientation, scale: Vec3) -> Self {
+    pub fn new(position: Vec3, orientation: OrthonormalBasis, scale: Vec3) -> Self {
         Self {
             position,
             orientation,
@@ -152,7 +180,7 @@ impl Transform {
     }
     pub fn from_rotation(rotation: Quat) -> Self {
         Self {
-            orientation: Orientation::from(rotation),
+            orientation: OrthonormalBasis::from(rotation),
             ..Default::default()
         }
     }
@@ -165,7 +193,7 @@ impl Transform {
     pub fn from_rotation_translation(rotation: Quat, translation: Vec3) -> Self {
         Self {
             position: translation,
-            orientation: Orientation::from(rotation),
+            orientation: OrthonormalBasis::from(rotation),
             ..Default::default()
         }
     }
@@ -178,7 +206,7 @@ impl Transform {
     }
     pub fn from_scale_rotation(scale: Vec3, rotation: Quat) -> Self {
         Self {
-            orientation: Orientation::from(rotation),
+            orientation: OrthonormalBasis::from(rotation),
             scale,
             ..Default::default()
         }
@@ -186,7 +214,7 @@ impl Transform {
     pub fn from_scale_rotation_translation(scale: Vec3, rotation: Quat, translation: Vec3) -> Self {
         Self {
             position: translation,
-            orientation: Orientation::from(rotation),
+            orientation: OrthonormalBasis::from(rotation),
             scale,
         }
     }
@@ -194,7 +222,7 @@ impl Transform {
         let forward = target - position;
         Self {
             position,
-            orientation: Orientation::new(forward, up),
+            orientation: OrthonormalBasis::new_right_handed(forward, up),
             scale: Vec3::ONE,
         }
     }
@@ -217,7 +245,7 @@ impl Transform {
     pub fn position(&self) -> Vec3 {
         self.position
     }
-    pub fn orientation(&self) -> &Orientation {
+    pub fn orientation(&self) -> &OrthonormalBasis {
         &self.orientation
     }
     pub fn scale(&self) -> Vec3 {
@@ -226,7 +254,7 @@ impl Transform {
     pub fn set_position(&mut self, position: Vec3) {
         self.position = position;
     }
-    pub fn set_orientation(&mut self, orientation: Orientation) {
+    pub fn set_orientation(&mut self, orientation: OrthonormalBasis) {
         self.orientation = orientation;
     }
     pub fn set_scale(&mut self, scale: Vec3) {
