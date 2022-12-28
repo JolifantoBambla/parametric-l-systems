@@ -4,93 +4,79 @@
       "type": "object",
       "definition": {
         "alphabet": [
-          "A",
+          "A(l,w)",
+          "B(l,w)",
           "F(l)",
           "!(w)",
           "[",
           "]",
           "+(a)",
+          "-(a)",
           "/(a)",
-          "&(a)"
+          "&(a)",
+          "$"
         ],
         "parameters": {
-          "d1": 94.74,
-          "d2": 132.63,
-          "a": 18.95,
-          "lr": 1.109,
-          "vr": 1.732
+          "r1": 0.9,
+          "r2": 0.7,
+          "a1": 10,
+          "a2": 60,
+          "wr": 0.707
         },
         "productions": [
-          "A -> !(vr)F(50)[&(a)F(50)A]/(d1)[&(a)F(50)A]/(d2)[&(a)F(50)A]",
-          "F(l) -> F(l*lr)",
-          "!(w) -> !(w*vr)"
+          "A(l,w) -> !(w)F(l)[&(a1)B(l*r1,w*wr)]/(180)[&(a2)B(l*r2,w*wr)]",
+          "B(l,w) -> !(w)F(l)[+(a1)$B(l*r1,w*wr)][-(a2)$B(l*r2,w*wr)]"
         ],
-        "axiom": "!(1)F(200)/(45)A"
+        "axiom": "A(10,1)"
       },
       "instances": {
         "a": {
-          "iterations": 6,
+          "iterations": 10,
           "parameters": {
-            "d1": 94.74,
-            "d2": 132.63,
-            "a": 18.95,
-            "lr": 1.109
+            "r1": 0.9,
+            "r2": 0.7,
+            "a0": 5,
+            "a2": 65
           },
           "materials": [
             {"color":  [1.0, 1.0, 1.0, 1.0]}
-          ],
-          "tropism": {
-            "direction": [0.0, -1.0, 0.0],
-            "e": 0.22
-          }
+          ]
         },
         "b": {
-          "iterations": 8,
+          "iterations": 10,
           "parameters": {
-            "d1": 137.5,
-            "d2": 137.5,
-            "a": 18.95,
-            "lr": 1.109
+            "r1": 0.9,
+            "r2": 0.7,
+            "a0": 10,
+            "a2": 60
           },
           "materials": [
             {"color":  [1.0, 1.0, 1.0, 1.0]}
-          ],
-          "tropism": {
-            "direction": [0.0, -1.0, 0.0],
-            "e": 0.14
-          }
+          ]
         },
         "c": {
-          "iterations": 8,
+          "iterations": 10,
           "parameters": {
-            "d1": 112.5,
-            "d2": 157.5,
-            "a": 22.5,
-            "lr": 1.79
+            "r1": 0.9,
+            "r2": 0.8,
+            "a0": 20,
+            "a2": 50
           },
           "materials": [
             {"color":  [1.0, 1.0, 1.0, 1.0]}
-          ],
-          "tropism": {
-            "direction": [-0.02, -1.0, 0.0],
-            "e": 0.27
-          }
+          ]
         },
         "d": {
-          "iterations": 6,
+          "iterations": 10,
           "parameters": {
-            "d1": 180.0,
-            "d2": 252.0,
-            "a": 36.0,
-            "lr": 1.07
+            "r1": 0.9,
+            "r2": 0.8,
+            "a0": 35,
+            "a2": 35
           },
           "materials": [
             {"color":  [1.0, 1.0, 1.0, 1.0]}
-          ],
-          "tropism": {
-            "direction": [-0.61, 0.77, -0.19],
-            "e": 0.40
-          }
+          ]
         }
       },
       "transform": [

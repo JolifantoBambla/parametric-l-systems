@@ -17,11 +17,11 @@ impl AddCylinder {
         }
     }
 
-    pub fn radius(&self, default_radius: f32) -> f32 {
+    pub fn diameter(&self, default_diameter: f32) -> f32 {
         if let Some(radius) = self.parameters.get(1) {
             *radius
         } else {
-            default_radius
+            default_diameter
         }
     }
 }
@@ -74,11 +74,11 @@ impl AngleCommand {
 // Der letzte Zustand wird vom Stack entfernt und die Turtle in diesen Zustand versetzt
 
 #[derive(Debug, Deserialize)]
-pub struct SetDefaultCylinderRadius {
+pub struct SetDefaultCylinderDiameter {
     parameters: [f32; 1],
 }
 
-impl SetDefaultCylinderRadius {
+impl SetDefaultCylinderDiameter {
     pub fn radius(&self) -> f32 {
         *self
             .parameters
@@ -174,7 +174,7 @@ pub enum TurtleCommand {
     ToHorizontal,
 
     #[serde(rename = "!")]
-    SetDefaultCylinderRadius(SetDefaultCylinderRadius),
+    SetDefaultCylinderDiameter(SetDefaultCylinderDiameter),
 
     #[serde(rename = "~")]
     AddPredefinedPrimitive(PrimitiveCommand),

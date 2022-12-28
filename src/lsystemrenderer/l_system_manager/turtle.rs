@@ -13,14 +13,14 @@ use wgpu::BufferUsages;
 
 #[derive(Copy, Clone, Debug, Deserialize)]
 pub struct Tropism {
-    tropism: Vec3,
+    direction: Vec3,
     e: f32,
 }
 
 impl Tropism {
-    pub fn correct_direction(&self, direction: &Vec3) -> Vec3 {
-        let alpha = self.e * (direction.cross(self.tropism)).length();
-        (*direction + (self.tropism * alpha)).normalize()
+    pub fn correct_direction(&self, direction: Vec3) -> Vec3 {
+        let alpha = self.e * (self.direction.cross(direction)).length();
+        (direction + (self.direction * alpha)).normalize()
     }
 }
 
@@ -74,14 +74,13 @@ struct TurtleState {
     transform: Transform,
     initial_orientation: Orientation,
     material_state: MaterialState,
-    default_cylinder_radius: f32,
+    default_cylinder_diameter: f32,
     ignoring_branch: bool,
 }
 
 impl TurtleState {
     pub fn rotate_to_horizontal(&mut self) {
-        let orientation = Orientation::new(self.transform.forward(), self.initial_orientation.up());
-        self.transform.set_orientation(orientation);
+        self.transform.set_orientation(Orientation::new(self.transform.forward(), self.initial_orientation.up()));
     }
 
     pub fn set_forward(&mut self, forward: Vec3) {
@@ -116,8 +115,8 @@ impl TurtleState {
         }
     }
 
-    pub fn set_default_cylinder_radius(&mut self, default_cylinder_radius: f32) {
-        self.default_cylinder_radius = default_cylinder_radius;
+    pub fn set_default_cylinder_diameter(&mut self, diameter: f32) {
+        self.default_cylinder_diameter = diameter;
     }
 }
 
@@ -127,7 +126,7 @@ impl Default for TurtleState {
             transform: Default::default(),
             initial_orientation: Default::default(),
             material_state: Default::default(),
-            default_cylinder_radius: 0.5,
+            default_cylinder_diameter: 0.5,
             ignoring_branch: false,
         }
     }
@@ -145,7 +144,7 @@ impl LSystemModel {
         l_system_transform: Transform,
         initial_material_state: MaterialState,
         primitives: &HashMap<String, LSystemPrimitive>,
-        tropism: &Option<Tropism>,
+        world_tropism: &Option<Tropism>,
         gpu: &Arc<Gpu>,
     ) -> Self {
         let mut aabb = Bounds3::new(Vec3::ZERO, Vec3::ZERO);
@@ -156,6 +155,18 @@ impl LSystemModel {
         let mut state = TurtleState {
             material_state: initial_material_state,
             ..Default::default()
+        };
+        let tropism = if let Some(world_tropism) = world_tropism {
+            Some(Tropism {
+                direction: l_system_transform
+                    .as_mat4()
+                    .inverse()
+                    .mul_vec4(world_tropism.direction.extend(0.))
+                    .truncate(),
+                e: world_tropism.e
+            })
+        } else {
+            None
         };
 
         let cylinder_base_rotation = Quat::from_rotation_x(f32::to_radians(-90.));
@@ -170,13 +181,13 @@ impl LSystemModel {
             }
             match c {
                 TurtleCommand::AddCylinder(cylinder) => {
-                    let radius = cylinder.radius(state.default_cylinder_radius);
+                    let radius = cylinder.diameter(state.default_cylinder_diameter) * 0.5;
                     let scale_vec = Vec3::new(radius, cylinder.length(), radius);
                     let cylinder_transform =
                         Transform::from_scale_rotation(scale_vec, cylinder_base_rotation);
 
                     cylinder_instances.push(Instance::new(
-                        state.transform().as_mat4_with_child(&cylinder_transform), //matrix,
+                        state.transform().as_mat4_with_child(&cylinder_transform),
                         state.get_material(),
                     ));
 
@@ -186,7 +197,7 @@ impl LSystemModel {
                     aabb.grow(state.transform().position());
 
                     if tropism.is_some() {
-                        state.set_forward(tropism.unwrap().correct_direction(&state.transform.forward()));
+                        state.set_forward(tropism.unwrap().correct_direction(state.transform.forward()));
                     }
                 }
                 TurtleCommand::MoveForward(t) => {
@@ -224,8 +235,8 @@ impl LSystemModel {
                 TurtleCommand::ToHorizontal => {
                     state.rotate_to_horizontal();
                 }
-                TurtleCommand::SetDefaultCylinderRadius(set_default_cylinder_radius) => {
-                    state.set_default_cylinder_radius(set_default_cylinder_radius.radius());
+                TurtleCommand::SetDefaultCylinderDiameter(set_default_cylinder_radius) => {
+                    state.set_default_cylinder_diameter(set_default_cylinder_radius.radius());
                 }
                 TurtleCommand::SetMaterialIndex(set_material_index) => {
                     if !state.material_state.materials.is_empty() {

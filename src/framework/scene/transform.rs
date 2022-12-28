@@ -46,6 +46,9 @@ pub trait Transformable {
     fn roll_deg(&mut self, angle: f32) {
         self.transform_mut().orientation.roll_deg(angle);
     }
+    fn set_up(&mut self, up: Vec3) {
+        self.transform_mut().orientation.set_up(up);
+    }
 }
 
 #[derive(Copy, Clone, Debug, Deserialize)]
@@ -107,6 +110,14 @@ impl Orientation {
     }
     pub fn up(&self) -> Vec3 {
         self.up
+    }
+    pub fn set_up(&mut self, up: Vec3) {
+        let up_unit = up.normalize();
+        let right = self.forward.cross(up_unit).normalize();
+        let forward = up_unit.cross(right).normalize();
+        self.forward = forward;
+        self.right = right;
+        self.up = up_unit;
     }
 }
 
