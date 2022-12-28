@@ -171,7 +171,7 @@ pub enum TurtleCommand {
 
     // every command below this line is not needed for the exercise
     #[serde(rename = "$")]
-    ToHorizontal,
+    ToUpPlane,
 
     #[serde(rename = "!")]
     SetDefaultCylinderDiameter(SetDefaultCylinderDiameter),

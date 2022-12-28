@@ -84,7 +84,7 @@ struct TurtleState {
 }
 
 impl TurtleState {
-    pub fn rotate_to_horizontal(&mut self) {
+    pub fn rotate_towards_up_plane(&mut self) {
         let orientation = if self.initial_orientation.is_left_handed() {
             OrthonormalBasis::new_left_handed(self.transform.forward(), self.initial_orientation.forward())
         } else {
@@ -243,10 +243,8 @@ impl LSystemModel {
                         .pop_front()
                         .expect("Invalid PopFromStack command: empty stack");
                 }
-                TurtleCommand::ToHorizontal => {
-                    log::info!("before {:?}", state.transform.orientation());
-                    state.rotate_to_horizontal();
-                    log::info!("after {:?}", state.transform.orientation());
+                TurtleCommand::ToUpPlane => {
+                    state.rotate_towards_up_plane();
                 }
                 TurtleCommand::SetDefaultCylinderDiameter(set_default_cylinder_radius) => {
                     state.set_default_cylinder_diameter(set_default_cylinder_radius.radius());
