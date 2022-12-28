@@ -91,7 +91,7 @@ impl SetDefaultCylinderDiameter {
 #[serde(untagged)]
 pub enum PrimitiveCommandParameter {
     String(String),
-    Usize(usize)
+    Usize(usize),
 }
 
 #[derive(Debug, Deserialize)]
@@ -101,23 +101,23 @@ pub struct PrimitiveCommand {
 
 impl PrimitiveCommand {
     pub fn name(&self) -> &str {
-        match self.parameters
+        match self
+            .parameters
             .get(0)
-            .expect("SurfaceCommand has no surface name") {
+            .expect("SurfaceCommand has no surface name")
+        {
             PrimitiveCommandParameter::String(name) => name,
-            _ => panic!("SurfaceCommand's first parameter is not a String")
+            _ => panic!("SurfaceCommand's first parameter is not a String"),
         }
     }
 
     pub fn iteration(&self) -> usize {
         match self.parameters.get(1) {
             None => 0,
-            Some(parameter) => {
-                match parameter {
-                    PrimitiveCommandParameter::Usize(iteration) => *iteration,
-                    _ => panic!("SurfaceCommand's second parameter is a String")
-                }
-            }
+            Some(parameter) => match parameter {
+                PrimitiveCommandParameter::Usize(iteration) => *iteration,
+                _ => panic!("SurfaceCommand's second parameter is a String"),
+            },
         }
     }
 }

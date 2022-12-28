@@ -1,42 +1,64 @@
 use crate::framework::event::window::OnResize;
 use crate::framework::geometry::bounds::{Bounds, Bounds2, Bounds3};
-use crate::framework::util::math::f32::is_close_to_zero;
-use glam::{Mat3, Mat4, Vec2, Vec3};
+use crate::framework::scene::transform::{Orientation, Transform, Transformable};
+use glam::{Mat4, Vec2, Vec3};
 
-pub trait Camera {
-    fn view(&self) -> Mat4;
-    fn inverse_view(&self) -> Mat4 {
-        self.view().inverse()
+#[derive(Copy, Clone, Debug)]
+pub struct Camera {
+    view: CameraView,
+    projection: Projection,
+}
+
+impl Camera {
+    pub fn new(view: CameraView, projection: Projection) -> Self {
+        Self { view, projection }
     }
-    fn projection(&self) -> Mat4;
-    fn inverse_projection(&self) -> Mat4 {
-        self.projection().inverse()
+    pub fn view(&self) -> CameraView {
+        self.view
+    }
+    pub fn projection(&self) -> Projection {
+        self.projection
+    }
+    pub fn view_mat(&self) -> Mat4 {
+        self.view.view()
+    }
+    pub fn inverse_view_mat(&self) -> Mat4 {
+        self.view_mat().inverse()
+    }
+    pub fn projection_mat(&self) -> Mat4 {
+        self.projection.projection()
+    }
+    pub fn inverse_projection_mat(&self) -> Mat4 {
+        self.projection_mat().inverse()
     }
 }
 
-// todo: refactor - this is just basic transform stuff
+impl Transformable for Camera {
+    fn transform(&self) -> &Transform {
+        self.view.transform()
+    }
+
+    fn transform_mut(&mut self) -> &mut Transform {
+        self.view.transform_mut()
+    }
+}
+
 #[derive(Copy, Clone, Debug)]
 pub struct CameraView {
-    position: Vec3,
+    transform: Transform,
     center_of_projection: Vec3,
-    up: Vec3,
 }
 
 impl CameraView {
     pub fn new(position: Vec3, center_of_projection: Vec3, up: Vec3) -> Self {
         Self {
-            position,
+            transform: Transform::new(
+                position,
+                Orientation::new(center_of_projection - position, up),
+                Vec3::ONE,
+            ),
             center_of_projection,
-            up: up.normalize(),
         }
-    }
-
-    pub fn position(&self) -> Vec3 {
-        self.position
-    }
-
-    pub fn set_position(&mut self, position: Vec3) {
-        self.position = position;
     }
 
     pub fn center_of_projection(&self) -> Vec3 {
@@ -47,114 +69,30 @@ impl CameraView {
         self.center_of_projection = center_of_projection;
     }
 
-    pub fn up(&self) -> Vec3 {
-        self.up
-    }
-
-    pub fn set_up(&mut self, up: Vec3) {
-        self.up = up.normalize();
-    }
-
     pub fn view(&self) -> Mat4 {
-        Mat4::look_at_rh(self.position, self.center_of_projection, self.up)
-    }
-
-    pub fn forward(&self) -> Vec3 {
-        (self.center_of_projection - self.position).normalize()
-    }
-
-    pub fn right(&self) -> Vec3 {
-        self.forward().cross(self.up)
-    }
-
-    pub fn translate(&mut self, translation: Vec3) {
-        self.position += translation;
-        self.center_of_projection += translation;
-    }
-
-    pub fn move_forward(&mut self, delta: f32) {
-        self.translate(self.forward() * delta);
-    }
-
-    pub fn move_backward(&mut self, delta: f32) {
-        self.move_forward(-delta);
-    }
-
-    pub fn move_right(&mut self, delta: f32) {
-        self.translate(self.right() * delta);
-    }
-
-    pub fn move_left(&mut self, delta: f32) {
-        self.move_right(-delta);
-    }
-
-    pub fn move_up(&mut self, delta: f32) {
-        self.translate(self.up * delta);
-    }
-
-    pub fn move_down(&mut self, delta: f32) {
-        self.move_up(-delta);
+        Mat4::look_at_rh(
+            self.transform.position(),
+            self.center_of_projection,
+            self.transform.up(),
+        )
     }
 
     pub fn zoom_in(&mut self, delta: f32) {
-        let distance = self.position.distance(self.center_of_projection);
-        let movement = self.forward()
+        let distance = self
+            .transform
+            .position()
+            .distance(self.center_of_projection);
+        let movement = self.transform.forward()
             * if distance <= delta {
                 distance - f32::EPSILON
             } else {
                 delta
             };
-        self.position += movement;
+        self.translate(movement);
     }
 
     pub fn zoom_out(&mut self, delta: f32) {
         self.zoom_in(-delta);
-    }
-
-    // todo: refactor into extra struct / trait
-    pub fn orbit(&mut self, delta: Vec2, invert: bool) {
-        if !(is_close_to_zero(delta.x) && is_close_to_zero(delta.y)) {
-            let delta_scaled = delta * (std::f32::consts::PI * 2.);
-
-            // choose origin to orbit around
-            let origin = if invert {
-                self.position
-            } else {
-                self.center_of_projection
-            };
-
-            // choose point that is being orbited
-            let position = if invert {
-                self.center_of_projection
-            } else {
-                self.position
-            };
-
-            let center_to_eye = position - origin;
-            let radius = center_to_eye.length();
-
-            let z = center_to_eye.normalize();
-            let y = self.up;
-            let x = y.cross(z).normalize();
-
-            let y_rotation = Mat3::from_axis_angle(y, -delta_scaled.x);
-            let x_rotation = Mat3::from_axis_angle(x, -delta_scaled.y);
-
-            let rotated_y = y_rotation.mul_vec3(z);
-            let rotated_x = x_rotation.mul_vec3(rotated_y);
-
-            let new_position = origin
-                + (if rotated_x.x.signum() == rotated_y.x.signum() {
-                    rotated_x
-                } else {
-                    rotated_y
-                } * radius);
-            if invert {
-                self.center_of_projection = new_position;
-            } else {
-                self.position = new_position;
-            }
-        }
     }
 }
 
@@ -165,6 +103,16 @@ impl Default for CameraView {
             Vec3::new(0.0, 0.0, 0.0),
             Vec3::new(0.0, 1.0, 0.0),
         )
+    }
+}
+
+impl Transformable for CameraView {
+    fn transform(&self) -> &Transform {
+        &self.transform
+    }
+
+    fn transform_mut(&mut self) -> &mut Transform {
+        &mut self.transform
     }
 }
 

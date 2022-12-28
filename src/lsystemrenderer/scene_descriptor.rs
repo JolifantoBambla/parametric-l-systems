@@ -1,4 +1,4 @@
-use crate::framework::camera::CameraView;
+use crate::framework::scene::camera::CameraView;
 use crate::framework::scene::transform::Transform;
 use crate::lsystemrenderer::instancing::Material;
 use crate::lsystemrenderer::l_system_manager::turtle::{LSystemPrimitive, Tropism};

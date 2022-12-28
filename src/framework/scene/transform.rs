@@ -255,3 +255,58 @@ impl Transformable for Transform {
         self
     }
 }
+
+pub mod util {
+    use crate::framework::scene::transform::Transformable;
+    use crate::framework::util::math::f32::is_close_to_zero;
+    use glam::{Mat3, Vec2, Vec3};
+
+    pub trait Orbit: Transformable {
+        fn target(&self) -> Vec3;
+        fn set_target(&mut self, target: Vec3);
+        fn orbit(&mut self, delta: Vec2, invert: bool) {
+            if !(is_close_to_zero(delta.x) && is_close_to_zero(delta.y)) {
+                let delta_scaled = delta * (std::f32::consts::TAU);
+
+                // choose origin to orbit around
+                let origin = if invert {
+                    self.transform().position()
+                } else {
+                    self.target()
+                };
+
+                // choose point that is being orbited
+                let position = if invert {
+                    self.target()
+                } else {
+                    self.transform().position()
+                };
+
+                let center_to_eye = position - origin;
+                let radius = center_to_eye.length();
+
+                let z = center_to_eye.normalize();
+                let y = self.transform().up();
+                let x = y.cross(z).normalize();
+
+                let y_rotation = Mat3::from_axis_angle(y, -delta_scaled.x);
+                let x_rotation = Mat3::from_axis_angle(x, -delta_scaled.y);
+
+                let rotated_y = y_rotation.mul_vec3(z);
+                let rotated_x = x_rotation.mul_vec3(rotated_y);
+
+                let new_position = origin
+                    + (if rotated_x.x.signum() == rotated_y.x.signum() {
+                        rotated_x
+                    } else {
+                        rotated_y
+                    } * radius);
+                if invert {
+                    self.set_target(new_position);
+                } else {
+                    self.transform_mut().set_position(new_position);
+                }
+            }
+        }
+    }
+}

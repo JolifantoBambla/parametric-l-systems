@@ -1,11 +1,13 @@
-use std::collections::HashMap;
 use crate::framework::context::Gpu;
 use crate::framework::event::lifecycle::Update;
 use crate::framework::input::Input;
 use crate::framework::scene::transform::Transform;
 use crate::lsystemrenderer::l_system_manager::command::TurtleCommand;
-use crate::lsystemrenderer::l_system_manager::turtle::{LSystemModel, LSystemPrimitive, MaterialState, Tropism};
+use crate::lsystemrenderer::l_system_manager::turtle::{
+    LSystemModel, LSystemPrimitive, MaterialState, Tropism,
+};
 use crate::LSystem;
+use std::collections::HashMap;
 use std::sync::Arc;
 
 pub mod command;

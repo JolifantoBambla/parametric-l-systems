@@ -80,7 +80,10 @@ struct TurtleState {
 
 impl TurtleState {
     pub fn rotate_to_horizontal(&mut self) {
-        self.transform.set_orientation(Orientation::new(self.transform.forward(), self.initial_orientation.up()));
+        self.transform.set_orientation(Orientation::new(
+            self.transform.forward(),
+            self.initial_orientation.up(),
+        ));
     }
 
     pub fn set_forward(&mut self, forward: Vec3) {
@@ -149,25 +152,22 @@ impl LSystemModel {
     ) -> Self {
         let mut aabb = Bounds3::new(Vec3::ZERO, Vec3::ZERO);
         let mut cylinder_instances: Vec<Instance> = Vec::new();
-        let mut primitive_instances: HashMap<String, HashMap<usize, Vec<Instance>>> = HashMap::new();
+        let mut primitive_instances: HashMap<String, HashMap<usize, Vec<Instance>>> =
+            HashMap::new();
 
         let mut stack = VecDeque::new();
         let mut state = TurtleState {
             material_state: initial_material_state,
             ..Default::default()
         };
-        let tropism = if let Some(world_tropism) = world_tropism {
-            Some(Tropism {
-                direction: l_system_transform
-                    .as_mat4()
-                    .inverse()
-                    .mul_vec4(world_tropism.direction.extend(0.))
-                    .truncate(),
-                e: world_tropism.e
-            })
-        } else {
-            None
-        };
+        let tropism = world_tropism.as_ref().map(|world_tropism| Tropism {
+            direction: l_system_transform
+                .as_mat4()
+                .inverse()
+                .mul_vec4(world_tropism.direction.extend(0.))
+                .truncate(),
+            e: world_tropism.e,
+        });
 
         let cylinder_base_rotation = Quat::from_rotation_x(f32::to_radians(-90.));
         for c in commands {
@@ -196,8 +196,8 @@ impl LSystemModel {
                     // the bounding box is only approximated by the turtle's position
                     aabb.grow(state.transform().position());
 
-                    if tropism.is_some() {
-                        state.set_forward(tropism.unwrap().correct_direction(state.transform.forward()));
+                    if let Some(t) = tropism {
+                        state.set_forward(t.correct_direction(state.transform.forward()));
                     }
                 }
                 TurtleCommand::MoveForward(t) => {
@@ -245,7 +245,7 @@ impl LSystemModel {
                         } else {
                             let current_index = match state.material_state.material_mode {
                                 MaterialMode::MaterialIndex(i) => i,
-                                _ => 0
+                                _ => 0,
                             };
                             current_index + 1
                         };
@@ -262,8 +262,13 @@ impl LSystemModel {
                         if !primitive_instances.contains_key(surface_id) {
                             primitive_instances.insert(surface_id.to_string(), HashMap::new());
                         }
-                        if !primitive_instances.get(surface_id).unwrap().contains_key(&surface_iteration) {
-                            primitive_instances.get_mut(surface_id)
+                        if !primitive_instances
+                            .get(surface_id)
+                            .unwrap()
+                            .contains_key(&surface_iteration)
+                        {
+                            primitive_instances
+                                .get_mut(surface_id)
                                 .unwrap()
                                 .insert(surface_iteration, Vec::new());
                         }
@@ -273,7 +278,8 @@ impl LSystemModel {
                             primitive.material.unwrap_or_else(|| state.get_material()),
                         );
 
-                        primitive_instances.get_mut(surface_id)
+                        primitive_instances
+                            .get_mut(surface_id)
                             .unwrap()
                             .get_mut(&surface_iteration)
                             .unwrap()
@@ -305,15 +311,17 @@ impl LSystemModel {
         }
 
         let scale_value = 1. / aabb.diagonal().max_element();
-        let model_transform = l_system_transform.as_mat4()
-            .mul_mat4(&Mat4::from_scale(Vec3::new(scale_value, scale_value, scale_value)))
+        let model_transform = l_system_transform
+            .as_mat4()
+            .mul_mat4(&Mat4::from_scale(Vec3::new(
+                scale_value,
+                scale_value,
+                scale_value,
+            )))
             .mul_mat4(&Mat4::from_translation(-aabb.center()));
 
         cylinder_instances.iter_mut().for_each(|c| {
-            c.set_matrix(
-                model_transform
-                    .mul_mat4(&c.matrix()),
-            );
+            c.set_matrix(model_transform.mul_mat4(&c.matrix()));
         });
 
         let cylinder_instances_buffer =
@@ -329,7 +337,7 @@ impl LSystemModel {
 
                 instances_buffers.insert(
                     iteration,
-                    Buffer::from_data("", instances, BufferUsages::STORAGE, gpu)
+                    Buffer::from_data("", instances, BufferUsages::STORAGE, gpu),
                 );
             }
             primitive_instances_buffers.insert(id.clone(), instances_buffers);

@@ -1,4 +1,3 @@
-use crate::framework::camera::Camera;
 use crate::framework::context::Gpu;
 use crate::framework::event::window::OnResize;
 use crate::framework::gpu::buffer::Buffer;

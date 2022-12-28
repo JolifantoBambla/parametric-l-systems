@@ -1,5 +1,4 @@
 pub mod app;
-pub mod camera;
 pub mod context;
 pub mod event;
 pub mod geometry;

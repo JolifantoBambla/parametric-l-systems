@@ -1,4 +1,3 @@
-use crate::framework::camera::{CameraView, Projection};
 use crate::framework::context::Gpu;
 use crate::framework::event::lifecycle::Update;
 use crate::framework::event::window::OnResize;
@@ -6,6 +5,7 @@ use crate::framework::gpu::buffer::Buffer;
 use crate::framework::input::Input;
 use crate::framework::mesh::{vertex::Vertex, Mesh};
 use crate::framework::renderer::drawable::GpuMesh;
+use crate::framework::scene::camera::{CameraView, Projection};
 use crate::framework::scene::light::LightSource;
 use crate::framework::scene::transform::Transform;
 use crate::lindenmayer::LSystem;
@@ -35,12 +35,12 @@ enum Resource {
 impl Resource {
     pub fn mesh(&self) -> &Arc<GpuMesh> {
         match self {
-            Resource::Mesh(m) => &m.mesh
+            Resource::Mesh(m) => &m.mesh,
         }
     }
     pub fn get_or_create_mesh(&mut self, _iteration: &usize) -> &Arc<GpuMesh> {
         match self {
-            Resource::Mesh(m) => &m.mesh
+            Resource::Mesh(m) => &m.mesh,
         }
     }
     pub fn transform(&self) -> &Transform {
@@ -334,14 +334,18 @@ impl LSystemScene {
                                 );
 
                             let mut render_objects = vec![cylinder_render_object];
-                            for (primitive_id, primitive_instances) in iteration.1.primitive_instances().iter() {
+                            for (primitive_id, primitive_instances) in
+                                iteration.1.primitive_instances().iter()
+                            {
                                 if let Some(resource) = self.resources.get_mut(primitive_id) {
                                     for (iteration, instance_buffer) in primitive_instances.iter() {
-                                        render_objects.push(render_object_creator.create_render_object(
-                                            &resource.get_or_create_mesh(iteration),
-                                            &o.transform_buffer,
-                                            instance_buffer,
-                                        ));
+                                        render_objects.push(
+                                            render_object_creator.create_render_object(
+                                                resource.get_or_create_mesh(iteration),
+                                                &o.transform_buffer,
+                                                instance_buffer,
+                                            ),
+                                        );
                                     }
                                 }
                             }
