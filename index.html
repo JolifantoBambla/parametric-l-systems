@@ -95,8 +95,7 @@
         import {LSystemIterator} from './js/l-system/l-system.js';
         import * as defaultScene from './scenes/tree-prusinkiewicz.json' assert {type: 'json'};
 
-        let activeScene = null;
-        let activeSceneLocked = true;
+        let renderSceneLocked = true;
 
         const editor = ace.edit('editor');
         editor.setTheme('ace/theme/github');
@@ -211,21 +210,23 @@
         const lSystemRenderButton = document.getElementById('l-system-render-button');
         lSystemRenderButton.addEventListener('click', _ => {
             const scene = parseCurrentSceneSource();
-            if (!activeSceneLocked && scene.systems) {
-                activeSceneLocked = true;
-                activeScene = scene;
+            if (!renderSceneLocked) {
+                renderSceneLocked = true;
                 try {
-                    testAndPrintSystems(scene);
+                    if (scene.systems) {
+                        testAndPrintSystems(scene);
+                    }
                     const [sceneDescriptor, lSystemDefinitions] = sceneToViewerInputs(scene);
                     sceneCanvas.dispatchEvent(new CustomEvent(
                         'ui::scene::new',
                         {detail: {scene: {new: {sceneDescriptor, lSystemDefinitions}}}}
                     ));
-                    buildUi();
+                    buildUi(scene);
                 } catch (err) {
+                    alert('L-System(s) had errors. Please check test output.');
                     console.error(err);
                 }
-                activeSceneLocked = false;
+                renderSceneLocked = false;
             }
         });
 
@@ -237,8 +238,8 @@
         });
         pane.registerPlugin(TweakpaneEssentialsPlugin);
         let activeSceneFolder = null;
-        const buildUi = () => {
-            if (activeScene) {
+        const buildUi = (scene) => {
+            if (scene) {
                 if (activeSceneFolder) {
                     activeSceneFolder.hidden = true;
                     // todo: can I also destroy this?
@@ -251,10 +252,10 @@
                 // todo: fps graph
 
                 const backgroundColor = {r: 0, g: 0, b: 0};
-                if (activeScene.scene.camera.backgroundColor) {
-                    backgroundColor.r = activeScene.scene.camera.backgroundColor[0];
-                    backgroundColor.r = activeScene.scene.camera.backgroundColor[1];
-                    backgroundColor.r = activeScene.scene.camera.backgroundColor[2];
+                if (scene.scene.camera.backgroundColor) {
+                    backgroundColor.r = scene.scene.camera.backgroundColor[0];
+                    backgroundColor.r = scene.scene.camera.backgroundColor[1];
+                    backgroundColor.r = scene.scene.camera.backgroundColor[2];
                 }
                 const sceneSettings = {
                     backgroundColor,
@@ -277,15 +278,15 @@
                     title: 'L-System Objects',
                     expanded: true,
                 });
-                for (const objectName in activeScene.scene.objects) {
-                    const obj = activeScene.scene.objects[objectName];
+                for (const objectName in scene.scene.objects) {
+                    const obj = scene.scene.objects[objectName];
                     if (obj.type === 'lSystem') {
                         const objectFolder = lSystemObjectsFolder.addFolder({
                             title: objectName,
                             expanded: true,
                         });
 
-                        const instance = activeScene.systems[obj.system].instances[obj.instance];
+                        const instance = scene.systems[obj.system].instances[obj.instance];
                         const settings = {
                             iteration: obj.iteration || instance.iterations,
                         };
@@ -312,8 +313,7 @@
         sceneCanvas.width = sceneViewContainer.clientWidth;
         sceneCanvas.height = sceneViewContainer.clientHeight;
         sceneCanvas.addEventListener('app::initialized', _ => {
-            buildUi();
-            activeSceneLocked = false;
+            renderSceneLocked = false;
         });
 
         async function run(canvasId, scene, systems) {
@@ -321,9 +321,10 @@
             main(canvasId, scene, systems);
         }
 
-        activeScene = parseCurrentSceneSource();
-        testAndPrintSystems(activeScene);
-        run(sceneCanvas.id, ...sceneToViewerInputs(activeScene));
+        const initialScene = parseCurrentSceneSource();
+        testAndPrintSystems(initialScene);
+        buildUi(initialScene);
+        run(sceneCanvas.id, ...sceneToViewerInputs(initialScene));
     </script>
 </body>
 </html>
