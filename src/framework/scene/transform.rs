@@ -145,6 +145,12 @@ impl Default for OrthonormalBasis {
 }
 
 impl From<Mat3> for OrthonormalBasis {
+    #[cfg(feature = "default-to-left-handed")]
+    fn from(m: Mat3) -> Self {
+        Self::new_left_handed(-m.z_axis, m.y_axis)
+    }
+
+    #[cfg(not(feature = "default-to-left-handed"))]
     fn from(m: Mat3) -> Self {
         Self::new_right_handed(-m.z_axis, m.y_axis)
     }
