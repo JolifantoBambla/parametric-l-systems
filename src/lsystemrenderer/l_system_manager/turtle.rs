@@ -80,7 +80,7 @@ struct TurtleState {
     initial_orientation: OrthonormalBasis,
     material_state: MaterialState,
     default_cylinder_diameter: f32,
-    ignoring_branch: bool,
+    ignoring_branch_depth: u32,
 }
 
 impl TurtleState {
@@ -141,7 +141,7 @@ impl Default for TurtleState {
             initial_orientation: Default::default(),
             material_state: Default::default(),
             default_cylinder_diameter: 0.5,
-            ignoring_branch: false,
+            ignoring_branch_depth: 0,
         }
     }
 }
@@ -182,10 +182,16 @@ impl LSystemModel {
 
         let cylinder_base_rotation = Quat::from_rotation_x(f32::to_radians(-90.));
         for c in commands {
-            if state.ignoring_branch {
+            if state.ignoring_branch_depth > 0 {
                 match c {
+                    TurtleCommand::PushToStack => {
+                        state.ignoring_branch_depth += 1;
+                    }
                     TurtleCommand::PopFromStack => {
-                        state.ignoring_branch = false;
+                        state.ignoring_branch_depth -= 1;
+                        if state.ignoring_branch_depth > 0 {
+                            continue
+                        }
                     }
                     _ => continue,
                 }
@@ -264,7 +270,7 @@ impl LSystemModel {
                     }
                 }
                 TurtleCommand::IgnoreRemainingBranch => {
-                    state.ignoring_branch = true;
+                    state.ignoring_branch_depth = 1;
                 }
                 TurtleCommand::AddPredefinedPrimitive(surface_command) => {
                     let surface_id = surface_command.name();
