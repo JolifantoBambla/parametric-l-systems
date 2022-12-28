@@ -70,7 +70,6 @@ impl Update for OrbitCamera {
                     }
                     MouseEvent::Scroll(s) => {
                         self.camera
-                            .view()
                             .zoom_in(s.delta().abs().min(1.) * s.delta().signum());
                     }
                     _ => {}

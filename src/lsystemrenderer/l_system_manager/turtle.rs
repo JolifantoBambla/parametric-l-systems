@@ -18,9 +18,14 @@ pub struct Tropism {
 }
 
 impl Tropism {
-    pub fn correct_direction(&self, direction: Vec3) -> Vec3 {
-        let alpha = self.e * (self.direction.cross(direction)).length();
-        (direction + (self.direction * alpha)).normalize()
+    pub fn corrected_forward(&self, orientation: &OrthonormalBasis) -> Vec3 {
+        let torque = if orientation.is_left_handed() {
+            orientation.forward().cross(self.direction)
+        } else {
+            self.direction.cross(orientation.forward())
+        };
+        let alpha = self.e * torque.length();
+        (orientation.forward() + (self.direction * alpha)).normalize()
     }
 }
 
@@ -80,15 +85,20 @@ struct TurtleState {
 
 impl TurtleState {
     pub fn rotate_to_horizontal(&mut self) {
-        self.transform
-            .set_orientation(OrthonormalBasis::new_right_handed(
-                self.transform.forward(),
-                self.initial_orientation.up(),
-            ));
+        let orientation = if self.initial_orientation.is_left_handed() {
+            OrthonormalBasis::new_left_handed(self.transform.forward(), self.initial_orientation.forward())
+        } else {
+            OrthonormalBasis::new_right_handed(self.transform.forward(), self.initial_orientation.forward())
+        };
+        self.transform.set_orientation(orientation);
     }
 
     pub fn set_forward(&mut self, forward: Vec3) {
-        let orientation = OrthonormalBasis::new_right_handed(forward, self.transform.up());
+        let orientation = if self.initial_orientation.is_left_handed() {
+            OrthonormalBasis::new_left_handed(forward, self.transform.up())
+        } else {
+            OrthonormalBasis::new_right_handed(forward, self.transform.up())
+        };
         self.transform.set_orientation(orientation);
     }
 
@@ -198,7 +208,7 @@ impl LSystemModel {
                     aabb.grow(state.transform().position());
 
                     if let Some(t) = tropism {
-                        state.set_forward(t.correct_direction(state.transform.forward()));
+                        state.set_forward(t.corrected_forward(state.transform.orientation()));
                     }
                 }
                 TurtleCommand::MoveForward(t) => {
@@ -234,7 +244,9 @@ impl LSystemModel {
                         .expect("Invalid PopFromStack command: empty stack");
                 }
                 TurtleCommand::ToHorizontal => {
+                    log::info!("before {:?}", state.transform.orientation());
                     state.rotate_to_horizontal();
+                    log::info!("after {:?}", state.transform.orientation());
                 }
                 TurtleCommand::SetDefaultCylinderDiameter(set_default_cylinder_radius) => {
                     state.set_default_cylinder_diameter(set_default_cylinder_radius.radius());

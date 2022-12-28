@@ -31,6 +31,13 @@ impl Camera {
     pub fn inverse_projection_mat(&self) -> Mat4 {
         self.projection_mat().inverse()
     }
+    pub fn zoom_in(&mut self, delta: f32) {
+        self.view.zoom_in(delta);
+    }
+
+    pub fn zoom_out(&mut self, delta: f32) {
+        self.zoom_in(-delta);
+    }
 }
 
 impl Transformable for Camera {
@@ -90,13 +97,15 @@ impl CameraView {
             .transform
             .position()
             .distance(self.center_of_projection);
-        let movement = self.transform.forward()
-            * if distance <= delta {
+        if distance > f32::EPSILON || delta < 0.0 {
+            let movement = self.transform.forward()
+                * if distance <= delta {
                 distance - f32::EPSILON
             } else {
                 delta
             };
-        self.translate(movement);
+            self.translate(movement);
+        }
     }
 
     pub fn zoom_out(&mut self, delta: f32) {
