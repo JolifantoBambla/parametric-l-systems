@@ -23,9 +23,9 @@ struct VertexInput {
 };
 
 struct VertexOutput {
-    @builtin(position) position : vec4<f32>,
-    @location(0) normal : vec3<f32>,
-    @location(1) texcoord : vec2<f32>,
+    @builtin(position) position_cs : vec4<f32>,
+    @location(0) position : vec3<f32>,
+    @location(1) normal : vec3<f32>,
     @location(2) color: vec4<f32>,
 };
 
@@ -52,7 +52,7 @@ fn depth_pre_pass(input: VertexInput) -> @builtin(position) vec4<f32> {
 }
 
 fn compute_light_direction(light_index: u32, position: vec3<f32>) -> vec3<f32> {
-    if light_sources[light_index].light_type == 0 {
+    if (light_sources[light_index].light_type == 0) {
         return light_sources[light_index].position_or_direction;
     } else {
         return position - light_sources[light_index].position_or_direction;
@@ -66,7 +66,20 @@ fn vertex_main(input: VertexInput) -> VertexOutput {
     let world_position = model_matrix * vec4(input.position, 1.0);
     let world_normal = normalize((model_matrix * vec4(input.normal, 0.0)).xyz);
 
-    let object_color = instance.color;
+    var output : VertexOutput;
+    output.position_cs = comput_view_projection() * world_position;
+    output.position = world_position.xyz;
+    output.normal = world_normal;
+    output.color = instance.color;
+    return output;
+}
+
+@fragment
+fn fragment_main(input: VertexOutput) -> @location(0) vec4<f32> {
+    let world_position = input.position;
+    let world_normal = input.normal;
+    let object_color = input.color;
+
     let ambient_color = ambient_light.rgb;
 
     var color = (object_color.rgb * ambient_color);
@@ -77,15 +90,5 @@ fn vertex_main(input: VertexInput) -> VertexOutput {
         color += (object_color.rgb * light_color * lambertian);
     }
 
-    var output: VertexOutput;
-    output.position = comput_view_projection() * world_position;
-    output.normal = normalize((camera.view * vec4(world_normal, 0.0)).xyz);
-    output.texcoord = input.texcoord;
-    output.color = vec4(color, object_color.a);
-    return output;
-}
-
-@fragment
-fn fragment_main(input: VertexOutput) -> @location(0) vec4<f32> {
-    return input.color;
+    return vec4(color, object_color.a);
 }
