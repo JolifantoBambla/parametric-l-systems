@@ -242,6 +242,11 @@
             container: uiElement,
         });
         pane.registerPlugin(TweakpaneEssentialsPlugin);
+        const fpsGraph = pane.addBlade({
+            view: 'fpsgraph',
+            label: 'Performance',
+            lineCount: 2,
+        });
         let activeSceneFolder = null;
         const buildUi = (scene) => {
             if (scene) {
@@ -319,6 +324,15 @@
         sceneCanvas.height = sceneViewContainer.clientHeight;
         sceneCanvas.addEventListener('app::initialized', _ => {
             renderSceneLocked = false;
+        });
+        sceneCanvas.addEventListener('app::frame::start', e => {
+            fpsGraph.begin();
+        });
+        sceneCanvas.addEventListener('app::frame::end', e => {
+            fpsGraph.end();
+        });
+        sceneCanvas.addEventListener('app::frame::delta', e => {
+            console.log(e);
         });
 
         async function run(canvasId, scene, systems) {

@@ -14,6 +14,8 @@ use crate::lsystemrenderer::scene::LSystemScene;
 use crate::lsystemrenderer::scene_descriptor::LSystemSceneDescriptor;
 use std::collections::HashMap;
 use std::sync::Arc;
+#[cfg(target_arch = "wasm32")]
+use web_sys::HtmlCanvasElement;
 use wgpu::{
     CommandEncoderDescriptor, DownlevelCapabilities, DownlevelFlags, Label, Limits, ShaderModel,
     SubmissionIndex, SurfaceConfiguration, TextureView,
@@ -36,6 +38,8 @@ pub struct App {
     gpu: Arc<Gpu>,
     scene: LSystemScene,
     renderer: Renderer,
+    #[cfg(target_arch = "wasm32")]
+    canvas: Option<HtmlCanvasElement>,
 }
 
 impl App {
@@ -56,6 +60,8 @@ impl App {
             gpu: gpu.clone(),
             scene,
             renderer,
+            #[cfg(target_arch = "wasm32")]
+            canvas: None,
         }
     }
 }
@@ -80,6 +86,7 @@ impl GpuApp for App {
             if dispatch_canvas_event("app::initialized", &canvas).is_err() {
                 log::error!("Could not dispatch 'app::initialized' event");
             }
+            self.canvas = Some(canvas);
         }
     }
 
@@ -151,6 +158,12 @@ impl Update for App {
 
 impl PrepareRender for App {
     fn prepare_render(&mut self, _input: &Input) {
+        #[cfg(target_arch = "wasm32")]
+        if let Some(canvas) = &self.canvas {
+            if dispatch_canvas_event("app::frame::start", canvas).is_err() {
+                log::error!("Could not dispatch 'app::frame::start' event");
+            }
+        }
         self.scene.prepare_render(
             self.renderer.render_object_builder(),
             self.renderer.light_sources_bind_group_builder(),
@@ -159,5 +172,12 @@ impl PrepareRender for App {
 }
 
 impl OnCommandsSubmitted for App {
-    fn on_commands_submitted(&mut self, _input: &Input, _submission_index: &SubmissionIndex) {}
+    fn on_commands_submitted(&mut self, input: &Input, _submission_index: &SubmissionIndex) {
+        #[cfg(target_arch = "wasm32")]
+        if let Some(canvas) = &self.canvas {
+            if dispatch_canvas_event("app::frame::end", canvas).is_err() {
+                log::error!("Could not dispatch 'app::frame::end' event");
+            }
+        }
+    }
 }
