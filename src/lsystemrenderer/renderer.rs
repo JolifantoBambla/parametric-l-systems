@@ -37,14 +37,14 @@ impl Draw for RenderObject {
     }
 }
 
-pub struct RenderObjectCreator {
+pub struct RenderObjectBuilder {
     gpu: Arc<Gpu>,
     bind_group_index: u32,
     bind_group_layout: BindGroupLayout,
 }
 
-impl RenderObjectCreator {
-    pub fn create_render_object(
+impl RenderObjectBuilder {
+    pub fn build(
         &self,
         mesh: &Arc<GpuMesh>,
         transform: &Buffer<Mat4>,
@@ -130,14 +130,20 @@ impl LightSourcesBindGroup {
     }
 }
 
-pub struct LightSourcesBindGroupCreator {
+pub struct LightSourcesBindGroupBuilder {
     gpu: Arc<Gpu>,
     bind_group_index: u32,
     bind_group_layout: BindGroupLayout,
 }
 
-impl LightSourcesBindGroupCreator {
-    pub fn create(&self, lights: &[LightSource]) -> LightSourcesBindGroup {
+impl LightSourcesBindGroupBuilder {
+    pub fn build(&self, ambient_light: Light, lights: &[LightSource]) -> LightSourcesBindGroup {
+        let ambient_light_buffer = Buffer::new_single_element(
+            "ambient light buffer",
+            ambient_light.color().extend(1.0),
+            BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+            &self.gpu,
+        );
         let lights_buffer: Buffer<LightSourceUniforms> = Buffer::from_data(
             "light sources buffer",
             &lights.iter().map(|l| l.into()).collect(),
@@ -147,10 +153,16 @@ impl LightSourcesBindGroupCreator {
         let bind_group = self.gpu.device().create_bind_group(&BindGroupDescriptor {
             label: Label::from("light sources bind group"),
             layout: &self.bind_group_layout,
-            entries: &[BindGroupEntry {
-                binding: 0,
-                resource: lights_buffer.buffer().as_entire_binding(),
-            }],
+            entries: &[
+                BindGroupEntry {
+                    binding: 0,
+                    resource: ambient_light_buffer.buffer().as_entire_binding()
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: lights_buffer.buffer().as_entire_binding(),
+                }
+            ],
         });
         LightSourcesBindGroup {
             bind_group_index: self.bind_group_index,
@@ -161,12 +173,12 @@ impl LightSourcesBindGroupCreator {
 
 pub struct Renderer {
     camera_uniforms: Buffer<CameraUniforms>,
-    ambient_light_uniforms: Buffer<Vec4>,
     depth_view: TextureView,
+    depth_pre_pass_pipeline: RenderPipeline,
     render_pipeline: RenderPipeline,
     uniforms_bind_group: BindGroup,
-    render_object_creator: RenderObjectCreator,
-    light_sources_bind_group_creator: LightSourcesBindGroupCreator,
+    render_object_builder: RenderObjectBuilder,
+    light_sources_bind_group_builder: LightSourcesBindGroupBuilder,
 }
 
 impl Renderer {
@@ -211,16 +223,6 @@ impl Renderer {
                         },
                         count: None,
                     },
-                    BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: ShaderStages::VERTEX | ShaderStages::FRAGMENT,
-                        ty: BindingType::Buffer {
-                            ty: BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: wgpu::BufferSize::new(mem::size_of::<Vec4>() as _),
-                        },
-                        count: None,
-                    },
                 ],
             },
         );
@@ -255,21 +257,71 @@ impl Renderer {
             gpu.device()
                 .create_bind_group_layout(&BindGroupLayoutDescriptor {
                     label: Label::from("Light sources bind group layout"),
-                    entries: &[BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: ShaderStages::VERTEX | ShaderStages::FRAGMENT,
-                        ty: BindingType::Buffer {
-                            ty: BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: wgpu::BufferSize::new(mem::size_of::<
-                                LightSourceUniforms,
-                            >()
-                                as _),
+                    entries: &[
+                        BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: ShaderStages::VERTEX | ShaderStages::FRAGMENT,
+                            ty: BindingType::Buffer {
+                                ty: BufferBindingType::Uniform,
+                                has_dynamic_offset: false,
+                                min_binding_size: wgpu::BufferSize::new(mem::size_of::<Vec4>() as _),
+                            },
+                            count: None,
                         },
-                        count: None,
-                    }],
+                        BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: ShaderStages::VERTEX | ShaderStages::FRAGMENT,
+                            ty: BindingType::Buffer {
+                                ty: BufferBindingType::Storage { read_only: true },
+                                has_dynamic_offset: false,
+                                min_binding_size: wgpu::BufferSize::new(mem::size_of::<
+                                    LightSourceUniforms,
+                                >()
+                                    as _),
+                            },
+                            count: None,
+                        }
+                    ],
                 });
         let vertex_buffer_layouts = vec![Vertex::buffer_layout()];
+
+        let depth_pre_pass_pipeline_layout = gpu
+            .device()
+            .create_pipeline_layout(&PipelineLayoutDescriptor {
+                label: Label::from("depth pre-pass pipeline layout"),
+                bind_group_layouts: &[
+                    &camera_uniforms_bind_group_layout,
+                    &instances_bind_group_layout,
+                ],
+                push_constant_ranges: &[],
+            });
+        let depth_pre_pass_pipeline = gpu
+            .device()
+            .create_render_pipeline(&RenderPipelineDescriptor {
+                label: Label::from("depth pre-pass pipeline"),
+                layout: Some(&depth_pre_pass_pipeline_layout),
+                vertex: VertexState {
+                    module: &shader_module,
+                    entry_point: "depth_pre_pass",
+                    buffers: vertex_buffer_layouts.as_slice(),
+                },
+                primitive: PrimitiveState {
+                    front_face: wgpu::FrontFace::Ccw,
+                    cull_mode: Some(Back),
+                    ..Default::default()
+                },
+                depth_stencil: Some(DepthStencilState {
+                    format: depth_format,
+                    depth_write_enabled: true,
+                    depth_compare: CompareFunction::Less,
+                    stencil: Default::default(),
+                    bias: Default::default(),
+                }),
+                multisample: Default::default(),
+                fragment: None,
+                multiview: None,
+            });
+
         let pipeline_layout = gpu
             .device()
             .create_pipeline_layout(&PipelineLayoutDescriptor {
@@ -298,8 +350,8 @@ impl Renderer {
                 },
                 depth_stencil: Some(DepthStencilState {
                     format: depth_format,
-                    depth_write_enabled: true,
-                    depth_compare: CompareFunction::Less,
+                    depth_write_enabled: false,
+                    depth_compare: CompareFunction::LessEqual,
                     stencil: Default::default(),
                     bias: Default::default(),
                 }),
@@ -318,12 +370,6 @@ impl Renderer {
             BufferUsages::UNIFORM | BufferUsages::COPY_DST,
             gpu,
         );
-        let ambient_light_uniforms = Buffer::new_zeroed(
-            "ambient light uniforms",
-            1,
-            BufferUsages::UNIFORM | BufferUsages::COPY_DST,
-            gpu,
-        );
 
         let uniforms_bind_group = gpu.device().create_bind_group(&BindGroupDescriptor {
             label: Label::from("uniforms bind group"),
@@ -333,25 +379,21 @@ impl Renderer {
                     binding: 0,
                     resource: camera_uniforms.buffer().as_entire_binding(),
                 },
-                BindGroupEntry {
-                    binding: 1,
-                    resource: ambient_light_uniforms.buffer().as_entire_binding(),
-                },
             ],
         });
 
         Self {
             camera_uniforms,
-            ambient_light_uniforms,
             depth_view,
+            depth_pre_pass_pipeline,
             render_pipeline,
             uniforms_bind_group,
-            render_object_creator: RenderObjectCreator {
+            render_object_builder: RenderObjectBuilder {
                 gpu: gpu.clone(),
                 bind_group_index: 1,
                 bind_group_layout: instances_bind_group_layout,
             },
-            light_sources_bind_group_creator: LightSourcesBindGroupCreator {
+            light_sources_bind_group_builder: LightSourcesBindGroupBuilder {
                 gpu: gpu.clone(),
                 bind_group_index: 2,
                 bind_group_layout: light_sources_bind_group_layout,
@@ -366,14 +408,10 @@ impl Renderer {
         command_encoder: &mut CommandEncoder,
     ) {
         let background_color = scene.background_color();
+        let scene_render_objects = scene.get_active_render_objects();
 
         self.camera_uniforms
             .write_buffer(&vec![CameraUniforms::from(&scene.camera())]);
-        self.ambient_light_uniforms.write_buffer(&vec![scene
-            .ambient_light()
-            .light()
-            .color()
-            .extend(1.0)]);
 
         let color_attachment = RenderPassColorAttachment {
             view: render_target,
@@ -388,37 +426,61 @@ impl Renderer {
                 store: true,
             },
         };
-        let depth_attachment = RenderPassDepthStencilAttachment {
-            view: &self.depth_view,
-            depth_ops: Some(Operations {
-                load: LoadOp::Clear(1.0),
-                store: false,
-            }),
-            stencil_ops: None,
-        };
-        let mut render_pass = command_encoder.begin_render_pass(&RenderPassDescriptor {
-            label: Label::from("trivial renderer"),
-            color_attachments: &[Some(color_attachment)],
-            depth_stencil_attachment: Some(depth_attachment),
-        });
-        render_pass.set_pipeline(&self.render_pipeline);
-        render_pass.set_bind_group(0, &self.uniforms_bind_group, &[]);
 
-        scene
-            .get_light_sources_bind_group()
-            .set_bind_group(&mut render_pass);
+        {
+            let mut depth_pre_pass = command_encoder.begin_render_pass(&RenderPassDescriptor {
+                label: Label::from("depth pre-pass"),
+                color_attachments: &[],
+                depth_stencil_attachment: Some(RenderPassDepthStencilAttachment {
+                    view: &self.depth_view,
+                    depth_ops: Some(Operations {
+                        load: LoadOp::Clear(1.0),
+                        store: true,
+                    }),
+                    stencil_ops: None,
+                }),
+            });
+            depth_pre_pass.set_pipeline(&self.depth_pre_pass_pipeline);
+            depth_pre_pass.set_bind_group(0, &self.uniforms_bind_group, &[]);
 
-        for render_objects in scene.get_active_render_objects() {
-            for render_object in render_objects {
-                render_object.draw(&mut render_pass);
+            for &render_objects in scene_render_objects.iter() {
+                for render_object in render_objects {
+                    render_object.draw(&mut depth_pre_pass);
+                }
+            }
+        }
+        {
+            let mut render_pass = command_encoder.begin_render_pass(&RenderPassDescriptor {
+                label: Label::from("render scene"),
+                color_attachments: &[Some(color_attachment)],
+                depth_stencil_attachment: Some(RenderPassDepthStencilAttachment {
+                    view: &self.depth_view,
+                    depth_ops: Some(Operations {
+                        load: LoadOp::Load,
+                        store: false,
+                    }),
+                    stencil_ops: None,
+                }),
+            });
+            render_pass.set_pipeline(&self.render_pipeline);
+            render_pass.set_bind_group(0, &self.uniforms_bind_group, &[]);
+
+            scene
+                .get_light_sources_bind_group()
+                .set_bind_group(&mut render_pass);
+
+            for &render_objects in scene_render_objects.iter() {
+                for render_object in render_objects {
+                    render_object.draw(&mut render_pass);
+                }
             }
         }
     }
-    pub fn render_object_creator(&self) -> &RenderObjectCreator {
-        &self.render_object_creator
+    pub fn render_object_builder(&self) -> &RenderObjectBuilder {
+        &self.render_object_builder
     }
-    pub fn light_sources_bind_group_creator(&self) -> &LightSourcesBindGroupCreator {
-        &self.light_sources_bind_group_creator
+    pub fn light_sources_bind_group_builder(&self) -> &LightSourcesBindGroupBuilder {
+        &self.light_sources_bind_group_builder
     }
 }
 

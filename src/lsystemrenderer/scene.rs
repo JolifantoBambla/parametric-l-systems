@@ -13,7 +13,7 @@ use crate::lsystemrenderer::camera::OrbitCamera;
 use crate::lsystemrenderer::instancing::Instance;
 use crate::lsystemrenderer::l_system_manager::{turtle::MaterialState, LSystemManager};
 use crate::lsystemrenderer::renderer::{
-    LightSourcesBindGroup, LightSourcesBindGroupCreator, RenderObject, RenderObjectCreator,
+    LightSourcesBindGroup, LightSourcesBindGroupBuilder, RenderObject, RenderObjectBuilder,
 };
 use crate::lsystemrenderer::scene_descriptor::{
     LSystemSceneDescriptor, SceneObjectDescriptor, SceneResource,
@@ -298,12 +298,12 @@ impl LSystemScene {
 
     pub fn prepare_render(
         &mut self,
-        render_object_creator: &RenderObjectCreator,
-        light_sources_bind_group_creator: &LightSourcesBindGroupCreator,
+        render_object_creator: &RenderObjectBuilder,
+        light_sources_bind_group_creator: &LightSourcesBindGroupBuilder,
     ) {
         if self.light_sources_bind_group.is_none() {
             self.light_sources_bind_group =
-                Some(light_sources_bind_group_creator.create(self.lights().as_slice()));
+                Some(light_sources_bind_group_creator.build(self.ambient_light.light(), self.lights().as_slice()));
         }
 
         for (_, o) in self.objects.iter_mut() {
@@ -327,7 +327,7 @@ impl LSystemScene {
                         };
                         if insert {
                             let cylinder_render_object = render_object_creator
-                                .create_render_object(
+                                .build(
                                     &self.cylinder_mesh,
                                     &o.transform_buffer,
                                     iteration.1.cylinder_instances_buffer(),
@@ -340,7 +340,7 @@ impl LSystemScene {
                                 if let Some(resource) = self.resources.get_mut(primitive_id) {
                                     for (iteration, instance_buffer) in primitive_instances.iter() {
                                         render_objects.push(
-                                            render_object_creator.create_render_object(
+                                            render_object_creator.build(
                                                 resource.get_or_create_mesh(iteration),
                                                 &o.transform_buffer,
                                                 instance_buffer,
@@ -358,7 +358,7 @@ impl LSystemScene {
                 Primitive::Mesh(mesh) => {
                     if mesh.render_objects.is_none() {
                         mesh.render_objects = Some(vec![render_object_creator
-                            .create_render_object(
+                            .build(
                                 &mesh.mesh,
                                 &o.transform_buffer,
                                 &mesh.instance_buffer,

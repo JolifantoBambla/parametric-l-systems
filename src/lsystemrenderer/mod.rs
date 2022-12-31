@@ -152,8 +152,8 @@ impl Update for App {
 impl PrepareRender for App {
     fn prepare_render(&mut self, _input: &Input) {
         self.scene.prepare_render(
-            self.renderer.render_object_creator(),
-            self.renderer.light_sources_bind_group_creator(),
+            self.renderer.render_object_builder(),
+            self.renderer.light_sources_bind_group_builder(),
         );
     }
 }

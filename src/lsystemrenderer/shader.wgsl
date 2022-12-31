@@ -30,10 +30,26 @@ struct VertexOutput {
 };
 
 @group(0) @binding(0) var<uniform> camera: Camera;
-@group(0) @binding(1) var<uniform> ambient_light: vec4<f32>;
 @group(1) @binding(0) var<uniform> model_transform: mat4x4<f32>;
 @group(1) @binding(1) var<storage> instances: array<Instance>;
-@group(2) @binding(0) var<storage> light_sources: array<LightSource>;
+@group(2) @binding(0) var<uniform> ambient_light: vec4<f32>;
+@group(2) @binding(1) var<storage> light_sources: array<LightSource>;
+
+fn comput_view_projection() -> mat4x4<f32> {
+    return camera.projection * camera.view;
+}
+
+fn compute_model_matrix(instance_id: u32) -> mat4x4<f32> {
+    let instance = instances[instance_id];
+    return model_transform * instance.model_matrix;
+}
+
+@vertex
+fn depth_pre_pass(input: VertexInput) -> @builtin(position) vec4<f32> {
+    let model_matrix = compute_model_matrix(input.instance);
+    let world_position = model_matrix * vec4(input.position, 1.0);
+    return comput_view_projection() * world_position;
+}
 
 fn compute_light_direction(light_index: u32, position: vec3<f32>) -> vec3<f32> {
     if light_sources[light_index].light_type == 0 {
@@ -44,10 +60,9 @@ fn compute_light_direction(light_index: u32, position: vec3<f32>) -> vec3<f32> {
 }
 
 @vertex
-fn vertex_main(input : VertexInput) -> VertexOutput {
-    var output : VertexOutput;
+fn vertex_main(input: VertexInput) -> VertexOutput {
     let instance = instances[input.instance];
-    let model_matrix = model_transform * instance.model_matrix;
+    let model_matrix = compute_model_matrix(input.instance);
     let world_position = model_matrix * vec4(input.position, 1.0);
     let world_normal = normalize((model_matrix * vec4(input.normal, 0.0)).xyz);
 
@@ -62,7 +77,8 @@ fn vertex_main(input : VertexInput) -> VertexOutput {
         color += (object_color.rgb * light_color * lambertian);
     }
 
-    output.position = camera.projection * camera.view * world_position;
+    var output: VertexOutput;
+    output.position = comput_view_projection() * world_position;
     output.normal = normalize((camera.view * vec4(world_normal, 0.0)).xyz);
     output.texcoord = input.texcoord;
     output.color = vec4(color, object_color.a);
@@ -70,6 +86,6 @@ fn vertex_main(input : VertexInput) -> VertexOutput {
 }
 
 @fragment
-fn fragment_main(input : VertexOutput) -> @location(0) vec4<f32> {
+fn fragment_main(input: VertexOutput) -> @location(0) vec4<f32> {
     return input.color;
 }
