@@ -172,7 +172,7 @@ impl PrepareRender for App {
 }
 
 impl OnCommandsSubmitted for App {
-    fn on_commands_submitted(&mut self, input: &Input, _submission_index: &SubmissionIndex) {
+    fn on_commands_submitted(&mut self, _input: &Input, _submission_index: &SubmissionIndex) {
         #[cfg(target_arch = "wasm32")]
         if let Some(canvas) = &self.canvas {
             if dispatch_canvas_event("app::frame::end", canvas).is_err() {
