@@ -25,7 +25,7 @@ impl Time {
         Self {
             start: now,
             now,
-            delta: self.now - now,
+            delta: now - self.now,
         }
     }
 }

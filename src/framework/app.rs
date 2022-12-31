@@ -73,7 +73,6 @@ impl<
 
         log::debug!("Starting event loop");
         event_loop.spawn(move |event, _, control_flow| {
-            // force ownership by the closure
             let _ = (self.ctx.instance(), self.ctx.adapter());
 
             *control_flow = ControlFlow::Poll;
