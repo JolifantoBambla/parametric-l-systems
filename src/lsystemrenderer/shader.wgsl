@@ -1,4 +1,5 @@
 struct Camera {
+    position: vec4<f32>,
     view: mat4x4<f32>,
     projection: mat4x4<f32>,
 };
@@ -10,9 +11,15 @@ struct LightSource {
     light_type: u32,
 }
 
+struct Material {
+    albedo: vec4<f32>,
+    specular_color: vec3<f32>,
+    shininess: f32,
+}
+
 struct Instance {
     model_matrix: mat4x4<f32>,
-    color: vec4<f32>,
+    material: Material,
 }
 
 struct VertexInput {
@@ -26,7 +33,9 @@ struct VertexOutput {
     @builtin(position) position_cs : vec4<f32>,
     @location(0) position : vec3<f32>,
     @location(1) normal : vec3<f32>,
-    @location(2) color: vec4<f32>,
+    @location(2) albedo: vec4<f32>,
+    @location(3) specular_color: vec3<f32>,
+    @location(4) shininess: f32,
 };
 
 @group(0) @binding(0) var<uniform> camera: Camera;
@@ -51,11 +60,12 @@ fn depth_pre_pass(input: VertexInput) -> @builtin(position) vec4<f32> {
     return comput_view_projection() * world_position;
 }
 
-fn compute_light_direction(light_index: u32, position: vec3<f32>) -> vec3<f32> {
+fn compute_light_direction_and_distance(light_index: u32, position: vec3<f32>) -> vec4<f32> {
     if (light_sources[light_index].light_type == 0) {
-        return light_sources[light_index].position_or_direction;
+        return vec4(-normalize(light_sources[light_index].position_or_direction), 1.0);
     } else {
-        return position - light_sources[light_index].position_or_direction;
+        let direction = light_sources[light_index].position_or_direction - position;
+        return vec4(normalize(direction), length(direction));
     }
 }
 
@@ -70,25 +80,42 @@ fn vertex_main(input: VertexInput) -> VertexOutput {
     output.position_cs = comput_view_projection() * world_position;
     output.position = world_position.xyz;
     output.normal = world_normal;
-    output.color = instance.color;
+    output.albedo = instance.material.albedo;
+    output.specular_color = instance.material.specular_color;
+    output.shininess = instance.material.shininess;
     return output;
 }
 
 @fragment
 fn fragment_main(input: VertexOutput) -> @location(0) vec4<f32> {
-    let world_position = input.position;
-    let world_normal = input.normal;
-    let object_color = input.color;
+    let position = input.position;
+    let normal = input.normal;
+    let albedo = input.albedo.rgb;
+    let alpha = input.albedo.a;
+    let specular_color = input.specular_color;
+    let shininess = input.shininess;
 
-    let ambient_color = ambient_light.rgb;
+    let view_direction = normalize(camera.position.xyz - position);
 
-    var color = (object_color.rgb * ambient_color);
+    let ambient = ambient_light.rgb;
+
+    var diffuse = vec3<f32>();
+    var specular = vec3<f32>();
+
     for (var i = 0u; i < arrayLength(&light_sources); i += 1) {
-        let light_dir = -normalize(compute_light_direction(i, world_position.xyz));
         let light_color = light_sources[i].color;
-        let lambertian = max(dot(world_normal, light_dir), 0.0);
-        color += (object_color.rgb * light_color * lambertian);
-    }
+        let light_dir_distance = compute_light_direction_and_distance(i, position.xyz);
+        let light_direction = light_dir_distance.xyz;
+        let inv_distance_squared = 1. / (light_dir_distance.w * light_dir_distance.w);
 
-    return vec4(color, object_color.a);
+        let halfway = normalize(light_direction + view_direction);
+
+        let lambertian = max(dot(normal, light_direction), 0.0);
+        diffuse += lambertian * light_color * inv_distance_squared;
+
+        specular += light_color * pow(max(dot(normal, halfway), 0.0), shininess) * inv_distance_squared;
+    }
+    let color = (ambient + diffuse) * albedo + specular * specular_color;
+
+    return vec4(pow(color, vec3(1.0 / 2.2)), alpha);
 }

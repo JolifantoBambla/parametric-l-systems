@@ -114,13 +114,15 @@ impl TurtleState {
 
     #[cfg(target_arch = "wasm32")]
     fn make_random_material(&self) -> Material {
+        let color = Vec3::new(
+            js_sys::Math::random() as f32,
+            js_sys::Math::random() as f32,
+            js_sys::Math::random() as f32,
+        );
         Material::new(
-            Vec3::new(
-                js_sys::Math::random() as f32,
-                js_sys::Math::random() as f32,
-                js_sys::Math::random() as f32,
-            )
-            .extend(1.),
+            color.extend(1.),
+            color,
+            js_sys::Math::random() as f32 * 128.0
         )
     }
 

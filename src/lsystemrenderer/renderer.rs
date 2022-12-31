@@ -22,6 +22,7 @@ use wgpu::{
     SurfaceConfiguration, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages,
     TextureView, TextureViewDescriptor, VertexState,
 };
+use crate::framework::scene::transform::Transformable;
 
 pub struct RenderObject {
     gpu_mesh: Arc<GpuMesh>,
@@ -76,6 +77,7 @@ impl RenderObjectBuilder {
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 struct CameraUniforms {
+    position: Vec4,
     view: Mat4,
     projection: Mat4,
 }
@@ -83,6 +85,7 @@ struct CameraUniforms {
 impl From<&OrbitCamera> for CameraUniforms {
     fn from(camera: &OrbitCamera) -> Self {
         Self {
+            position: camera.transform().position().extend(1.0),
             view: camera.view(),
             projection: camera.projection(),
         }

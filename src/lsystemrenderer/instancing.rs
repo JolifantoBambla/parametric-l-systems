@@ -1,27 +1,28 @@
-use glam::{Mat4, Vec4};
+use glam::{Mat4, Vec3, Vec4};
 use serde::Deserialize;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Deserialize, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Material {
-    color: Vec4,
+    albedo: Vec4,
+    #[serde(rename = "specularColor")]
+    specular_color: Vec3,
+    shininess: f32,
 }
 
 impl Material {
-    pub fn new(color: Vec4) -> Self {
-        Self { color }
-    }
-    pub fn color(&self) -> Vec4 {
-        self.color
-    }
-    pub fn set_color(&mut self, color: Vec4) {
-        self.color = color;
+    pub fn new(albedo: Vec4, specular_color: Vec3, shininess: f32) -> Self {
+        Self { albedo, specular_color, shininess }
     }
 }
 
 impl Default for Material {
     fn default() -> Self {
-        Self { color: Vec4::ONE }
+        Self {
+            albedo: Vec4::ONE,
+            specular_color: Vec3::ZERO,
+            shininess: 0.0
+        }
     }
 }
 
