@@ -1,54 +1,168 @@
-# Scene file format
+# User Interface
 
-Scenes are defined in JSON files.
+## Input File Editor
+
+Allows users to upload, edit, and save input files for this tool.
+Additionally, the buttons `Test` and `Render` allow users to run test iterations of the L-systems, or render the Scene defined in the current
+input file (see [Input File Format](#input-file-format)) respectively.
+The editor is initialized with a default input file.
+
+## Test Output
+
+Shows the output of test iterations run for L-systems defined in the current input file.
+By default, 3 iterations are run for each instance of each L-system (see [L-systems](#l-systems) and [Instaces](#instances)).
+
+## Viewer
+
+A 3D rendering of the scene defined in the last input file passed to the renderer via clicking the `Render` button.
+The camera orbits around the center of the scene and can be controlled via the mouse: to change the camera's orientation click the left mouse button and move the mouse.
+The mouse wheel controls the camera's zoom level.
+The active iteration of each L-system instance in the scene can be controlled by a corresponding slider in the user interface.
+Requires WebGPU to be supported by the browser.
+
+## Documentation
+
+Shows the tool's documentation (this text).
+
+# Input file format
+
+L-systems and Scenes are defined in JSON files.
 On the top level they define three properties:
-- L-Systems
-- Scene
-- Resources
+- **L-systems**: a collection of named L-system definitions.
+- **Scene**: a definition of a 3D scene to render in the viewer tab. This property is only required for rendering the scene, i.e., clicking the `Test` button works even if this property is missing.
+- **Resources**: a collection of resources, e.g., external meshes. This property is completely optional if no external resources are used.
 
-```
+Example:
+```json
 {
-  "systems": { ... },
-  "scene": { ... },
+  "lSystems": { ... },
+  "scene": { ... },    // only required for rendering L-systems
   "resources": { ... } // optional
 }
 ```
 
+## Common properties
+
+### Transform
+Several objects in an input file may specify a `"transform"` property that defines their relation to their embedding space.
+A transform is given as an array of 12 floats, the elements of a 4x4 column-major matrix.
+All transform properties are optional and default to the identity.
+
+### Material
+
+TODO
+
 ## L-Systems
 
-```
+Each L-system in the file is uniquely defined by its name which is used as a key in the `"lSystems"` object of the input file.
+In the following example, a single L-system with the unique name `tree` is defined:
+```json
 {
-  "systems": {
-    "<system-name>": { ... },
-    ...
+  "lSystems": {
+    "tree": { ... } // contains the L-system's definition
   },
   ...
 }
 ```
 
+Each L-system specifies the following properties:
+- **Definition**: The actual definition of the L-system consisting of an alphabet, a set of productions, a collection of parameters, and an axiom.
+- **Instances**: A collection of instances of this L-system specifying a number of iterations as well as parameter overrides to use when evaluating the L-system.
+- **Transform**: A 4x4 column major matrix defining the transformations to apply to transform the object(s) created by a 3D turtle to the L-system's space (see [3D turtle's orientation](#orientation)).
+- **Primitives**: A collection of primitives the 3D turtle may use during the interpretation of an evaluated L-system instance. Each primitive must map to a resource in the input file's `"resources"` property.
+
+```json
+{ 
+  "definition": { ... },
+  "instances": { ... },
+  "transform": [ ... ],  // optional
+  "primitives": [ ... ]  // optional; if primitives are defined, they must name a resurce in the input file's resources property
+}
 ```
-{
-  "type": "object" // currently, only object is allowed
+
+### Definition
+
+The actual L-system consisting of the following properties:
+- **Alphabet**: A collection of modules that may occur in either the axiom or a production. Each module is uniquely defined by a name and an implicit number of parameters (e.g., `Foo(a,b,c)` and `Foo(x,y,z)` are equivalent in the context of the L-system).
+- **Parameters**: A collection of global, immutable parameters that may occur in either the axiom or a production. Parameter names must be valid identifiers in the JavaScript language and their values must be numbers (they are coerced to the JavaScript `Number` type). Parameter values may be overriden by an [instance](#instances) before they are evaluated.
+- **Productions**: A collection of productions to transform modules in the L-systems axiom. Productions may only use modules defined in the L-system's alphabet and parameters defined by the module they replace, the module's environment, i.e., predecessors or successors of the module they replace, or by the L-system itself.
+- **Axiom**: An initial string of modules that must occur in the L-system's alphabet. Parameters of the axiom's modules must be either numbers or name one of the L-system's parameters.
+
+The following example shows an L-system with a single module in its alphabet: `A(x,y)`. Its name is `A` and its number of parameters is 2.
+The L-system's single parameter `b` defaults to the value `23.5`.
+The L-system has four productions that all replace an instance of the module `A(x,y)`.
+The first two productions do not require the module to appear in a specific environment, and they have the same condition, `x < y`, as well as the same probability of being selected, `0.5`.
+While the first one specifies this probability explicitly, the second production's probability is implicitly set to `(1 - sum_explicit_p) / num_implicit_p) = (1 - 0.5) / 1 = 0.5`, where `sum_explicit_p` is the sum of all probabilities explicitly given for all productions with the same condition and environment, and `num_implicit_p` is the number of productions not specifying a probability with the same condition and environment.
+The third production replaces an instance of `A(x,y)` if there are other instances of `A(x,y)` before and after it, and the condition `x0 + y0 < x1 + x2 && x2 + y2 < b`, where `x0`, `x1`, `x2`, `y0`, `y1`, `y2` are the parameters of the three `A(x,y)` instances, and `b` is the L-system's global parameter `b`, evaluates to `true`.
+The fourth production simply replaces an instance of `A(x,y)` if there are other instances of `A(x,y)` before and after it without any further condition.
+For more detailed information see the [L-system syntax specification](#l-system-syntax).
+
+```json
+{ 
   "definition": {
-    "alphabet": [ ... ],
+    "alphabet": [ "A(x,y)" ],
     "parameters": {
-      "<parameter-name>": <parameter-value>,
-      ...
+      "b": 23.5
     },
-    "productions": [ ... ],
-    "axiom": "..."
+    "productions": [
+      "0.5; A(x,y): x < y -> A(x*2, Math.sqrt(y))",
+      "A(x,y): x < y -> A(x / 2, b)",
+      "A(x0,y0) < A(x1,y1) > A(x2,y2): x0 + y0 < x1 + x2 && x2 + y2 < b -> A(1,2)",
+      "A(x0,y0) < A(x1,y1) > A(x2,y2) -> A(2,1)"
+    ],
+    "axiom": "A(100,b)A(100,b)A(100,b)"
   },
-  "instances: {
-    "iterations": <integer>,
-    "parameters": { ... },    // optional overrides for system parameters
-    "materials": [ ... ],.    // optional
-    "startMaterial": <number> // optional
+  ...
+}
+```
+
+### Instances
+
+L-system instances are used to evaluate an L-system. They must specify an integer number of iterations and may define the following properties:
+- **Parameters**: A collection of overrides of the L-system's parameters.
+- **Materials**: A collection of materials to use when interpreting this L-system instance (see [3D turtle's materials](#materials)).
+- **Start material**: An index into the instance's collection of materials. Defaults to 0. This only has an effect if materials are defined.
+- **Test iterations**: By default, only 3 iterations are evaluated for each instance during testing. If `"unlimitedTestIterations"` is explicitly set to `true`, the instance's number of iterations specified by its `"iterations"` property are evaluated instead.
+
+The following two examples are equivalent:
+
+```json
+{
+  ...,
+  "instances": {
+    "iterations": 10,
+    "parameters": {},                 // optional; overrides the system's parameters
+    "materials": [ ... ],             // optional
+    "startMaterial": 0,               // optional; only has an effect if materials are defined
+    "unlimitedTestIterations": false  // optional; defaults to false
   },
-  "transform": [ ... ].       // optional
+  ...
+}
+```
+```json
+{
+  ...,
+  "instances": {
+    "iterations": 10
+  },
+  ...
+}
+```
+
+### Primitives
+
+TODO: implement and document
+
+```json
+{ 
+  ...,
+  "primitives": [ ... ]       // optional; if primitives are defined, they must name a resurce in the input file's resources property
 }
 ```
 
 ## Scene
+
+The input file's `"scene"` property defines a 3D scene to render 
 
 ```json
 {
@@ -56,16 +170,59 @@ On the top level they define three properties:
   "scene": {
     "camera": {},
     "lights": {},
-    "objects: {}
-  }
+    "objects": {}
+  },
   ...
 }
 ```
 
+### Camera
+
+### Lights
+
+### Objects
+
 ## Resources
 
+### Wavefront OBJ
 
-# Specification
+# Turtle Graphics
+
+L-systems are interpreted by a 3D turtle graphics system.
+The turtle records transform matri
+
+## Orientation
+The 3d turtle graphics implementation uses a right-handed coordinate system with the head axis being `(0,0,-1)` and the up axis being `(0,1,0)`.
+The L-system's transform is used to transform
+
+## Materials
+
+## Turtle state
+
+## Commands
+
+| Command                      | Description                                                                                                  |
+|------------------------------|--------------------------------------------------------------------------------------------------------------|
+| `F(l=1,w=DEFAULT_WIDTH)`     | Moves the turtle forward, i.e., along its head axis, by `l` and draws a linesegment with diameter `w`.       |
+| `f(l=1)`                     | Moves the turtle forward, i.e., along its head axis, by `l`.                                                 |
+| `!(w)`                       | Sets the turtle's default diameter for line segments (`DEFAULT_WIDTH`) to `w`. The paramter `w` is required. |
+| `+(a=90)`                    | Rotates the turtle clockwise around its up axis by `a` degrees (yaw).                                        |
+| `-(a=90)`                    | Rotates the turtle counterclockwise around its up axis by `a` degrees (yaw).                                 |
+| `&(a=90)`                    | Rotates the turtle clockwise around its right axis by `a` degrees (pitch).                                   |
+| `^(a=90)`                    | Rotates the turtle counterclockwise around its right axis by `a` degrees (pitch).                            |
+| `/(a=90)`                    | Rotates the turtle clockwise around its head axis by `a` degrees (roll).                                     |
+| `\(a=90)`                    | Rotates the turtle counterclockwise around its head axis by `a` degrees (roll).                              |
+| `&vert;`                     | Rotates the turtle around its up axis by 180 degrees (yaw).                                                  |
+| `[`                          | Pushes the turtle's current state onto a stack.                                                              |
+| `]`                          | Pops the turtle's last state from a stack.                                                                   |
+| `%`                          | Ignores all further commands until the turtle's last state is retrieved from the stack.                      |
+| `&grave;(i=MATERIAL_ID + 1)` | Sets the turtle's material index to `i`, or the maximum material index if `i` is larger than the maximum material index. |
+
+# L-System Syntax
+
+TODO: describe how productions are chosen (rank!)
+During evaluation, for each module in a string of modules, exactly one production from all productions
+
 
 ## L-system
 An L-system consists of a list of modules, a list of productions, a list of parameters, an axiom, and an interpreter.

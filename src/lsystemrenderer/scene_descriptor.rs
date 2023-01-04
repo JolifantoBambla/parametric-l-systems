@@ -257,14 +257,15 @@ impl Scene {
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct LSystemSceneDescriptor {
-    systems: HashMap<String, LSystemDescriptor>,
+    #[serde(rename = "lSystems")]
+    l_systems: HashMap<String, LSystemDescriptor>,
     scene: Scene,
     resources: Option<HashMap<String, SceneResource>>,
 }
 
 impl LSystemSceneDescriptor {
-    pub fn systems(&self) -> &HashMap<String, LSystemDescriptor> {
-        &self.systems
+    pub fn l_systems(&self) -> &HashMap<String, LSystemDescriptor> {
+        &self.l_systems
     }
     pub fn scene(&self) -> &Scene {
         &self.scene

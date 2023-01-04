@@ -155,7 +155,7 @@ impl LSystemScene {
         let mut l_system_managers = HashMap::new();
         for (name, mut system) in l_systems.drain() {
             let system_descriptor = scene_descriptor
-                .systems()
+                .l_systems()
                 .get(&name)
                 .unwrap_or_else(|| panic!("System has no descriptor: {}", name));
             let mut instances = HashMap::new();
@@ -188,7 +188,7 @@ impl LSystemScene {
                         *iteration
                     } else {
                         scene_descriptor
-                            .systems()
+                            .l_systems()
                             .get(d.system())
                             .unwrap_or_else(|| {
                                 panic!("Object references unknown LSystem: {}", d.system())
