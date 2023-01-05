@@ -179,10 +179,10 @@ pub enum TurtleCommand {
     #[serde(rename = "~")]
     AddPredefinedPrimitive(PrimitiveCommand),
 
-    #[serde(rename = "BeginSurface")]
+    #[serde(rename = "<")]
     BeginPrimitive(PrimitiveCommand),
 
-    #[serde(rename = "EndSurface")]
+    #[serde(rename = ">")]
     EndPrimitive(PrimitiveCommand),
 
     #[serde(rename = "{")]

@@ -18,7 +18,10 @@ A 3D rendering of the scene defined in the last input file passed to the rendere
 The camera orbits around the center of the scene and can be controlled via the mouse: to change the camera's orientation click the left mouse button and move the mouse.
 The mouse wheel controls the camera's zoom level.
 The active iteration of each L-system instance in the scene can be controlled by a corresponding slider in the user interface.
-Requires WebGPU to be supported by the browser.
+If an iteration has not yet been evaluated by the system, this is done on the fly.
+Since everything is done on the main thread this may cause a temporary drop in performance.
+Evaluated iterations are cached by the system until the active scene is replaced.
+The viewer requires WebGPU to be supported by the browser.
 
 ## Documentation
 
@@ -50,7 +53,23 @@ All transform properties are optional and default to the identity.
 
 ### Material
 
-TODO
+Some objects in an input file may specify a `"material"` or `"materials"` property, i.e., a material object or an array of material objects respectively.
+A material must name a `"type"`.
+See the subsections below for supported types.
+
+#### Blinn-Phong
+
+Instances of the `"Blinn-Phong"` material type define two color properties, `"albedo"` and `"specular"`, as well as a `"shininess"` property to be used as an exponent for the Blinn-Phong lighting model.
+Color properties must be given as normalized RGB values, i.e., as three-element floating point arrays where values are in range `[0;1]`, e.g.:
+
+```json
+{
+  "type": "Blinn-Phong",
+  "albedo":  [1.0, 1.0, 1.0],
+  "specular":  [1.0, 1.0, 1.0],
+  "shininess": 30.0
+}
+```
 
 ## L-Systems
 
@@ -76,7 +95,7 @@ Each L-system specifies the following properties:
   "definition": { ... },
   "instances": { ... },
   "transform": [ ... ],  // optional
-  "primitives": [ ... ]  // optional; if primitives are defined, they must name a resurce in the input file's resources property
+  "primitives": { ... }  // optional; if primitives are defined, they must name a resurce in the input file's resources property
 }
 ```
 
@@ -151,19 +170,31 @@ The following two examples are equivalent:
 
 ### Primitives
 
-TODO: implement and document
+A collection of named primitives that may be used by the L-system.
+Each primitive's name must be a resource defined in the input file's `"resources"` property.
+A primitive may specify a `"transform"` and a `"material"` property, e.g.:
 
 ```json
 { 
   ...,
-  "primitives": [ ... ]       // optional; if primitives are defined, they must name a resurce in the input file's resources property
+  "primitives": {
+    "quad.obj": {
+      "transform": [ ... ], // optional
+      "material": { ... }   // optional
+    }
+  }
 }
 ```
 
 ## Scene
 
-The input file's `"scene"` property defines a 3D scene to render 
+The input file's `"scene"` property defines a 3D scene to render in the viewer tab.
+It has the following properties:
+- **Camera**: An object describing the position and orientation of the camera.
+- **Lights**: An object describing light sources in the scene.
+- **Objects**: A collection of named objects in the scene.
 
+Example:
 ```json
 {
   ...
@@ -178,136 +209,283 @@ The input file's `"scene"` property defines a 3D scene to render
 
 ### Camera
 
+The camera property defines the camera's position and orientation in the scene in terms of a position (`"position"`), a center of projection (`"lookAt"`), and an axis pointing up (`"up"`) in the camera's local space.
+All properties must be specified as three-element arrays of floating point numbers, e.g.:
+
+```json
+{
+  "camera": {
+    "eye": [0, 0, 1.5],
+    "lookAt": [0, 0, 0],
+    "up": [0, 1, 0]
+  },
+  ...
+}
+```
+
 ### Lights
+
+The `"lights"` property defines light sources in the 3D scene.
+It may specify the following light sources:
+- **Ambient light**: The ambient light in the scene. Has only a `"color"` property.
+- **Point Lights**: A collection of an arbitrary number of point lights in the scene. Each point light has a `"color"`, `"intensity"`, and a `"position"` property.
+- **Directional Lights**: A collection of an arbitrary number of directional lights in the scene. Each point light has a `"color"`, `"intensity"`, and a `"direction"` property.
+
+The color of the light emitted by a light source must be specified as normalized RGB values, i.e., a three-element array of floating point numbers in the range `[0;1]`.
+Point and directional light sources may specify an additional intensity value to control the light's strength. Intensity values are optional and default to `1`.
+A point light source's position, or a directional light source's direction respectively must be specified as a 3D position / vector, i.e. a three-element array of floating point numbers.
+
+Example:
+```json
+{
+  ...,
+  "lights": {
+    "ambient": {
+      "color": [0.1, 0.1, 0.1]
+    },
+    "pointLights": [
+      {
+        "color": [1.0, 1.0, 1.0],
+        "intensity": 1.0,
+        "position": [1.0, 1.0, 0.0]
+      }
+    ],
+    "directionalLights": [
+      {
+        "color": [1.0, 1.0, 1.0],
+        "intensity": 1.0,
+        "direction": [-1.0, -1.0, -1.0]
+      }
+    ]
+  },
+  ...
+}
+```
 
 ### Objects
 
+The `"objects"` property of a scene specifies all 3D objects that are to be rendered.
+All objects may specify a transform matrix (see [Transform](#transform)) to transform the object to a common world space.
+All scene objects must specify a `"type"`. There are two types of objects:
+- **L-System**: An L-System object must name an L-System defined in the `"lSystems"` property of the input file, as well as one of its instances. It may specify a number of iterations to override the instance's default number of iterations (see [Instances](#instances)).
+- **Wavefront OBJ**: An external mesh resource given in the Wavefront OBJ format (see [Wavefront OBJ](#wavefront-obj)). The object must name an OBJ resource defined in the input file's `"resources"` property. An OBJ object may define a material.
+
+The following example defines three scene objects: two L-system and one OBJ object.
+Both L-system objects use the same L-system instance, instance `"g"` of L-system `"tree"`.
+While the first one, `"Tree1"`, is initially rendered in the second iteration of the L-system instance (the iteration may be changed via the user interface during rendering), the other one, `"Tree2"`, uses the L-system instance's default number of iterations.
+In addition, `"Tree2"` specifies a transform, e.g., to not be rendered in the same location as `"Tree1"`.
+Internally, `"Tree1"` and `"Tree2"` share the same L-system instance.
+
+```json
+{
+  ...,
+  "objects": {
+    "Tree1": {
+      "type": "lSystem",
+      "system": "tree",
+      "instance": "g",
+      "iterations": 2
+    },
+    "Tree2": {
+      "type": "lSystem",
+      "system": "tree",
+      "instance": "g",
+      "transform": [ ... ]
+    },
+    "Floor": {
+      "type": "obj",
+      "obj": "quad.obj",
+      "material": { ... },
+      "transform": [ ... ]
+    }
+  }
+}
+```
+
 ## Resources
 
+The optional `"resources"` property of the input file defines external resources that may be used by L-systems or scene objects.
+Each resource must specify a `"type"`.
+See the subsections below for supported resource types.
+Resources are uniquely defined by their name, e.g.:
+
+```json
+{
+  ...,
+  "resources": {
+    "quad.obj": {}
+  }
+}
+```
+
 ### Wavefront OBJ
+
+A Wavefront OBJ resource must specify the type `"obj"`.
+Each OBJ resource must define either a `"path"` to fetch the resource from a server, or the OBJ's `"source"` directly.
+If both a path and the source is given, the path is used.
+The OBJ is expected to define a position and normal for each vertex.
+Materials defined in the OBJ are ignored.
+
+```json
+{
+  "quad.obj": {
+    "type": "obj",
+    "path": "https://<...>.obj",
+    "source": "v 1 0 0 ..."
+  }
+}
+```
 
 # Turtle Graphics
 
 L-systems are interpreted by a 3D turtle graphics system.
-The turtle records transform matri
-
-## Orientation
-The 3d turtle graphics implementation uses a right-handed coordinate system with the head axis being `(0,0,-1)` and the up axis being `(0,1,0)`.
-The L-system's transform is used to transform
-
-## Materials
+The turtle moves through 3D space and records transform matrices for drawing primitives, e.g., cylinders for line segments.
+Primitives are then drawn in an instanced manner, i.e., individual instances are drawn instead of constructing a mesh and drawing the mesh.
+Primitive instances for an iteration are cached by the system, so each iteration of an L-system instance is evaluated exactly once.
 
 ## Turtle state
 
+During L-system evaluation, the 3D turtle has a state that is mutated by commands.
+Most notably the 3D turtle has a position and an orientation (see [Orientation](#orientation)).
+In addition, it has a `DEFAULT_DIAMETER` (defaulting to `1`) for drawing line segments, and a `MATERIAL_IDX` (defaulting to `0`) which is the index of the current material (see [Materials](#materials)).
+The turtle's state may be pushed to and retrieved from a stack to support branching.
+
+### Orientation
+
+The 3D turtle graphics implementation uses a right-handed coordinate system with the head axis being `(0,0,-1)` and the up axis being `(0,1,0)`.
+An L-system's transform may be used to transform the primitive instances recorded by the turtle to the L-system's own local space.
+
+### Materials
+
+The 3D turtle has a collection of materials used to render primitive instances.
+If the collection of materials is empty, a random material will be generated for each primitive instance and the turtle's `MATERIAL_IDX` and mutating it has no effect.
+
 ## Commands
 
-| Command                      | Description                                                                                                  |
-|------------------------------|--------------------------------------------------------------------------------------------------------------|
-| `F(l=1,w=DEFAULT_WIDTH)`     | Moves the turtle forward, i.e., along its head axis, by `l` and draws a linesegment with diameter `w`.       |
-| `f(l=1)`                     | Moves the turtle forward, i.e., along its head axis, by `l`.                                                 |
-| `!(w)`                       | Sets the turtle's default diameter for line segments (`DEFAULT_WIDTH`) to `w`. The paramter `w` is required. |
-| `+(a=90)`                    | Rotates the turtle clockwise around its up axis by `a` degrees (yaw).                                        |
-| `-(a=90)`                    | Rotates the turtle counterclockwise around its up axis by `a` degrees (yaw).                                 |
-| `&(a=90)`                    | Rotates the turtle clockwise around its right axis by `a` degrees (pitch).                                   |
-| `^(a=90)`                    | Rotates the turtle counterclockwise around its right axis by `a` degrees (pitch).                            |
-| `/(a=90)`                    | Rotates the turtle clockwise around its head axis by `a` degrees (roll).                                     |
-| `\(a=90)`                    | Rotates the turtle counterclockwise around its head axis by `a` degrees (roll).                              |
-| `&vert;`                     | Rotates the turtle around its up axis by 180 degrees (yaw).                                                  |
-| `[`                          | Pushes the turtle's current state onto a stack.                                                              |
-| `]`                          | Pops the turtle's last state from a stack.                                                                   |
-| `%`                          | Ignores all further commands until the turtle's last state is retrieved from the stack.                      |
-| `&grave;(i=MATERIAL_ID + 1)` | Sets the turtle's material index to `i`, or the maximum material index if `i` is larger than the maximum material index. |
+The 3D turtle's state is modified by the following commands. Most command parameters have default values. This is indicated by a `=` followed by the default value for the parameter.
+
+| Command                       | Description                                                                                                              |
+|-------------------------------|--------------------------------------------------------------------------------------------------------------------------|
+| `F(l=1,w=DEFAULT_DIAMETER)`   | Moves the turtle forward, i.e., along its head axis, by `l` and draws a linesegment with diameter `w`.                   |
+| `f(l=1)`                      | Moves the turtle forward, i.e., along its head axis, by `l`.                                                             |
+| `!(w)`                        | Sets the turtle's default diameter for line segments (`DEFAULT_DIAMETER`) to `w`. The paramter `w` is required.          |
+| `+(a=90)`                     | Rotates the turtle counterclockwise around its up axis by `a` degrees (yaw).                                             |
+| `-(a=90)`                     | Rotates the turtle clockwise around its up axis by `a` degrees (yaw).                                                    |
+| `&(a=90)`                     | Rotates the turtle counterclockwise around its right axis by `a` degrees (pitch).                                        |
+| `^(a=90)`                     | Rotates the turtle clockwise around its right axis by `a` degrees (pitch).                                               |
+| `/(a=90)`                     | Rotates the turtle counterclockwise around its head axis by `a` degrees (roll).                                          |
+| `\(a=90)`                     | Rotates the turtle clockwise around its head axis by `a` degrees (roll).                                                 |
+| `&vert;`                      | Rotates the turtle around its up axis by 180 degrees (yaw). Shorthand for `+(180)` or `-(180)`                           |
+| `[`                           | Pushes the turtle's current state onto a stack.                                                                          |
+| `]`                           | Pops the turtle's last state from a stack.                                                                               |
+| `%`                           | Ignores all further commands until the turtle's last state is retrieved from the stack.                                  |
+| `&grave;(i=MATERIAL_IDX + 1)` | Sets the turtle's material index to `i`, or the maximum material index if `i` is larger than the maximum material index. |
+| `$`                           | Rolls the turtle towards the plane closest to the plane perpendicular to its original head axis.                         |
+| `BeginPrimitive`              | Reserved keyword.                                                                                                        |
+| `EndPrimitive`                | Reserved keyword.                                                                                                        |
+| `{`                           | Reserved keyword.                                                                                                        |
+| `}`                           | Reserved keyword.                                                                                                        |
+| `.`                           | Reserved keyword.                                                                                                        |
+| `G`                           | Reserved keyword.                                                                                                        |
+| `~(name, i=0)`                | Reserved keyword.                                                                                                        |
+| any other symbol              | Ignored by the turtle.                                                                                                   |
 
 # L-System Syntax
 
-TODO: describe how productions are chosen (rank!)
-During evaluation, for each module in a string of modules, exactly one production from all productions
+An L-system consists of an [alphabet](#alphabet), i.e., a list of [modules](#module), a list of [productions](#production), a collection of [parameters](#parameter), and an [axiom](#axiom).
 
+## Alphabet
 
-## L-system
-An L-system consists of a list of modules, a list of productions, a list of parameters, an axiom, and an interpreter.
-The axiom (see [Axiom](#axiom)) is a list of evaluated modules which are transformed by the L-system's productions (see [Production](#production)) to generate a new list of evaluated modules.
-If no production can be applied to a module, the identity production is applied, i.e. the module is simply copied to the output list.
-If the generated list of evaluated modules contains query modules (see [Module](#module)), the L-system's interpreter is used to evaluate the states of all query modules after the productions have been applied.
+An L-system's alphabet is a complete list of [modules](#module) that may occur in the L-system's [axiom](#axiom) or one of its [productions](#production).
 
-## Interpreter
-An L-system's interpreter interprets lists of evaluated modules and tracks a system's state consisting of one or more named state variables.
-These state variables are used to replace the variables of query modules of a list of evaluated modules produced by processing an axiom using the L-system's production.
-
-## Parameter
-A parameter is uniquely defined by its name, which must be a valid variable name in the JavaScript language.
-
-## Module
-A module is uniquely defined by a symbol and a number of arguments.
-Symbols are named using single-character names.
-The exception are query modules which are prefixed by a `?` (question mark) and must have at least one argument.
-Arguments of a module are specified in a comma-separated list within parentheses (inbetween `(` and `)`).
-If a module has no arguments the parentheses are optional.
-The argument names of non-query modules hold no meaning in the context of modules but only in the context of productions (see [Production](#production)).
-The argument names of query modules must name variables within the L-system's state.
+### Module
+A module is uniquely defined by a name and a number of parameters.
+Parameters of a module are specified in a comma-separated list within parentheses (in between `(` and `)`).
+If a module has no parameters the parentheses are optional.
+Within the L-system's alphabet, parameter names of modules are completely optional and hold no meaning.
 E.g.:
 ```
-// Since none of the following modules have the same number of arguments, they may all exist in the same L-system:
-
-// A symbol with no arguments:
+// The following modules are equivalent:
 A
-
-// ... it is equivalent to
 A()
 
-// A symbol with two arguments:
+// The following modules are equivalent:
+A(,)
 A(x,y)
+A(foo,bar)
 
-// ... it is equivalent to
+// Since none of the following modules have the same number of arguments, they may all exist in the same L-system:
+A
+A(x)
 A(foo,bar)
 
 // A query module for querying the variable x from the L-system's state:
 ?A(x)
 ```
 
+#### Special Module Names
+ 
+Module names prefixed with a `?` are currently not allowed.
+
+Module names prefixed with a `~` must consist of more than the `~` character.
+
+## Parameter
+A parameter is uniquely defined by its name, which must be a valid identifier in the JavaScript language.
+A parameter may either be defined by a module declaration, i.e., in the module declaration section of a [production](#production), or by the L-system itself as a global immutable parameter.
+
 ## Axiom
-An axiom is a list of evaluated modules, i.e. symbols with explicit values for their parameters.
+
+An axiom is a string of modules from the L-system's alphabet, where each parameter must either be real-valued or name one of the L-system's global parameters.
 E.g.:
 ```
-// An axiom consisting of one module A with the value 1 as its single parameter and a module B with values 2 and 3 as its to parameters:
-A(1)B(2,3)
+// An axiom consisting of one module A with the value 1 as its single parameter and a module B with values 2 and "foo"
+// as its two parameters. The parameter "foo" must be an existing global parameter in the L-system:
+A(1)B(2,foo)
 ```
 
 ## Production
-A production specifies a rule for transforming a single evaluated module (see [Axiom](#axiom)) in an axiom to zero or more evaluated modules.
+A production specifies a rule for replacing a single [module](#module) in a string of [modules](#module), e.g., in the L-system's [axiom](#axiom), with zero or more [modules](#module).
 A production consists of four parts:
-1. A probability for the production to be applied.
-2. A specification of the module that is transformed by the production.
-3. A condition that has to be fulfilled for the production to be applied.
-4. A list of module forms generating evaluated modules.
+1. A **probability** for the production to be applied.
+2. A **module declaration** that specifies the module to be replaced by the production and the **environment** in which the module must occur for the production to be a candidate to replace it.
+3. A **condition** that has to be fulfilled for the production to be applied.
+4. A list of **module forms** generating evaluated modules.
 
-These four parts are separated by the keywords `;`, `:`, and `->` in that order, i.e.:
-`<probability> ; <module specification> : <condition> -> <module form list>`
-White spaces hold no meaning and may or may not be inserted for readability.
+These four parts are separated by the keywords `;`, `<`, `>`, `:`, and `->` in that order, i.e.:
+`<probability> ; <module declaration list> < <module declaration> > <module declaration list> : <condition> -> <module form list>`
+White spaces hold no meaning and may be inserted or omitted for readability.
+
+The combination of a production's **environment** and **condition** are the production's *requirements* for it to be a **candidate** to replace the **module**.
 
 ### Probability
-The probability of a production including the separating keyword `;` is optional and follows a uniform distribution of all productions with the same module specification.
-Probabilties must be positive floating point numbers less than or equal to 1.
-The sum of all probabilities of productions with the same module specification within an L-system must be less than or equal to 1.
-If the sum of all probabilities of productions that can be applied to an evaluated module is less than 1, they are rescaled to the range `[0,1]` before choosing a production.
-This may happen at run-time if two or more productions have the same module specification and different conditions, which are all satisfied.
+The probability of a production including the separating keyword `;` is optional.
+If two or more productions have the same requirements to replace a module, the productions probabilities is used to choose one of them (see [Evaluation](#evaluation)).
+Probabilities must be positive floating point numbers less than or equal to 1.
+The sum of all probabilities of productions with the same requirements must be less than or equal to 1.
+If the sum of all probabilities of productions that can be applied to an evaluated module is less than 1, they are rescaled to the range `[0,1]`.
 E.g.:
 ```
-// Given that there is only one production with the unique module specification <module specification A>, the folllowing three ways of specifying probabilities are all equivalent:
-<module specification A> : ...
-; <module specification A> : ...
-1.0; <module specification A> : ...
+// When there is only one production for replacing <module declaration A>, the folllowing three ways of specifying probabilities are all equivalent:
+<module declaration A> : ...
+; <module declaration A> : ...
+1.0; <module declaration A> : ...
 
-// explicit probabilities for two productions for the unique module specification <module specification B>
-0.45; <module specification B> : ...
-0.55; <module specification B> : ...
+// explicit probabilities for two productions for replacing <module declaration B>
+0.45; <module declaration B> : ...
+0.55; <module declaration B> : ...
 
-// implicit probabilities for two productions for the unique module specification <module specification C> of 0.5 each
-<module specification C> : ...
-<module specification C> : ...
+// implicit probabilities for two productions for replacing <module declaration C> of 0.5 each
+<module declaration C> : ...
+<module declaration C> : ...
+
+// mixed explicit & implicit probabilities for two productions for replacing <module declaration D> of 0.5 each
+0.5; <module declaration D> : ...
+<module declaration D> : ...
 ```
 
-### Module Specification
+### Module Declaration
+TODO: you are here!!!
+
 A module specification consists of a module (see [Module](#module)) and optional predecessors and successors separated by the keywords `<` and `>`.
 Argument names within a module specification must be unique accross all modules within the specification.
 They are defined within the whole scope of the production and may be used within the production's condition and/or its list of module forms.
@@ -395,3 +573,19 @@ CB(2)A(4,3)
 CB(1)A(8,7)
 CB(0)B(8)A(1.142,0)
 ```
+
+
+## Evaluation
+TODO: describe how productions are chosen (rank!)
+During evaluation, for each module in a string of modules, exactly one production from all productions
+
+
+
+All parameters are real-valued.
+
+
+## L-system
+The axiom (see [Axiom](#axiom)) is a list of evaluated modules which are transformed by the L-system's productions (see [Production](#production)) to generate a new list of evaluated modules.
+If no production can be applied to a module, the identity production is applied, i.e. the module is simply copied to the output list.
+If the generated list of evaluated modules contains query modules (see [Module](#module)), the L-system's interpreter is used to evaluate the states of all query modules after the productions have been applied.
+
