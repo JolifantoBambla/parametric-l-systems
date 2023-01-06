@@ -447,9 +447,9 @@ A(1)B(2,foo)
 A production specifies a rule for replacing a single [module](#module) in a string of [modules](#module), e.g., in the L-system's [axiom](#axiom), with zero or more [modules](#module).
 A production consists of four parts:
 1. A **probability** for the production to be applied.
-2. A **module declaration** that specifies the module to be replaced by the production and the **environment** in which the module must occur for the production to be a candidate to replace it.
+2. A **module declaration** that specifies the main module to be replaced by the production and the **environment** in which the module must occur for the production to be a candidate to replace it.
 3. A **condition** that has to be fulfilled for the production to be applied.
-4. A list of **module forms** generating evaluated modules.
+4. A list of **module forms**, i.e., a list of modules and rules for setting their parameters, that replace the main module with zero or more other modules.
 
 These four parts are separated by the keywords `;`, `<`, `>`, `:`, and `->` in that order, i.e.:
 `<probability> ; <module declaration list> < <module declaration> > <module declaration list> : <condition> -> <module form list>`
@@ -484,59 +484,60 @@ E.g.:
 ```
 
 ### Module Declaration
-TODO: you are here!!!
 
-A module specification consists of a module (see [Module](#module)) and optional predecessors and successors separated by the keywords `<` and `>`.
-Argument names within a module specification must be unique accross all modules within the specification.
-They are defined within the whole scope of the production and may be used within the production's condition and/or its list of module forms.
-An argument sharing its name with one of the L-system's parameters shadow this parameter's name in the production's scope.
-The argument names of a query module must name variables in the L-system's state.
+A production's module declaration consists of the main [module](#module) to replace and its environment, i.e., modules that have to appear before and after the module that is replaced by the production.
+The main module's environment is separated in the module declaration by the keywords `<` and `>` in the following order:
+```
+<predecessor modules ... > < <main module> > <successor modules ... >
+```
+Both parts of the main module's environment are optional.
+
+All parameter names within a production's module declaration must be a valid identifier in the JavaScript language and unique across all modules within the declaration.
+They are defined within the whole scope of the production and may be used within the production's condition and its list of module forms.
 E.g.:
 ```
-// The module A with no arguments may be transformed by the production.
-A : ... -> ...
+// A production that replaces a module A with no parameters:
+A -> ...
 
-// The module A with two arguments may be transformed by the production.
-// Its arguments x and y may be used in other parts of the production.
-A(x,y) : ... -> ...
+// A production that replaces a module A with two parameters.
+// Its parameters x and y may be used in other parts of the production.
+A(x,y) -> ...
 
-// If the module B with no arguments is preceeded by two modules A with no arguments and succeeded by a module C with two arguments, it may be transformed by the production.
-// The arguments x and y may be used in other parts of the production.
-AA<B>C(x, y) : ... -> ...
+// A production that replaces a module B with no parameters if it is preceeded by two modules A with no parameters and succeeded by a module C with two parameters.
+// The parameters x and y may be used in other parts of the production.
+AA<B>C(x, y) -> ...
 
-// If the module A with two arguments is preceeded by a module B with one argument, it may be transformed by the production.
-// All arguments x, y, and z may be used in other parts of the production.
-B(x) < A(y,z) : ... -> ...
-
-// The query module A with two arguments x and y may be transformed by the production.
-?A(x,y) : ... -> ...
+// A production that replaces a module A with two parameter if it is preceeded by a module B with one parameter.
+// All parameters x, y, and z may be used in other parts of the production.
+B(x) < A(y,z) -> ...
 ```
 
 ### Condition
 Specifying a condition for a production optional.
-A condition must be empty or a valid JavaScript expression evaluating to a generalized boolean.
+A condition must be empty or a valid JavaScript expression.
 If no condition is specified or the specification is empty, the condition is true by default.
-A production's condition may use all variables defined in the production's module specification, as well as all  parameters of the L-system.
-
-If an evaluated module satisfies both the module specification and the condition of more than one of an L-system's productions, the rules for probabilities of productions (see [Probability](#probability)) apply.
-
+Otherwise, its result is coerced to a boolean value. 
+A production's condition may use all parameter names declared in the production's module declaration, as well as all parameters of the L-system.
 E.g.:
 ```
 // The following conditions are equivent and default to true:
 ... -> ...
 ... : -> ...
 
-// A module A with two arguments may be transformed by the production if its first argument is smaller than its second one.
+// A production replacing a module A with two parameters if its first parameter (x) is smaller than its second one (y):
 A(x,y) : x < y -> ...
 
-// A module A with one argument may be transformed by the production if its argument is smaller than the L-system's parameter y.
+// A production replacing a module A with one parameter if its parameter (x) is smaller than one of the L-system's parameters (y):
 A(x) : x < y -> ...
 
-// A condition may use all functions defined in the global scope:
-A(x) : x < foo(x) -> ...
+// A production replacing a module A with one parameter if it is equal to its square root:
+A(x) : x < Math.sqrt(x) -> ...
 ```
 
 ### List of module forms
+
+TODO: you are here
+
 A production's list of module forms can either be empty or consist of one or multiple module forms.
 A module form consists of a symbol name satisfying the rules of modules (see [Module](#module)) and an optional comma-separated list of argument forms.
 An argument form must be a valid JavaScript expression evaluating to a value.
@@ -577,6 +578,9 @@ CB(0)B(8)A(1.142,0)
 
 ## Evaluation
 TODO: describe how productions are chosen (rank!)
+
+If a module satisfies both the module specification and the condition of more than one of an L-system's productions, the rules for probabilities of productions (see [Probability](#probability)) apply.
+
 During evaluation, for each module in a string of modules, exactly one production from all productions
 
 
