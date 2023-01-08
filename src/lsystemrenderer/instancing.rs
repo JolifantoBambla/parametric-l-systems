@@ -28,20 +28,52 @@ impl Default for Material {
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct Instance {
+pub struct ModelTransform {
     matrix: Mat4,
-    material: Material,
+    normal_matrix: Mat4,
 }
 
-impl Instance {
-    pub fn new(matrix: Mat4, material: Material) -> Self {
-        Self { matrix, material }
+impl ModelTransform {
+    pub fn new(matrix: Mat4) -> Self {
+        Self {
+            matrix,
+            normal_matrix: matrix.inverse().transpose(),
+        }
     }
     pub fn matrix(&self) -> Mat4 {
         self.matrix
     }
     pub fn set_matrix(&mut self, matrix: Mat4) {
         self.matrix = matrix;
+        self.normal_matrix = self.matrix.inverse().transpose()
+    }
+    pub fn normal_matrix(&self) -> Mat4 {
+        self.normal_matrix
+    }
+}
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct Instance {
+    transform: ModelTransform,
+    material: Material,
+}
+
+impl Instance {
+    pub fn new(matrix: Mat4, material: Material) -> Self {
+        Self {
+            transform: ModelTransform::new(matrix),
+            material
+        }
+    }
+    pub fn matrix(&self) -> Mat4 {
+        self.transform.matrix()
+    }
+    pub fn set_matrix(&mut self, matrix: Mat4) {
+        self.transform.set_matrix(matrix);
+    }
+    pub fn normal_matrix(&self) -> Mat4 {
+        self.transform.normal_matrix()
     }
     pub fn material(&self) -> Material {
         self.material
@@ -53,9 +85,6 @@ impl Instance {
 
 impl Default for Instance {
     fn default() -> Self {
-        Self {
-            matrix: Mat4::IDENTITY,
-            material: Material::default(),
-        }
+        Self::new(Mat4::IDENTITY, Material::default())
     }
 }

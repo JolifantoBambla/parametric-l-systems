@@ -10,7 +10,7 @@ use crate::framework::scene::light::LightSource;
 use crate::framework::scene::transform::Transform;
 use crate::lindenmayer::LSystem;
 use crate::lsystemrenderer::camera::OrbitCamera;
-use crate::lsystemrenderer::instancing::Instance;
+use crate::lsystemrenderer::instancing::{Instance, ModelTransform};
 use crate::lsystemrenderer::l_system_manager::{turtle::MaterialState, LSystemManager};
 use crate::lsystemrenderer::renderer::{
     LightSourcesBindGroup, LightSourcesBindGroupBuilder, RenderObject, RenderObjectBuilder,
@@ -18,7 +18,7 @@ use crate::lsystemrenderer::renderer::{
 use crate::lsystemrenderer::scene_descriptor::{
     LSystemSceneDescriptor, SceneObjectDescriptor, SceneResource,
 };
-use glam::{Mat4, Vec3};
+use glam::Vec3;
 use std::collections::HashMap;
 use std::sync::Arc;
 use wgpu::BufferUsages;
@@ -70,7 +70,7 @@ enum Primitive {
 }
 
 struct SceneObject {
-    transform_buffer: Buffer<Mat4>,
+    transform_buffer: Buffer<ModelTransform>,
     primitive: Primitive,
 }
 
@@ -215,7 +215,7 @@ impl LSystemScene {
                         SceneObject {
                             transform_buffer: Buffer::new_single_element(
                                 "transform buffer",
-                                d.transform().as_mat4(),
+                                ModelTransform::new(d.transform().as_mat4()),
                                 BufferUsages::UNIFORM,
                                 gpu,
                             ),
@@ -238,7 +238,7 @@ impl LSystemScene {
                         SceneObject {
                             transform_buffer: Buffer::new_single_element(
                                 "transform buffer",
-                                d.transform().as_mat4(),
+                                ModelTransform::new(d.transform().as_mat4()),
                                 BufferUsages::UNIFORM,
                                 gpu,
                             ),

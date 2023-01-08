@@ -4,6 +4,11 @@ struct Camera {
     projection: mat4x4<f32>,
 };
 
+struct ModelTransform {
+    model_matrix: mat4x4<f32>,
+    normal_matrix: mat4x4<f32>,
+}
+
 struct LightSource {
     color: vec3<f32>,
     intensity: f32,
@@ -18,7 +23,7 @@ struct Material {
 }
 
 struct Instance {
-    model_matrix: mat4x4<f32>,
+    transform: ModelTransform,
     material: Material,
 }
 
@@ -39,7 +44,7 @@ struct VertexOutput {
 };
 
 @group(0) @binding(0) var<uniform> camera: Camera;
-@group(1) @binding(0) var<uniform> model_transform: mat4x4<f32>;
+@group(1) @binding(0) var<uniform> model_transform: ModelTransform;
 @group(1) @binding(1) var<storage> instances: array<Instance>;
 @group(2) @binding(0) var<uniform> ambient_light: vec4<f32>;
 @group(2) @binding(1) var<storage> light_sources: array<LightSource>;
@@ -50,7 +55,12 @@ fn comput_view_projection() -> mat4x4<f32> {
 
 fn compute_model_matrix(instance_id: u32) -> mat4x4<f32> {
     let instance = instances[instance_id];
-    return model_transform * instance.model_matrix;
+    return model_transform.model_matrix * instance.transform.model_matrix;
+}
+
+fn compute_normal_matrix(instance_id: u32) -> mat4x4<f32> {
+    let instance = instances[instance_id];
+    return model_transform.normal_matrix * instance.transform.normal_matrix;
 }
 
 @vertex
@@ -74,7 +84,7 @@ fn vertex_main(input: VertexInput) -> VertexOutput {
     let instance = instances[input.instance];
     let model_matrix = compute_model_matrix(input.instance);
     let world_position = model_matrix * vec4(input.position, 1.0);
-    let world_normal = normalize((model_matrix * vec4(input.normal, 0.0)).xyz);
+    let world_normal = normalize((compute_normal_matrix(input.instance) * vec4(input.normal, 0.0)).xyz);
 
     var output : VertexOutput;
     output.position_cs = comput_view_projection() * world_position;

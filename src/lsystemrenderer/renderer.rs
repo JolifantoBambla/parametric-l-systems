@@ -5,7 +5,7 @@ use crate::framework::mesh::vertex::{Vertex, VertexType};
 use crate::framework::renderer::drawable::{Draw, DrawInstanced, GpuMesh};
 use crate::framework::scene::light::{Light, LightSource, LightSourceType};
 use crate::lsystemrenderer::camera::OrbitCamera;
-use crate::lsystemrenderer::instancing::Instance;
+use crate::lsystemrenderer::instancing::{Instance, ModelTransform};
 use crate::lsystemrenderer::scene::LSystemScene;
 use glam::{Mat4, Vec3, Vec4};
 use std::borrow::Cow;
@@ -48,7 +48,7 @@ impl RenderObjectBuilder {
     pub fn build(
         &self,
         mesh: &Arc<GpuMesh>,
-        transform: &Buffer<Mat4>,
+        transform: &Buffer<ModelTransform>,
         instances: &Buffer<Instance>,
     ) -> RenderObject {
         let bind_group = self.gpu.device().create_bind_group(&BindGroupDescriptor {
@@ -239,7 +239,7 @@ impl Renderer {
                         ty: BindingType::Buffer {
                             ty: BufferBindingType::Uniform,
                             has_dynamic_offset: false,
-                            min_binding_size: wgpu::BufferSize::new(mem::size_of::<Mat4>() as _),
+                            min_binding_size: wgpu::BufferSize::new(mem::size_of::<ModelTransform>() as _),
                         },
                         count: None,
                     },
