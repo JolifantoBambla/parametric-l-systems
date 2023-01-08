@@ -1,6 +1,9 @@
+use glam::Vec3;
 use crate::framework::mesh::{vertex::BufferLayout, Mesh};
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use wgpu::{Buffer, BufferUsages, Device, IndexFormat, Label, RenderPass};
+use crate::framework::geometry::bounds::Bounds3;
+use crate::framework::mesh::vertex::Position;
 
 pub trait DrawInstanced {
     fn draw_instanced<'a>(&'a self, pass: &mut RenderPass<'a>, num_instances: u32);
@@ -16,10 +19,11 @@ pub struct GpuMesh {
     vertex_count: u32,
     index_buffer: Buffer,
     vertex_buffer: Buffer,
+    aabb: Bounds3,
 }
 
 impl GpuMesh {
-    pub fn new<V: BufferLayout>(
+    pub fn new<V: BufferLayout + Position>(
         name: &String,
         faces: &[[u32; 3]],
         vertices: &Vec<V>,
@@ -36,16 +40,19 @@ impl GpuMesh {
             contents: bytemuck::cast_slice(vertices.as_slice()),
             usage: BufferUsages::VERTEX,
         });
+        let points: Vec<Vec3> = vertices.iter().map(|v| v.position()).collect();
+        let aabb = Bounds3::from(points.as_slice());
         Self {
             name: name.clone(),
             index_count: indices.len() as u32,
             vertex_count: vertices.len() as u32,
             index_buffer,
             vertex_buffer,
+            aabb,
         }
     }
 
-    pub fn from_mesh<V: BufferLayout>(mesh: &Mesh<V>, device: &Device) -> Self {
+    pub fn from_mesh<V: BufferLayout + Position>(mesh: &Mesh<V>, device: &Device) -> Self {
         GpuMesh::new(
             &String::from(mesh.name()),
             mesh.faces(),
@@ -68,6 +75,9 @@ impl GpuMesh {
     }
     pub fn vertex_buffer(&self) -> &Buffer {
         &self.vertex_buffer
+    }
+    pub fn aabb(&self) -> Bounds3 {
+        self.aabb
     }
 }
 

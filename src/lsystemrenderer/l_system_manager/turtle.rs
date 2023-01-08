@@ -29,13 +29,20 @@ impl Tropism {
     }
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug)]
 pub struct LSystemPrimitive {
+    aabb: Bounds3,
     transform: Option<Transform>,
     material: Option<Material>,
 }
 
 impl LSystemPrimitive {
+    pub fn new(aabb: Bounds3, transform: Option<Transform>, material: Option<Material>) -> Self {
+        Self { aabb, transform, material }
+    }
+    pub fn aabb(&self) -> Bounds3 {
+        self.aabb
+    }
     pub fn transform(&self) -> Transform {
         self.transform.unwrap_or_default()
     }
@@ -188,6 +195,7 @@ impl LSystemModel {
             e: world_tropism.e,
         });
 
+        let cylinder_aabb = Bounds3::new(Vec3::new(-0.5, 0.0, -0.5), Vec3::new(0.5, 1.0, 0.5));
         let cylinder_base_rotation = Quat::from_rotation_x(f32::to_radians(-90.));
         for c in commands {
             if state.ignoring_branch_depth > 0 {
@@ -210,16 +218,18 @@ impl LSystemModel {
                     let scale_vec = Vec3::new(radius, cylinder.length(), radius);
                     let cylinder_transform =
                         Transform::from_scale_rotation(scale_vec, cylinder_base_rotation);
+                    let instance_transform = state.transform().as_mat4_with_child(&cylinder_transform);
+
+                    for c in cylinder_aabb.corners() {
+                        aabb.grow(instance_transform.transform_point3(c));
+                    }
 
                     cylinder_instances.push(Instance::new(
-                        state.transform().as_mat4_with_child(&cylinder_transform),
+                        instance_transform,
                         state.get_material(),
                     ));
 
                     state.transform.move_forward(cylinder.length());
-
-                    // the bounding box is only approximated by the turtle's position
-                    aabb.grow(state.transform().position());
 
                     if let Some(t) = tropism {
                         state.set_forward(t.corrected_forward(state.transform.orientation()));
@@ -298,8 +308,13 @@ impl LSystemModel {
                                 .insert(surface_iteration, Vec::new());
                         }
 
+                        let instance_transform = state.transform().as_mat4_with_child(&primitive.transform());
+                        for c in primitive.aabb().corners() {
+                            aabb.grow(instance_transform.transform_point3(c));
+                        }
+
                         let instance = Instance::new(
-                            state.transform().as_mat4_with_child(&primitive.transform()), //matrix,
+                            instance_transform,
                             primitive.material.unwrap_or_else(|| state.get_material()),
                         );
 

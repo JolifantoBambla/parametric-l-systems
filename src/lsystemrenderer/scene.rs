@@ -22,6 +22,7 @@ use glam::Vec3;
 use std::collections::HashMap;
 use std::sync::Arc;
 use wgpu::BufferUsages;
+use crate::lsystemrenderer::l_system_manager::turtle::LSystemPrimitive;
 
 struct MeshResource {
     mesh: Arc<GpuMesh>,
@@ -157,27 +158,44 @@ impl LSystemScene {
                 log::error!("System has no descriptor: {}", name);
                 continue
             }
-            let system_descriptor = scene_descriptor
+            let l_system_descriptor = scene_descriptor
                 .l_systems()
                 .get(&name)
                 .unwrap();
             let mut instances = HashMap::new();
             for (instance_name, instance) in system.drain() {
-                if !system_descriptor.instances().contains_key(&instance_name) {
+                if !l_system_descriptor.instances().contains_key(&instance_name) {
                     log::error!("Instance has no descriptor: {}", instance_name);
                     continue
                 }
-                let instance_descriptor = system_descriptor
+                let instance_descriptor = l_system_descriptor
                     .instances()
                     .get(&instance_name)
                     .unwrap();
+                let mut primitives = HashMap::new();
+                for (primitive_id, primitive_descriptor) in l_system_descriptor.primitives().iter() {
+                    if let Some(primitive) = resources.get(primitive_id) {
+                        match primitive {
+                            Resource::Mesh(mesh_primitive) => {
+                                primitives.insert(
+                                    primitive_id.clone(),
+                                    LSystemPrimitive::new(
+                                        mesh_primitive.mesh.aabb(),
+                                        primitive_descriptor.transform(),
+                                        primitive_descriptor.material(),
+                                    )
+                                );
+                            }
+                        }
+                    }
+                }
                 instances.insert(
                     instance_name.to_string(),
                     LSystemManager::new(
                         instance,
-                        system_descriptor.transform(),
+                        l_system_descriptor.transform(),
                         Some(MaterialState::from(instance_descriptor)),
-                        system_descriptor.primitives().clone(),
+                        primitives,
                         instance_descriptor.tropism(),
                         gpu,
                     ),

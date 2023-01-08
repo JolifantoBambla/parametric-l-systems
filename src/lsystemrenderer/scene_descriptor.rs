@@ -1,7 +1,7 @@
 use crate::framework::scene::camera::CameraView;
 use crate::framework::scene::transform::Transform;
 use crate::lsystemrenderer::instancing::Material;
-use crate::lsystemrenderer::l_system_manager::turtle::{LSystemPrimitive, Tropism};
+use crate::lsystemrenderer::l_system_manager::turtle::Tropism;
 use glam::Vec3;
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -39,13 +39,28 @@ impl LSystemInstance {
 }
 
 #[derive(Clone, Debug, Deserialize)]
+pub struct LSystemPrimitiveDescriptor {
+    transform: Option<Transform>,
+    material: Option<Material>,
+}
+
+impl LSystemPrimitiveDescriptor {
+    pub fn transform(&self) -> Option<Transform> {
+        self.transform
+    }
+    pub fn material(&self) -> Option<Material> {
+        self.material
+    }
+}
+
+#[derive(Clone, Debug, Deserialize)]
 pub struct LSystemDescriptor {
     #[serde(rename = "type")]
     system_type: String,
     instances: HashMap<String, LSystemInstance>,
     transform: Option<Transform>,
     #[serde(default)]
-    primitives: HashMap<String, LSystemPrimitive>,
+    primitives: HashMap<String, LSystemPrimitiveDescriptor>,
 }
 
 impl LSystemDescriptor {
@@ -58,7 +73,7 @@ impl LSystemDescriptor {
     pub fn transform(&self) -> Transform {
         self.transform.unwrap_or_default()
     }
-    pub fn primitives(&self) -> &HashMap<String, LSystemPrimitive> {
+    pub fn primitives(&self) -> &HashMap<String, LSystemPrimitiveDescriptor> {
         &self.primitives
     }
 }

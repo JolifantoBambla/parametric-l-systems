@@ -83,6 +83,20 @@ impl From<Vec3> for Bounds3 {
     }
 }
 
+impl From<&[Vec3]> for Bounds3 {
+    fn from(points: &[Vec3]) -> Self {
+        let mut aabb = if let Some(p) = points.first() {
+            Bounds3::from(*p)
+        } else {
+            Bounds3::from(Vec3::ZERO)
+        };
+        for p in points {
+            aabb.grow(*p)
+        }
+        aabb
+    }
+}
+
 impl Bounds for Bounds3 {
     type VecN = Vec3;
     fn min(&self) -> Vec3 {

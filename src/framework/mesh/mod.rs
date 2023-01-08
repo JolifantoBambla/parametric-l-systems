@@ -5,7 +5,7 @@ use crate::framework::util::math::f32::PHI;
 use glam::{Vec2, Vec3};
 use obj::{load_obj, Obj, ObjError, TexturedVertex};
 use std::f32::consts::TAU;
-use crate::framework::geometry::bounds::{Bounds, Bounds3};
+use crate::framework::geometry::bounds::Bounds3;
 
 pub struct Mesh<V> {
     name: String,
@@ -31,19 +31,8 @@ impl<V> Mesh<V> {
 
 impl<V: Position> Mesh<V> {
     pub fn new(name: String, faces: Vec<[u32; 3]>, vertices: Vec<V>) -> Self {
-        Self { name, aabb: Mesh::aabb_from_vertices(&vertices), faces, vertices }
-    }
-
-    fn aabb_from_vertices(vertices: &Vec<V>) -> Bounds3 {
-        let mut aabb = if let Some(v) = vertices.first() {
-            Bounds3::from(v.position())
-        } else {
-            Bounds3::from(Vec3::ZERO)
-        };
-        for v in vertices {
-            aabb.grow(v.position())
-        }
-        aabb
+        let points: Vec<Vec3> = vertices.iter().map(|v| v.position()).collect();
+        Self { name, aabb: Bounds3::from(points.as_slice()), faces, vertices }
     }
 }
 
