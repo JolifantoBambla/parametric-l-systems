@@ -161,21 +161,33 @@
         }
 
         const sceneToViewerInputs = (scene) => {
-            const systems = {};
-            for (const systemName in scene.lSystems) {
-                const system = scene.lSystems[systemName]
-                systems[systemName] = {
-                };
-                for (const instanceName in system.instances) {
-                    systems[systemName][instanceName] = {
-                        ...system.definition,
+            const lSystems = {};
+            for (const lSystemName in scene.lSystems) {
+                const lSystem = scene.lSystems[lSystemName];
+                lSystems[lSystemName] = {};
+                for (const instanceName in lSystem.instances) {
+                    lSystems[lSystemName][instanceName] = {
+                        ...lSystem.definition,
                         parameters: {
-                            ...system.definition.parameters,
-                            ...system.instances[instanceName].parameters
+                            ...lSystem.definition.parameters,
+                            ...lSystem.instances[instanceName].parameters
                         }
                     }
                 }
             }
+
+            // iterations in UI start at 1 but in L-system they start at 0
+            for (const lSystem of Object.values(scene.lSystems)) {
+                for (const instance of Object.values(lSystem.instances)) {
+                    instance.iterations = Math.max(instance.iterations - 1, 0);
+                }
+            }
+            for (const object of Object.values(scene.scene.objects)) {
+                if (object.iterations) {
+                    object.iterations = Math.max(object.iterations - 1, 0);
+                }
+            }
+
             if (scene.resources) {
                 for (const resource of Object.values(scene.resources)) {
                     if (resource.type === "obj") {
@@ -185,7 +197,7 @@
                     }
                 }
             }
-            return [scene, systems];
+            return [scene, lSystems];
         }
 
         const sceneUploadButton = document.getElementById('scene-upload-button');
@@ -280,13 +292,11 @@
                         expanded: true,
                     });
 
-                    // todo: fps graph
-
                     const backgroundColor = {r: 0, g: 0, b: 0};
                     if (scene.scene.camera.backgroundColor) {
                         backgroundColor.r = scene.scene.camera.backgroundColor[0];
-                        backgroundColor.r = scene.scene.camera.backgroundColor[1];
-                        backgroundColor.r = scene.scene.camera.backgroundColor[2];
+                        backgroundColor.g = scene.scene.camera.backgroundColor[1];
+                        backgroundColor.b = scene.scene.camera.backgroundColor[2];
                     }
                     const sceneSettings = {
                         backgroundColor,
@@ -355,7 +365,6 @@
             sceneCanvas.addEventListener('app::frame::delta', e => {
                 console.log(e);
             });
-
             async function run(canvasId, scene, systems) {
                 await init();
                 main(canvasId, scene, systems);

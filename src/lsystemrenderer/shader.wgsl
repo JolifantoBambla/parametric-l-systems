@@ -99,7 +99,7 @@ fn vertex_main(input: VertexInput) -> VertexOutput {
 @fragment
 fn fragment_main(input: VertexOutput) -> @location(0) vec4<f32> {
     let position = input.position;
-    let normal = input.normal;
+    let normal = normalize(input.normal);
     let albedo = input.albedo.rgb;
     let alpha = input.albedo.a;
     let specular_color = input.specular_color;
