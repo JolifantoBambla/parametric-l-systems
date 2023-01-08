@@ -106,7 +106,14 @@
         editor.setValue(JSON.stringify({...defaultScene.default}, null, 2));
         const parseCurrentSceneSource = () => {
             // todo: parse DSL into scene JSON / object
-            return JSON.parse(editor.getValue());
+            try {
+                return JSON.parse(editor.getValue());
+            } catch (e) {
+                console.log(e);
+                alert('Invalid JSON - could not parse input file.');
+                throw new Error('invalid JSON');
+            }
+
         }
         const parseSceneJsonToDSL = sceneJson => {
             // todo: parse scene into L-System DSL
@@ -234,12 +241,12 @@
 
             const lockRenderScene = () => {
                 renderSceneLocked = true;
-                // todo: disable button
+                lSystemRenderButton.classList.add('disabled');
             };
             const unlockRenderScene = () => {
                 if (renderSceneLocked) {
                     renderSceneLocked = false;
-                    // todo: enable a button
+                    lSystemRenderButton.classList.remove('disabled');
                 }
             }
             const renderNewScene = async (scene) => {
