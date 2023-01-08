@@ -1,4 +1,4 @@
-use crate::framework::mesh::{vertex::VertexType, Mesh};
+use crate::framework::mesh::{vertex::BufferLayout, Mesh};
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use wgpu::{Buffer, BufferUsages, Device, IndexFormat, Label, RenderPass};
 
@@ -19,7 +19,7 @@ pub struct GpuMesh {
 }
 
 impl GpuMesh {
-    pub fn new<V: VertexType>(
+    pub fn new<V: BufferLayout>(
         name: &String,
         faces: &[[u32; 3]],
         vertices: &Vec<V>,
@@ -45,7 +45,7 @@ impl GpuMesh {
         }
     }
 
-    pub fn from_mesh<V: VertexType>(mesh: &Mesh<V>, device: &Device) -> Self {
+    pub fn from_mesh<V: BufferLayout>(mesh: &Mesh<V>, device: &Device) -> Self {
         GpuMesh::new(
             &String::from(mesh.name()),
             mesh.faces(),

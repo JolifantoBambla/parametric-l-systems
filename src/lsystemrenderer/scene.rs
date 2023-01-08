@@ -3,7 +3,7 @@ use crate::framework::event::lifecycle::Update;
 use crate::framework::event::window::OnResize;
 use crate::framework::gpu::buffer::Buffer;
 use crate::framework::input::Input;
-use crate::framework::mesh::{vertex::Vertex, Mesh};
+use crate::framework::mesh::{vertex::TexturedVertex, Mesh};
 use crate::framework::renderer::drawable::GpuMesh;
 use crate::framework::scene::camera::{CameraView, Projection};
 use crate::framework::scene::light::LightSource;
@@ -121,7 +121,7 @@ impl LSystemScene {
             ));
         }
 
-        let l_system_cylinder_mesh = Arc::new(GpuMesh::from_mesh::<Vertex>(
+        let l_system_cylinder_mesh = Arc::new(GpuMesh::from_mesh::<TexturedVertex>(
             &Mesh::new_default_cylinder(true),
             gpu.device(),
         ));
@@ -133,7 +133,7 @@ impl LSystemScene {
                     SceneResource::Obj(descriptor) => {
                         match Mesh::from_obj_source(descriptor.source()) {
                             Ok(mesh) => {
-                                let gpu_mesh = GpuMesh::from_mesh::<Vertex>(&mesh, gpu.device());
+                                let gpu_mesh = GpuMesh::from_mesh::<TexturedVertex>(&mesh, gpu.device());
                                 resources.insert(
                                     resource_id.to_string(),
                                     Resource::Mesh(MeshResource {

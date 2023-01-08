@@ -1,18 +1,165 @@
 pub mod vertex;
 
-use crate::framework::mesh::vertex::VertexType;
+use crate::framework::mesh::vertex::{FromPositionNormal, FromPositionNormalTextureCoordinates, Position};
 use crate::framework::util::math::f32::PHI;
 use glam::{Vec2, Vec3};
 use obj::{load_obj, Obj, ObjError, TexturedVertex};
 use std::f32::consts::TAU;
+use crate::framework::geometry::bounds::{Bounds, Bounds3};
 
-pub struct Mesh<V: VertexType> {
+pub struct Mesh<V> {
     name: String,
+    aabb: Bounds3,
     faces: Vec<[u32; 3]>,
     vertices: Vec<V>,
 }
 
-impl<V: VertexType> Mesh<V> {
+impl<V> Mesh<V> {
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+    pub fn aabb(&self) -> &Bounds3 {
+        &self.aabb
+    }
+    pub fn faces(&self) -> &Vec<[u32; 3]> {
+        &self.faces
+    }
+    pub fn vertices(&self) -> &Vec<V> {
+        &self.vertices
+    }
+}
+
+impl<V: Position> Mesh<V> {
+    pub fn new(name: String, faces: Vec<[u32; 3]>, vertices: Vec<V>) -> Self {
+        Self { name, aabb: Mesh::aabb_from_vertices(&vertices), faces, vertices }
+    }
+
+    fn aabb_from_vertices(vertices: &Vec<V>) -> Bounds3 {
+        let mut aabb = if let Some(v) = vertices.first() {
+            Bounds3::from(v.position())
+        } else {
+            Bounds3::from(Vec3::ZERO)
+        };
+        for v in vertices {
+            aabb.grow(v.position())
+        }
+        aabb
+    }
+}
+
+impl<V: FromPositionNormal + Position> Mesh<V> {
+    pub fn new_cube() -> Self {
+        // todo: add texture coordinates
+        #[rustfmt::skip]
+            let vertices = vec![
+            // top (0, 0, 1)
+            V::from_position_normal(Vec3::new(-1.0, -1.0,  1.0), Vec3::Z,     ),
+            V::from_position_normal(Vec3::new( 1.0, -1.0,  1.0), Vec3::Z,     ),
+            V::from_position_normal(Vec3::new( 1.0,  1.0,  1.0), Vec3::Z,     ),
+            V::from_position_normal(Vec3::new(-1.0,  1.0,  1.0), Vec3::Z,     ),
+            // bottom (0, 0, -1)
+            V::from_position_normal(Vec3::new(-1.0,  1.0, -1.0), Vec3::Z * -1.),
+            V::from_position_normal(Vec3::new( 1.0,  1.0, -1.0), Vec3::Z * -1.),
+            V::from_position_normal(Vec3::new( 1.0, -1.0, -1.0), Vec3::Z * -1.),
+            V::from_position_normal(Vec3::new(-1.0, -1.0, -1.0), Vec3::Z * -1.),
+            // right (1, 0, 0)
+            V::from_position_normal(Vec3::new( 1.0, -1.0, -1.0), Vec3::X,     ),
+            V::from_position_normal(Vec3::new( 1.0,  1.0, -1.0), Vec3::X,     ),
+            V::from_position_normal(Vec3::new( 1.0,  1.0,  1.0), Vec3::X,     ),
+            V::from_position_normal(Vec3::new( 1.0, -1.0,  1.0), Vec3::X,     ),
+            // left (-1, 0, 0)
+            V::from_position_normal(Vec3::new(-1.0, -1.0,  1.0), Vec3::X * -1.),
+            V::from_position_normal(Vec3::new(-1.0,  1.0,  1.0), Vec3::X * -1.),
+            V::from_position_normal(Vec3::new(-1.0,  1.0, -1.0), Vec3::X * -1.),
+            V::from_position_normal(Vec3::new(-1.0, -1.0, -1.0), Vec3::X * -1.),
+            // front (0, 1, 0)
+            V::from_position_normal(Vec3::new( 1.0,  1.0, -1.0), Vec3::Y,     ),
+            V::from_position_normal(Vec3::new(-1.0,  1.0, -1.0), Vec3::Y,     ),
+            V::from_position_normal(Vec3::new(-1.0,  1.0,  1.0), Vec3::Y,     ),
+            V::from_position_normal(Vec3::new( 1.0,  1.0,  1.0), Vec3::Y,     ),
+            // back (0, -1, 0)
+            V::from_position_normal(Vec3::new( 1.0, -1.0,  1.0), Vec3::Y * -1.),
+            V::from_position_normal(Vec3::new(-1.0, -1.0,  1.0), Vec3::Y * -1.),
+            V::from_position_normal(Vec3::new(-1.0, -1.0, -1.0), Vec3::Y * -1.),
+            V::from_position_normal(Vec3::new( 1.0, -1.0, -1.0), Vec3::Y * -1.),
+        ];
+
+        #[rustfmt::skip]
+            let faces: Vec<[u32; 3]> = vec![
+            [ 0,  1,  2],
+            [ 2,  3,  0], // top
+            [ 4,  5,  6],
+            [ 6,  7,  4], // bottom
+            [ 8,  9, 10],
+            [10, 11,  8], // right
+            [12, 13, 14],
+            [14, 15, 12], // left
+            [16, 17, 18],
+            [18, 19, 16], // front
+            [20, 21, 22],
+            [22, 23, 20], // back
+        ];
+        Self::new("Cube".to_string(), faces, vertices)
+    }
+
+    pub fn new_icosahedron() -> Self {
+        let inv_phi = 1. / PHI;
+
+        // todo: add texture coordinates
+        #[rustfmt::skip]
+            let vertex_positions = vec![
+            Vec3::new(0., inv_phi, -1.),
+            Vec3::new(inv_phi, 1., 0.),
+            Vec3::new(-inv_phi, 1., 0.),
+            Vec3::new(0., inv_phi, 1.),
+            Vec3::new(0., -inv_phi, -1.),
+            Vec3::new(-1., 0., inv_phi),
+            Vec3::new(0., -inv_phi, -1.),
+            Vec3::new( 1.,  0., -inv_phi),
+            Vec3::new(1., 0., inv_phi),
+            Vec3::new(-1.,  0., -inv_phi),
+            Vec3::new(inv_phi, -1., 0.),
+            Vec3::new(-inv_phi, -1., 0.),
+        ];
+
+        let vertices = vertex_positions
+            .iter()
+            .map(|&v| V::from_position_normal(v, v.normalize()))
+            .collect();
+
+        #[rustfmt::skip]
+            let faces = vec![
+            [ 2,  1,  0],
+            [ 1,  2,  3],
+            [ 5,  4,  3],
+            [ 4,  8,  3],
+            [ 7,  6,  0],
+            [ 6,  9,  0],
+            [11, 10,  4],
+            [10, 11,  6],
+            [ 9,  5,  2],
+            [ 5,  9, 11],
+            [ 8,  7,  1],
+            [ 7,  8, 10],
+            [ 2,  5,  3],
+            [ 8,  1,  3],
+            [ 9,  2,  0],
+            [ 1,  7,  0],
+            [11,  9,  6],
+            [ 7, 10,  6],
+            [ 5, 11,  4],
+            [10,  8,  4],
+        ];
+
+        Self::new("Icosahedron".to_string(), faces, vertices)
+    }
+
+    pub fn new_icosphere(_num_subdivisions: u32) -> Self {
+        todo!()
+    }
+}
+
+impl<V: FromPositionNormalTextureCoordinates + Position> Mesh<V> {
     pub fn from_obj_source(source: &str) -> Result<Self, ObjError> {
         match load_obj(source.as_bytes()) {
             Ok(obj) => Ok(Self::from_obj(obj)),
@@ -26,7 +173,7 @@ impl<V: VertexType> Mesh<V> {
             .vertices
             .iter()
             .map(|v| {
-                V::from_pos_normal_tex_coords(
+                V::from_position_normal_texture_coordinates(
                     Vec3::new(v.position[0], v.position[1], v.position[2]),
                     Vec3::new(v.normal[0], v.normal[1], v.normal[2]),
                     Vec3::new(v.texture[0], v.texture[1], v.texture[2]).truncate(),
@@ -42,11 +189,11 @@ impl<V: VertexType> Mesh<V> {
                 obj.indices[base_index + 2],
             ]);
         }
-        Self {
-            name: obj.name.unwrap_or_else(|| "unnamed obj".to_string()),
-            vertices,
+        Self::new(
+            obj.name.unwrap_or_else(|| "unnamed obj".to_string()),
             faces,
-        }
+            vertices
+        )
     }
 
     pub fn new_default_cylinder(centered: bool) -> Self {
@@ -81,7 +228,7 @@ impl<V: VertexType> Mesh<V> {
                 let y = offset_y + height * segment_ratio;
                 let x = r * f32::cos(side_ratio * TAU);
                 let z = r * f32::sin(side_ratio * TAU);
-                vertices.push(V::from_pos_normal_tex_coords(
+                vertices.push(V::from_position_normal_texture_coordinates(
                     Vec3::new(x, y, z),
                     Vec3::new(x, 0.0, z),
                     Vec2::new(side_ratio, segment_ratio),
@@ -99,7 +246,7 @@ impl<V: VertexType> Mesh<V> {
         }
 
         if bottom_cap {
-            vertices.push(V::from_pos_normal_tex_coords(
+            vertices.push(V::from_position_normal_texture_coordinates(
                 Vec3::new(0.0, offset_y, 0.0),
                 Vec3::new(0.0, -1.0, 0.0),
                 Vec2::new(0.0, 0.0),
@@ -110,7 +257,7 @@ impl<V: VertexType> Mesh<V> {
                 let y = offset_y;
                 let x = r_bottom * f32::cos((i as f32 / num_sides as f32) * TAU);
                 let z = r_bottom * f32::sin((i as f32 / num_sides as f32) * TAU);
-                vertices.push(V::from_pos_normal_tex_coords(
+                vertices.push(V::from_position_normal_texture_coordinates(
                     Vec3::new(x, y, z),
                     Vec3::new(0.0, -1.0, 0.0),
                     Vec2::new(0.0, 0.0),
@@ -123,7 +270,7 @@ impl<V: VertexType> Mesh<V> {
         }
 
         if top_cap {
-            vertices.push(V::from_pos_normal_tex_coords(
+            vertices.push(V::from_position_normal_texture_coordinates(
                 Vec3::new(0.0, offset_y + height, 0.0),
                 Vec3::new(0.0, 1.0, 0.0),
                 Vec2::new(0.0, 0.0),
@@ -134,7 +281,7 @@ impl<V: VertexType> Mesh<V> {
                 let y = offset_y + height;
                 let x = r_top * f32::cos((i as f32 / num_sides as f32) * TAU);
                 let z = r_top * f32::sin((i as f32 / num_sides as f32) * TAU);
-                vertices.push(V::from_pos_normal_tex_coords(
+                vertices.push(V::from_position_normal_texture_coordinates(
                     Vec3::new(x, y, z),
                     Vec3::new(0.0, 1.0, 0.0),
                     Vec2::new(1.0, 1.0),
@@ -146,141 +293,13 @@ impl<V: VertexType> Mesh<V> {
             }
         }
 
-        Self {
-            name: format!(
+        Self::new(
+            format!(
                 "Cylinder (r={}, h={}, centered={})",
                 radius, height, centered
             ),
             faces,
             vertices,
-        }
-    }
-
-    pub fn new_cube() -> Self {
-        // todo: add texture coordinates
-        #[rustfmt::skip]
-            let vertices = vec![
-            // top (0, 0, 1)
-            V::from_pos_normal_tex_coords(Vec3::new(-1.0, -1.0,  1.0), Vec3::Z,       Vec2::ZERO),
-            V::from_pos_normal_tex_coords(Vec3::new( 1.0, -1.0,  1.0), Vec3::Z,       Vec2::ZERO),
-            V::from_pos_normal_tex_coords(Vec3::new( 1.0,  1.0,  1.0), Vec3::Z,       Vec2::ZERO),
-            V::from_pos_normal_tex_coords(Vec3::new(-1.0,  1.0,  1.0), Vec3::Z,       Vec2::ZERO),
-            // bottom (0, 0, -1)
-            V::from_pos_normal_tex_coords(Vec3::new(-1.0,  1.0, -1.0), Vec3::Z * -1., Vec2::ZERO),
-            V::from_pos_normal_tex_coords(Vec3::new( 1.0,  1.0, -1.0), Vec3::Z * -1., Vec2::ZERO),
-            V::from_pos_normal_tex_coords(Vec3::new( 1.0, -1.0, -1.0), Vec3::Z * -1., Vec2::ZERO),
-            V::from_pos_normal_tex_coords(Vec3::new(-1.0, -1.0, -1.0), Vec3::Z * -1., Vec2::ZERO),
-            // right (1, 0, 0)
-            V::from_pos_normal_tex_coords(Vec3::new( 1.0, -1.0, -1.0), Vec3::X,       Vec2::ZERO),
-            V::from_pos_normal_tex_coords(Vec3::new( 1.0,  1.0, -1.0), Vec3::X,       Vec2::ZERO),
-            V::from_pos_normal_tex_coords(Vec3::new( 1.0,  1.0,  1.0), Vec3::X,       Vec2::ZERO),
-            V::from_pos_normal_tex_coords(Vec3::new( 1.0, -1.0,  1.0), Vec3::X,       Vec2::ZERO),
-            // left (-1, 0, 0)
-            V::from_pos_normal_tex_coords(Vec3::new(-1.0, -1.0,  1.0), Vec3::X * -1., Vec2::ZERO),
-            V::from_pos_normal_tex_coords(Vec3::new(-1.0,  1.0,  1.0), Vec3::X * -1., Vec2::ZERO),
-            V::from_pos_normal_tex_coords(Vec3::new(-1.0,  1.0, -1.0), Vec3::X * -1., Vec2::ZERO),
-            V::from_pos_normal_tex_coords(Vec3::new(-1.0, -1.0, -1.0), Vec3::X * -1., Vec2::ZERO),
-            // front (0, 1, 0)
-            V::from_pos_normal_tex_coords(Vec3::new( 1.0,  1.0, -1.0), Vec3::Y,       Vec2::ZERO),
-            V::from_pos_normal_tex_coords(Vec3::new(-1.0,  1.0, -1.0), Vec3::Y,       Vec2::ZERO),
-            V::from_pos_normal_tex_coords(Vec3::new(-1.0,  1.0,  1.0), Vec3::Y,       Vec2::ZERO),
-            V::from_pos_normal_tex_coords(Vec3::new( 1.0,  1.0,  1.0), Vec3::Y,       Vec2::ZERO),
-            // back (0, -1, 0)
-            V::from_pos_normal_tex_coords(Vec3::new( 1.0, -1.0,  1.0), Vec3::Y * -1., Vec2::ZERO),
-            V::from_pos_normal_tex_coords(Vec3::new(-1.0, -1.0,  1.0), Vec3::Y * -1., Vec2::ZERO),
-            V::from_pos_normal_tex_coords(Vec3::new(-1.0, -1.0, -1.0), Vec3::Y * -1., Vec2::ZERO),
-            V::from_pos_normal_tex_coords(Vec3::new( 1.0, -1.0, -1.0), Vec3::Y * -1., Vec2::ZERO),
-        ];
-
-        #[rustfmt::skip]
-            let faces: Vec<[u32; 3]> = vec![
-            [ 0,  1,  2],
-            [ 2,  3,  0], // top
-            [ 4,  5,  6],
-            [ 6,  7,  4], // bottom
-            [ 8,  9, 10],
-            [10, 11,  8], // right
-            [12, 13, 14],
-            [14, 15, 12], // left
-            [16, 17, 18],
-            [18, 19, 16], // front
-            [20, 21, 22],
-            [22, 23, 20], // back
-        ];
-        Self {
-            name: "Cube".to_string(),
-            faces,
-            vertices,
-        }
-    }
-
-    pub fn new_icosahedron() -> Self {
-        let inv_phi = 1. / PHI;
-
-        // todo: add texture coordinates
-        #[rustfmt::skip]
-            let vertex_positions = vec![
-            Vec3::new(0., inv_phi, -1.),
-            Vec3::new(inv_phi, 1., 0.),
-            Vec3::new(-inv_phi, 1., 0.),
-            Vec3::new(0., inv_phi, 1.),
-            Vec3::new(0., -inv_phi, -1.),
-            Vec3::new(-1., 0., inv_phi),
-            Vec3::new(0., -inv_phi, -1.),
-            Vec3::new( 1.,  0., -inv_phi),
-            Vec3::new(1., 0., inv_phi),
-            Vec3::new(-1.,  0., -inv_phi),
-            Vec3::new(inv_phi, -1., 0.),
-            Vec3::new(-inv_phi, -1., 0.),
-        ];
-
-        let vertices = vertex_positions
-            .iter()
-            .map(|&v| V::from_pos_normal_tex_coords(v, v.normalize(), Vec2::ZERO))
-            .collect();
-
-        #[rustfmt::skip]
-            let faces = vec![
-            [ 2,  1,  0],
-            [ 1,  2,  3],
-            [ 5,  4,  3],
-            [ 4,  8,  3],
-            [ 7,  6,  0],
-            [ 6,  9,  0],
-            [11, 10,  4],
-            [10, 11,  6],
-            [ 9,  5,  2],
-            [ 5,  9, 11],
-            [ 8,  7,  1],
-            [ 7,  8, 10],
-            [ 2,  5,  3],
-            [ 8,  1,  3],
-            [ 9,  2,  0],
-            [ 1,  7,  0],
-            [11,  9,  6],
-            [ 7, 10,  6],
-            [ 5, 11,  4],
-            [10,  8,  4],
-        ];
-
-        Self {
-            name: "Icosahedron".to_string(),
-            vertices,
-            faces,
-        }
-    }
-
-    pub fn new_icosphere(_num_subdivisions: u32) -> Self {
-        todo!()
-    }
-
-    pub fn name(&self) -> &str {
-        &self.name
-    }
-    pub fn faces(&self) -> &Vec<[u32; 3]> {
-        &self.faces
-    }
-    pub fn vertices(&self) -> &Vec<V> {
-        &self.vertices
+        )
     }
 }

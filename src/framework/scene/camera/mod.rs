@@ -171,7 +171,7 @@ impl OnResize for OrthographicProjection {
             Vec2::new(-width_half, -height_half),
             Vec2::new(width_half, height_half),
         );
-        self.frustum.adjust_xy(xy_bounds);
+        self.frustum.set_xy(xy_bounds);
         self.projection = Mat4::orthographic_rh(
             self.frustum.min().x,
             self.frustum.max().x,

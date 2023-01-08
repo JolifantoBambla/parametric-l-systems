@@ -71,9 +71,15 @@ impl Bounds3 {
         }
     }
 
-    pub fn adjust_xy(&mut self, other: Bounds2) {
+    pub fn set_xy(&mut self, other: Bounds2) {
         self.min = other.min.extend(self.min.z);
         self.max = other.max.extend(self.max.z);
+    }
+}
+
+impl From<Vec3> for Bounds3 {
+    fn from(v: Vec3) -> Self {
+        Self::new(v, v)
     }
 }
 
