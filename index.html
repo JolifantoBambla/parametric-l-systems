@@ -167,7 +167,7 @@
             }
         }
 
-        const sceneToViewerInputs = (scene) => {
+        const sceneToViewerInputs = async (scene) => {
             const lSystems = {};
             for (const lSystemName in scene.lSystems) {
                 const lSystem = scene.lSystems[lSystemName];
@@ -199,7 +199,13 @@
                 for (const resource of Object.values(scene.resources)) {
                     if (resource.type === "obj") {
                         if (resource.path) {
-                            // todo: fetch obj (i.e., refactor into callback foo)
+                            try {
+                                const r = await fetch(resource.path);
+                                resource.source = await r.text();
+                            } catch (e) {
+                                console.error(e);
+                                alert(`Could not fetch external resource ${resource.path}`);
+                            }
                         }
                     }
                 }
@@ -256,8 +262,7 @@
                         if (scene.lSystems) {
                             testAndPrintSystems(scene);
                         }
-                        // todo: fetch OBJs
-                        const [sceneDescriptor, lSystemDefinitions] = sceneToViewerInputs(scene);
+                        const [sceneDescriptor, lSystemDefinitions] = await sceneToViewerInputs(scene);
                         sceneCanvas.dispatchEvent(new CustomEvent(
                             'ui::scene::new',
                             {detail: {scene: {new: {sceneDescriptor, lSystemDefinitions}}}}
@@ -360,9 +365,6 @@
             const sceneCanvas = document.getElementById('scene-view');
             sceneCanvas.width = sceneViewContainer.clientWidth;
             sceneCanvas.height = sceneViewContainer.clientHeight;
-            sceneCanvas.addEventListener('app::initialized', _ => {
-                unlockRenderScene();
-            });
             sceneCanvas.addEventListener('app::frame::start', e => {
                 fpsGraph.begin();
             });
@@ -372,16 +374,26 @@
             sceneCanvas.addEventListener('app::frame::delta', e => {
                 console.log(e);
             });
-            async function run(canvasId, scene, systems) {
-                await init();
-                main(canvasId, scene, systems);
-            }
+            async function run(canvasId) {
+                try {
+                    sceneCanvas.addEventListener('app::initialized', _ => {
+                        unlockRenderScene();
+                    });
+                    lockRenderScene();
 
-            lockRenderScene();
-            const initialScene = parseCurrentSceneSource();
-            testAndPrintSystems(initialScene);
-            buildUi(initialScene);
-            run(sceneCanvas.id, ...sceneToViewerInputs(initialScene));
+                    const initialScene = parseCurrentSceneSource();
+
+                    testAndPrintSystems(initialScene);
+                    buildUi(initialScene);
+
+                    await init();
+                    main(canvasId, ...await sceneToViewerInputs(initialScene));
+                } catch (e) {
+                    console.error(e);
+                    alert('Could not initialize viewer');
+                }
+            }
+            run(sceneCanvas.id);
         } else {
             alert('This browser does not support WebGPU - viewer disabled.');
         }
