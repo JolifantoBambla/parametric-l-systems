@@ -207,7 +207,12 @@
         lSystemTestButton.addEventListener('click', () => {
             const scene = parseCurrentSceneSource();
             if (scene.lSystems) {
-                testAndPrintSystems(scene);
+                try {
+                    testAndPrintSystems(scene);
+                } catch(err) {
+                    alert('L-System(s) had errors. Please check test output.');
+                    console.error(err);
+                }
             }
         })
 
