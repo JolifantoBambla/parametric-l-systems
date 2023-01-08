@@ -358,7 +358,7 @@ export class LSystemParser {
             }
 
         } else {
-            symbols.push(...alphabet.map(Symbol.fromString))
+            symbols.push(...alphabet.map(Symbol.fromString));
         }
 
         // sort by most specific to the least specific
@@ -519,7 +519,7 @@ export class LSystemParser {
     #parseProductionBody(bodyDefinition, moduleParameters, predecessorParameters, successorParameters, systemParameters, symbols) {
         const producedSymbols = LSystemParser.#parseProductionPreOrSuccessors(bodyDefinition, symbols);
         const body = producedSymbols.map(s => {
-            return `new ctor({ name: '${s.name}', parameters: [${s.parameters}] })`
+            return `new ctor({ name: '${s.name}', parameters: [${s.parameters}] })`;
         });
         const funcArgs = ['ctor', ...moduleParameters, ...predecessorParameters, ...successorParameters];
         if (Object.keys(systemParameters).length) {
@@ -738,7 +738,16 @@ export class LSystemIterator {
     }
 
     current(asString = true) {
-        return asString ? this.#state.toString() : this.#state.toSerializable().axiom;
+        return asString ? this.#state.toString() : this.#state.toSerializable().axiom.map(s => {
+            if (s.name[0] === '~') {
+                return {
+                    name: '~',
+                    parameters: [s.name.slice(1), ...s.parameters]
+                };
+            } else {
+                return s;
+            }
+        });
     }
 
     next(asString = true) {
