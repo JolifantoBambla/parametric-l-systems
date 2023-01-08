@@ -43,7 +43,7 @@
                             </div>
                             <button class="waves-effect waves-light btn-small" style="width: 24.6%;" type="submit" id="scene-download-button"><i class="material-icons left">save</i>Save File</button>
                             <button class="waves-effect waves-light btn-small" style="width: 24.5%;" type="submit" id="l-system-test-button"><i class="material-icons left">play_circle_outline</i>Test</button>
-                            <button class="waves-effect waves-light btn-small" style="width: 24.6%;" type="submit" id="l-system-render-button"><i class="material-icons left">play_circle_filled</i>Render</button>
+                            <button class="waves-effect waves-light btn-small disabled" style="width: 24.6%;" type="submit" id="l-system-render-button"><i class="material-icons left">play_circle_filled</i>Render</button>
                         </div>
                     </div>
                     <div class="divider"></div>
@@ -94,8 +94,6 @@
         import init, { main } from "./pkg/parametric_l_systems.js";
         import {LSystemIterator} from './js/l-system/l-system.js';
         import * as defaultScene from './scenes/tree-prusinkiewicz.json' assert {type: 'json'};
-
-        let renderSceneLocked = true;
 
         const tabs = document.querySelectorAll('.tabs');
         for (let i = 1; i < tabs.length; i++){
@@ -212,138 +210,156 @@
                 testAndPrintSystems(scene);
             }
         })
-        const lSystemRenderButton = document.getElementById('l-system-render-button');
-        lSystemRenderButton.addEventListener('click', _ => {
-            const scene = parseCurrentSceneSource();
-            if (!renderSceneLocked) {
-                renderSceneLocked = true;
-                try {
-                    if (scene.lSystems) {
-                        testAndPrintSystems(scene);
-                    }
-                    const [sceneDescriptor, lSystemDefinitions] = sceneToViewerInputs(scene);
-                    sceneCanvas.dispatchEvent(new CustomEvent(
-                        'ui::scene::new',
-                        {detail: {scene: {new: {sceneDescriptor, lSystemDefinitions}}}}
-                    ));
-                    buildUi(scene);
-                } catch (err) {
-                    alert('L-System(s) had errors. Please check test output.');
-                    console.error(err);
+
+        if (!!navigator.gpu) {
+            const lSystemRenderButton = document.getElementById('l-system-render-button');
+            let renderSceneLocked = true;
+
+            const unlockRenderScene = () => {
+                if (renderSceneLocked) {
+                    renderSceneLocked = false;
+                    // todo: check how to enable a button
+                    lSystemRenderButton.disabled = false;
                 }
-                renderSceneLocked = false;
             }
-        });
-
-        const uiElement = document.getElementById('ui');
-        const pane = new Tweakpane.Pane({
-            title: 'Viewer',
-            expanded: true,
-            container: uiElement,
-        });
-        pane.registerPlugin(TweakpaneEssentialsPlugin);
-        const fpsGraph = pane.addBlade({
-            view: 'fpsgraph',
-            label: 'Performance',
-            lineCount: 2,
-        });
-        let activeSceneFolder = null;
-        const buildUi = (scene) => {
-            if (scene) {
-                if (activeSceneFolder) {
-                    activeSceneFolder.hidden = true;
-                    // todo: can I also destroy this?
-                }
-                activeSceneFolder = pane.addFolder({
-                    title: 'Scene',
-                    expanded: true,
-                });
-
-                // todo: fps graph
-
-                const backgroundColor = {r: 0, g: 0, b: 0};
-                if (scene.scene.camera.backgroundColor) {
-                    backgroundColor.r = scene.scene.camera.backgroundColor[0];
-                    backgroundColor.r = scene.scene.camera.backgroundColor[1];
-                    backgroundColor.r = scene.scene.camera.backgroundColor[2];
-                }
-                const sceneSettings = {
-                    backgroundColor,
-                }
-
-                const backgroundColorPicker = activeSceneFolder.addInput(sceneSettings, 'backgroundColor', {
-                    label: 'Background color',
-                    picker: 'inline',
-                    expanded: false,
-                    color: {type: 'float'},
-                });
-                backgroundColorPicker.on('change', e => {
-                    sceneCanvas.dispatchEvent(new CustomEvent(
-                        'ui::scene::background-color',
-                        {detail: {scene: {backgroundColor: [e.value.r, e.value.g, e.value.b]}}}
-                    ));
-                });
-
-                const lSystemObjectsFolder = activeSceneFolder.addFolder({
-                    title: 'L-System Objects',
-                    expanded: true,
-                });
-                for (const objectName in scene.scene.objects) {
-                    const obj = scene.scene.objects[objectName];
-                    if (obj.type === 'lSystem') {
-                        const objectFolder = lSystemObjectsFolder.addFolder({
-                            title: objectName,
-                            expanded: true,
-                        });
-
-                        const instance = scene.lSystems[obj.system].instances[obj.instance];
-                        const settings = {
-                            iteration: (obj.iteration || instance.iterations) + 1,
-                        };
-
-                        const iterationsSlider = objectFolder.addInput(settings, 'iteration', {
-                            label: 'Iteration',
-                            min: 1, max: instance.iterations + 1, step: 1,
-                        });
-                        iterationsSlider.on('change', e => {
-                            sceneCanvas.dispatchEvent(new CustomEvent(
-                                'ui::lsystem::iteration',
-                                {detail: {lSystem: {iteration: {objectName, iteration: e.value - 1}}}}
-                            ));
-                        });
+            const renderNewScene = async (scene) => {
+                if (!renderSceneLocked) {
+                    renderSceneLocked = true;
+                    try {
+                        if (scene.lSystems) {
+                            testAndPrintSystems(scene);
+                        }
+                        // todo: fetch OBJs
+                        const [sceneDescriptor, lSystemDefinitions] = sceneToViewerInputs(scene);
+                        sceneCanvas.dispatchEvent(new CustomEvent(
+                            'ui::scene::new',
+                            {detail: {scene: {new: {sceneDescriptor, lSystemDefinitions}}}}
+                        ));
+                        buildUi(scene);
+                    } catch (err) {
+                        alert('L-System(s) had errors. Please check test output.');
+                        console.error(err);
                     }
+                    unlockRenderScene();
                 }
             }
 
-            console.debug('created UI');
+            lSystemRenderButton.addEventListener('click', _ => {
+                renderNewScene(parseCurrentSceneSource())
+            });
+
+            const uiElement = document.getElementById('ui');
+            const pane = new Tweakpane.Pane({
+                title: 'Viewer',
+                expanded: true,
+                container: uiElement,
+            });
+            pane.registerPlugin(TweakpaneEssentialsPlugin);
+            const fpsGraph = pane.addBlade({
+                view: 'fpsgraph',
+                label: 'Performance',
+                lineCount: 2,
+            });
+            let activeSceneFolder = null;
+            const buildUi = (scene) => {
+                if (scene) {
+                    if (activeSceneFolder) {
+                        activeSceneFolder.hidden = true;
+                        // todo: can I also destroy this?
+                    }
+                    activeSceneFolder = pane.addFolder({
+                        title: 'Scene',
+                        expanded: true,
+                    });
+
+                    // todo: fps graph
+
+                    const backgroundColor = {r: 0, g: 0, b: 0};
+                    if (scene.scene.camera.backgroundColor) {
+                        backgroundColor.r = scene.scene.camera.backgroundColor[0];
+                        backgroundColor.r = scene.scene.camera.backgroundColor[1];
+                        backgroundColor.r = scene.scene.camera.backgroundColor[2];
+                    }
+                    const sceneSettings = {
+                        backgroundColor,
+                    }
+
+                    const backgroundColorPicker = activeSceneFolder.addInput(sceneSettings, 'backgroundColor', {
+                        label: 'Background color',
+                        picker: 'inline',
+                        expanded: false,
+                        color: {type: 'float'},
+                    });
+                    backgroundColorPicker.on('change', e => {
+                        sceneCanvas.dispatchEvent(new CustomEvent(
+                            'ui::scene::background-color',
+                            {detail: {scene: {backgroundColor: [e.value.r, e.value.g, e.value.b]}}}
+                        ));
+                    });
+
+                    const lSystemObjectsFolder = activeSceneFolder.addFolder({
+                        title: 'L-System Objects',
+                        expanded: true,
+                    });
+                    for (const objectName in scene.scene.objects) {
+                        const obj = scene.scene.objects[objectName];
+                        if (obj.type === 'lSystem') {
+                            const objectFolder = lSystemObjectsFolder.addFolder({
+                                title: objectName,
+                                expanded: true,
+                            });
+
+                            const instance = scene.lSystems[obj.system].instances[obj.instance];
+                            const settings = {
+                                iteration: (obj.iteration || instance.iterations) + 1,
+                            };
+
+                            const iterationsSlider = objectFolder.addInput(settings, 'iteration', {
+                                label: 'Iteration',
+                                min: 1, max: instance.iterations + 1, step: 1,
+                            });
+                            iterationsSlider.on('change', e => {
+                                sceneCanvas.dispatchEvent(new CustomEvent(
+                                    'ui::lsystem::iteration',
+                                    {detail: {lSystem: {iteration: {objectName, iteration: e.value - 1}}}}
+                                ));
+                            });
+                        }
+                    }
+                }
+
+                console.debug('created UI');
+            }
+
+            const sceneViewContainer = document.getElementById('scene-view-container');
+            const sceneCanvas = document.getElementById('scene-view');
+            sceneCanvas.width = sceneViewContainer.clientWidth;
+            sceneCanvas.height = sceneViewContainer.clientHeight;
+            sceneCanvas.addEventListener('app::initialized', _ => {
+                unlockRenderScene();
+            });
+            sceneCanvas.addEventListener('app::frame::start', e => {
+                fpsGraph.begin();
+            });
+            sceneCanvas.addEventListener('app::frame::end', e => {
+                fpsGraph.end();
+            });
+            sceneCanvas.addEventListener('app::frame::delta', e => {
+                console.log(e);
+            });
+
+            async function run(canvasId, scene, systems) {
+                await init();
+                main(canvasId, scene, systems);
+            }
+
+            const initialScene = parseCurrentSceneSource();
+            testAndPrintSystems(initialScene);
+            buildUi(initialScene);
+            run(sceneCanvas.id, ...sceneToViewerInputs(initialScene));
+        } else {
+            alert('This browser does not support WebGPU - viewer disabled.');
         }
-
-        const sceneViewContainer = document.getElementById('scene-view-container');
-        const sceneCanvas = document.getElementById('scene-view');
-        sceneCanvas.width = sceneViewContainer.clientWidth;
-        sceneCanvas.height = sceneViewContainer.clientHeight;
-        sceneCanvas.addEventListener('app::initialized', _ => {
-            renderSceneLocked = false;
-        });
-        sceneCanvas.addEventListener('app::frame::start', e => {
-            fpsGraph.begin();
-        });
-        sceneCanvas.addEventListener('app::frame::end', e => {
-            fpsGraph.end();
-        });
-        sceneCanvas.addEventListener('app::frame::delta', e => {
-            console.log(e);
-        });
-
-        async function run(canvasId, scene, systems) {
-            await init();
-            main(canvasId, scene, systems);
-        }
-
-        const initialScene = parseCurrentSceneSource();
-        testAndPrintSystems(initialScene);
-        buildUi(initialScene);
-        run(sceneCanvas.id, ...sceneToViewerInputs(initialScene));
     </script>
 </body>
 </html>
