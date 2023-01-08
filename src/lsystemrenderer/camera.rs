@@ -62,7 +62,8 @@ impl Update for OrbitCamera {
                     MouseEvent::Move(m) => {
                         if m.state().left_button_pressed() {
                             self.orbit(m.delta(), false);
-                        } else if m.state().right_button_pressed() {
+                        }
+                        if m.state().right_button_pressed() {
                             let translation = m.delta() * self.speed * 20.;
                             self.camera.move_right(translation.x);
                             self.camera.move_down(translation.y);
