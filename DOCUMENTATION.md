@@ -1,18 +1,18 @@
 # User Interface
 
-## Input File Editor
+### Input File Editor
 
 Allows users to upload, edit, and save input files for this tool.
 Additionally, the buttons `Test` and `Render` allow users to run test iterations of the L-systems, or render the Scene defined in the current
 input file (see [Input File Format](#input-file-format)) respectively.
 The editor is initialized with a default input file.
 
-## Test Output
+### Test Output
 
 Shows the output of test iterations run for L-systems defined in the current input file.
 By default, 3 iterations are run for each instance of each L-system (see [L-systems](#l-systems) and [Instaces](#instances)).
 
-## Viewer
+### Viewer
 
 A 3D rendering of the scene defined in the last input file passed to the renderer via clicking the `Render` button.
 The camera orbits around the center of the scene and can be controlled via the mouse: to change the camera's orientation click the left mouse button and move the mouse.
@@ -23,7 +23,7 @@ Since everything is done on the main thread this may cause a temporary drop in p
 Evaluated iterations are cached by the system until the active scene is replaced.
 The viewer requires WebGPU to be supported by the browser.
 
-## Documentation
+### Documentation
 
 Shows the tool's documentation (this text).
 
@@ -185,6 +185,22 @@ A primitive may specify a `"transform"` and a `"material"` property, e.g.:
   }
 }
 ```
+
+To use a primitive in an L-system, define a [special module](#special-module-names) `~<primitive name>` for each primitive included in the L-system, e.g.:
+```json
+{
+  "definition": {
+    "alphabet": ["~quad.obj"],
+    "axiom": "~quad.obj",
+    ...
+  },
+  "primitives": {
+    "quad.obj": { ... }
+  },
+  ...
+}
+```
+Such modules are replaced with the [turtle command](#commands) `~` when passed to the viewer.
 
 ## Scene
 
@@ -364,31 +380,31 @@ If the collection of materials is empty, a random material will be generated for
 
 The 3D turtle's state is modified by the following commands. Most command parameters have default values. This is indicated by a `=` followed by the default value for the parameter.
 
-| Command                       | Description                                                                                                              |
-|-------------------------------|--------------------------------------------------------------------------------------------------------------------------|
-| `F(l=1,w=DEFAULT_DIAMETER)`   | Moves the turtle forward, i.e., along its head axis, by `l` and draws a linesegment with diameter `w`.                   |
-| `f(l=1)`                      | Moves the turtle forward, i.e., along its head axis, by `l`.                                                             |
-| `!(w)`                        | Sets the turtle's default diameter for line segments (`DEFAULT_DIAMETER`) to `w`. The paramter `w` is required.          |
-| `+(a=90)`                     | Rotates the turtle counterclockwise around its up axis by `a` degrees (yaw).                                             |
-| `-(a=90)`                     | Rotates the turtle clockwise around its up axis by `a` degrees (yaw).                                                    |
-| `&(a=90)`                     | Rotates the turtle counterclockwise around its right axis by `a` degrees (pitch).                                        |
-| `^(a=90)`                     | Rotates the turtle clockwise around its right axis by `a` degrees (pitch).                                               |
-| `/(a=90)`                     | Rotates the turtle counterclockwise around its head axis by `a` degrees (roll).                                          |
-| `\(a=90)`                     | Rotates the turtle clockwise around its head axis by `a` degrees (roll).                                                 |
-| `&vert;`                      | Rotates the turtle around its up axis by 180 degrees (yaw). Shorthand for `+(180)` or `-(180)`                           |
-| `[`                           | Pushes the turtle's current state onto a stack.                                                                          |
-| `]`                           | Pops the turtle's last state from a stack.                                                                               |
-| `%`                           | Ignores all further commands until the turtle's last state is retrieved from the stack.                                  |
-| `&grave;(i=MATERIAL_IDX + 1)` | Sets the turtle's material index to `i`, or the maximum material index if `i` is larger than the maximum material index. |
-| `$`                           | Rolls the turtle towards the plane closest to the plane perpendicular to its original head axis.                         |
-| `BeginPrimitive`              | Reserved keyword.                                                                                                        |
-| `EndPrimitive`                | Reserved keyword.                                                                                                        |
-| `{`                           | Reserved keyword.                                                                                                        |
-| `}`                           | Reserved keyword.                                                                                                        |
-| `.`                           | Reserved keyword.                                                                                                        |
-| `G`                           | Reserved keyword.                                                                                                        |
-| `~(name, i=0)`                | Reserved keyword.                                                                                                        |
-| any other symbol              | Ignored by the turtle.                                                                                                   |
+| Command                      | Description                                                                                                                                       |
+|------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------|
+| `F(l=1,w=DEFAULT_DIAMETER)`  | Moves the turtle forward, i.e., along its head axis, by `l` and draws a linesegment with diameter `w`.                                            |
+| `f(l=1)`                     | Moves the turtle forward, i.e., along its head axis, by `l`.                                                                                      |
+| `!(w)`                       | Sets the turtle's default diameter for line segments (`DEFAULT_DIAMETER`) to `w`. The paramter `w` is required.                                   |
+| `+(a=90)`                    | Rotates the turtle counterclockwise around its up axis by `a` degrees (yaw).                                                                      |
+| `-(a=90)`                    | Rotates the turtle clockwise around its up axis by `a` degrees (yaw).                                                                             |
+| `&(a=90)`                    | Rotates the turtle counterclockwise around its right axis by `a` degrees (pitch).                                                                 |
+| `^(a=90)`                    | Rotates the turtle clockwise around its right axis by `a` degrees (pitch).                                                                        |
+| `/(a=90)`                    | Rotates the turtle counterclockwise around its head axis by `a` degrees (roll).                                                                   |
+| `\(a=90)`                    | Rotates the turtle clockwise around its head axis by `a` degrees (roll).                                                                          |
+| `&vert;`                     | Rotates the turtle around its up axis by 180 degrees (yaw). Shorthand for `+(180)` or `-(180)`                                                    |
+| `[`                          | Pushes the turtle's current state onto a stack.                                                                                                   |
+| `]`                          | Pops the turtle's last state from a stack.                                                                                                        |
+| `%`                          | Ignores all further commands until the turtle's last state is retrieved from the stack.                                                           |
+| `&grave;(i=MATERIAL_IDX + 1)` | Sets the turtle's material index to `i`, or the maximum material index if `i` is larger than the maximum material index.                          |
+| `$`                          | Rolls the turtle towards the plane closest to the plane perpendicular to its original head axis.                                                  |
+| `BeginPrimitive`             | Reserved keyword.                                                                                                                                 |
+| `EndPrimitive`               | Reserved keyword.                                                                                                                                 |
+| `{`                          | Reserved keyword.                                                                                                                                 |
+| `}`                          | Reserved keyword.                                                                                                                                 |
+| `.`                          | Reserved keyword.                                                                                                                                 |
+| `G`                          | Reserved keyword.                                                                                                                                 |
+| `~(name, i=0)`               | Includes the primitive with name `name`. If `name` references an L-system, `i` is the iteration. L-system primitives are currently not supported. |
+| any other symbol             | Ignored by the turtle.                                                                                                                            |
 
 # L-System Syntax
 
@@ -530,66 +546,51 @@ A(x,y) : x < y -> ...
 // A production replacing a module A with one parameter if its parameter (x) is smaller than one of the L-system's parameters (y):
 A(x) : x < y -> ...
 
-// A production replacing a module A with one parameter if it is equal to its square root:
-A(x) : x < Math.sqrt(x) -> ...
+// A production replacing a module A with one parameter if it is smaller than a random number:
+A(x) : x < Math.random() -> ...
+```
+
+#### Equality of conditions
+Two conditions are equal if the source strings of both expressions are equal (satisfying JavaScript's `===`) except for white spaces and parameter identifiers, e.g.:
+```
+// The following conditions are all equivalent:
+A(x, y) : x < y -> ...
+A(x, y) : x<y -> ...
+A(y, x) : y < x -> ...
+
+// The following conditions are not equivalent because their source strings differ:
+A(x, y) : x < y -> ...
+A(x, y) : y > x -> ...
 ```
 
 ### List of module forms
 
-TODO: you are here
+A production's list of module forms contains zero or more module forms.
+A module form defines a module and JavaScript expressions to set the module's parameters.
+These expressions may use all parameters defined for the production, i.e., all parameters declared in the production's module declaration, as well as the L-system's global parameters. E.g.:
 
-A production's list of module forms can either be empty or consist of one or multiple module forms.
-A module form consists of a symbol name satisfying the rules of modules (see [Module](#module)) and an optional comma-separated list of argument forms.
-An argument form must be a valid JavaScript expression evaluating to a value.
-All variables defined in the scope of the production, i.e. variables defined by the production's module specification and the L-system's parameters, may be used in argument forms.
-The only exception are the argument forms of query modules, which are evaluated by querying the L-system's state after all modules of the axiom have been processed.
-E.g.:
 ```
-// The module A with one argument is transformed to a module A with its argument incremented by one.
+// A production replacing a module A with one parameter x with a module A with it's parameter initialized to the value x+1.
 A(x) -> A(x+1)
 
-// The module A is transformed to a query module B with three parameters x, y, and z.
-A -> ?B(x,y,z)
-
-// The module A is transformed to a module B with one argument set to the value of the L-system's paramter x.
+// A production replacing a module A with a module B with its parameter set to the value of the L-system's parameter x.
 A -> B(x)
+
+// A production replacing a module A with a module B with its parameter set to the value returned by JavaScript's Math.random function.
+A -> B(Math.random())
 ```
 
-## Examples
+## Choosing a production
+
+If multiple productions replace the same module, a production is chosen in the following way:
+The candidates are sorted by their rank which consists of their environment size, i.e., the number of required modules in their main module's environment, and if they require a condition or not.
+The highest ranked candidate that fulfills all requirements, i.e., the environment matches exactly, and its condition is true, is chosen.
+If multiple candidates have the same rank the first that fulfills all requirements is chosen.
+If multiple candidates have the same rank and the same requirements, i.e., the same environment and condition, the rules for probabilities apply.
+In that case, the condition is only checked once even if the condition is not deterministic, e.g.:
 ```
-// axiom
-B(2)A(4,4)
-
-// productions
-A(x,y): y<=3 -> A(x*2,x+y) 
-A(x,y): y>3 -> B(x)A(x/y,0)
-B(x) : x<1 -> C
-B(x) : x>=1 -> B(x-1)
-
-// Results
-B(2)A(4,4)
-B(1)B(4)A(1,0)
-B(0)B(3)A(2,1)
-CB(2)A(4,3)
-CB(1)A(8,7)
-CB(0)B(8)A(1.142,0)
+// The condition of the following productions is only checked once:
+0.5; A(x): x < Math.random() : ...
+0.5; A(x): x < Math.random() : ...
 ```
-
-
-## Evaluation
-TODO: describe how productions are chosen (rank!)
-
-If a module satisfies both the module specification and the condition of more than one of an L-system's productions, the rules for probabilities of productions (see [Probability](#probability)) apply.
-
-During evaluation, for each module in a string of modules, exactly one production from all productions
-
-
-
-All parameters are real-valued.
-
-
-## L-system
-The axiom (see [Axiom](#axiom)) is a list of evaluated modules which are transformed by the L-system's productions (see [Production](#production)) to generate a new list of evaluated modules.
-If no production can be applied to a module, the identity production is applied, i.e. the module is simply copied to the output list.
-If the generated list of evaluated modules contains query modules (see [Module](#module)), the L-system's interpreter is used to evaluate the states of all query modules after the productions have been applied.
-
+If no production is found for a module, the identity production replacing a module with itself is applied instead.
