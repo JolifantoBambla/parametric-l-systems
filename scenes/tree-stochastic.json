@@ -48,7 +48,12 @@
             "min": 0.0
           },
           "materials": [
-            {"color":  [1.0, 1.0, 1.0, 1.0]}
+            {
+              "type": "Blinn-Phong",
+              "albedo":  [1.0, 1.0, 1.0],
+              "specular":  [1.0, 1.0, 1.0],
+              "shininess": 30.0
+            }
           ]
         },
         "b": {
@@ -66,7 +71,12 @@
             "min": 1.7
           },
           "materials": [
-            {"color":  [1.0, 1.0, 1.0, 1.0]}
+            {
+              "type": "Blinn-Phong",
+              "albedo":  [1.0, 1.0, 1.0],
+              "specular":  [1.0, 1.0, 1.0],
+              "shininess": 30.0
+            }
           ]
         },
         "c": {
@@ -84,7 +94,12 @@
             "min": 0.5
           },
           "materials": [
-            {"color":  [1.0, 1.0, 1.0, 1.0]}
+            {
+              "type": "Blinn-Phong",
+              "albedo":  [1.0, 1.0, 1.0],
+              "specular":  [1.0, 1.0, 1.0],
+              "shininess": 30.0
+            }
           ]
         },
         "d": {
@@ -102,7 +117,12 @@
             "min": 0.0
           },
           "materials": [
-            {"color":  [1.0, 1.0, 1.0, 1.0]}
+            {
+              "type": "Blinn-Phong",
+              "albedo":  [1.0, 1.0, 1.0],
+              "specular":  [1.0, 1.0, 1.0],
+              "shininess": 30.0
+            }
           ]
         },
         "e": {
@@ -120,7 +140,12 @@
             "min": 1.0
           },
           "materials": [
-            {"color":  [1.0, 1.0, 1.0, 1.0]}
+            {
+              "type": "Blinn-Phong",
+              "albedo":  [1.0, 1.0, 1.0],
+              "specular":  [1.0, 1.0, 1.0],
+              "shininess": 30.0
+            }
           ]
         },
         "f": {
@@ -138,7 +163,12 @@
             "min": 0.5
           },
           "materials": [
-            {"color":  [1.0, 1.0, 1.0, 1.0]}
+            {
+              "type": "Blinn-Phong",
+              "albedo":  [1.0, 1.0, 1.0],
+              "specular":  [1.0, 1.0, 1.0],
+              "shininess": 30.0
+            }
           ]
         },
         "g": {
@@ -156,7 +186,12 @@
             "min": 0.0
           },
           "materials": [
-            {"color":  [1.0, 1.0, 1.0, 1.0]}
+            {
+              "type": "Blinn-Phong",
+              "albedo":  [1.0, 1.0, 1.0],
+              "specular":  [1.0, 1.0, 1.0],
+              "shininess": 30.0
+            }
           ]
         },
         "h": {
@@ -174,7 +209,12 @@
             "min": 25.0
           },
           "materials": [
-            {"color":  [1.0, 1.0, 1.0, 1.0]}
+            {
+              "type": "Blinn-Phong",
+              "albedo":  [1.0, 1.0, 1.0],
+              "specular":  [1.0, 1.0, 1.0],
+              "shininess": 30.0
+            }
           ]
         },
         "i": {
@@ -192,7 +232,12 @@
             "min": 5.0
           },
           "materials": [
-            {"color":  [1.0, 1.0, 1.0, 1.0]}
+            {
+              "type": "Blinn-Phong",
+              "albedo":  [1.0, 1.0, 1.0],
+              "specular":  [1.0, 1.0, 1.0],
+              "shininess": 30.0
+            }
           ]
         }
       },
@@ -214,13 +259,7 @@
       "Tree": {
         "type": "lSystem",
         "system": "tree",
-        "instance": "g",
-        "transform": [
-          1, 0, 0, 0,
-          0, 1, 0, 0,
-          0, 0, 1, 0,
-          0, 0, 0, 1
-        ]
+        "instance": "g"
       }
     },
     "lights": {
@@ -238,6 +277,7 @@
             1.0,
             1.0
           ],
+          "intensity": 1.0,
           "position": [
             1.0,
             1.0,
@@ -250,6 +290,7 @@
             1.0,
             1.0
           ],
+          "intensity": 1.0,
           "position": [
             -1.0,
             1.0,

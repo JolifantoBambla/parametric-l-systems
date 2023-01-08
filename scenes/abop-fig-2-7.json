@@ -39,7 +39,12 @@
             "a2": 65
           },
           "materials": [
-            {"color":  [1.0, 1.0, 1.0, 1.0]}
+            {
+              "type": "Blinn-Phong",
+              "albedo":  [1.0, 1.0, 1.0],
+              "specular":  [1.0, 1.0, 1.0],
+              "shininess": 30.0
+            }
           ]
         },
         "b": {
@@ -51,7 +56,12 @@
             "a2": 60
           },
           "materials": [
-            {"color":  [1.0, 1.0, 1.0, 1.0]}
+            {
+              "type": "Blinn-Phong",
+              "albedo":  [1.0, 1.0, 1.0],
+              "specular":  [1.0, 1.0, 1.0],
+              "shininess": 30.0
+            }
           ]
         },
         "c": {
@@ -63,7 +73,12 @@
             "a2": 50
           },
           "materials": [
-            {"color":  [1.0, 1.0, 1.0, 1.0]}
+            {
+              "type": "Blinn-Phong",
+              "albedo":  [1.0, 1.0, 1.0],
+              "specular":  [1.0, 1.0, 1.0],
+              "shininess": 30.0
+            }
           ]
         },
         "d": {
@@ -75,7 +90,12 @@
             "a2": 35
           },
           "materials": [
-            {"color":  [1.0, 1.0, 1.0, 1.0]}
+            {
+              "type": "Blinn-Phong",
+              "albedo":  [1.0, 1.0, 1.0],
+              "specular":  [1.0, 1.0, 1.0],
+              "shininess": 30.0
+            }
           ]
         }
       },
@@ -97,13 +117,7 @@
       "Tree": {
         "type": "lSystem",
         "system": "tree",
-        "instance": "d",
-        "transform": [
-          1, 0, 0, 0,
-          0, 1, 0, 0,
-          0, 0, 1, 0,
-          0, 0, 0, 1
-        ]
+        "instance": "d"
       }
     },
     "lights": {
@@ -121,6 +135,7 @@
             1.0,
             1.0
           ],
+          "intensity": 1.0,
           "position": [
             1.0,
             1.0,
@@ -133,6 +148,7 @@
             1.0,
             1.0
           ],
+          "intensity": 1.0,
           "position": [
             -1.0,
             1.0,

@@ -37,7 +37,12 @@
             "lr": 1.109
           },
           "materials": [
-            {"color":  [1.0, 1.0, 1.0, 1.0]}
+            {
+              "type": "Blinn-Phong",
+              "albedo":  [1.0, 1.0, 1.0],
+              "specular":  [1.0, 1.0, 1.0],
+              "shininess": 30.0
+            }
           ],
           "tropism": {
             "direction": [0.0, -1.0, 0.0],
@@ -53,7 +58,12 @@
             "lr": 1.109
           },
           "materials": [
-            {"color":  [1.0, 1.0, 1.0, 1.0]}
+            {
+              "type": "Blinn-Phong",
+              "albedo":  [1.0, 1.0, 1.0],
+              "specular":  [1.0, 1.0, 1.0],
+              "shininess": 30.0
+            }
           ],
           "tropism": {
             "direction": [0.0, -1.0, 0.0],
@@ -69,7 +79,12 @@
             "lr": 1.79
           },
           "materials": [
-            {"color":  [1.0, 1.0, 1.0, 1.0]}
+            {
+              "type": "Blinn-Phong",
+              "albedo":  [1.0, 1.0, 1.0],
+              "specular":  [1.0, 1.0, 1.0],
+              "shininess": 30.0
+            }
           ],
           "tropism": {
             "direction": [-0.02, -1.0, 0.0],
@@ -85,7 +100,12 @@
             "lr": 1.07
           },
           "materials": [
-            {"color":  [1.0, 1.0, 1.0, 1.0]}
+            {
+              "type": "Blinn-Phong",
+              "albedo":  [1.0, 1.0, 1.0],
+              "specular":  [1.0, 1.0, 1.0],
+              "shininess": 30.0
+            }
           ],
           "tropism": {
             "direction": [-0.61, 0.77, -0.19],
@@ -111,13 +131,7 @@
       "Tree": {
         "type": "lSystem",
         "system": "tree",
-        "instance": "d",
-        "transform": [
-          1, 0, 0, 0,
-          0, 1, 0, 0,
-          0, 0, 1, 0,
-          0, 0, 0, 1
-        ]
+        "instance": "d"
       }
     },
     "lights": {
@@ -135,6 +149,7 @@
             1.0,
             1.0
           ],
+          "intensity": 1.0,
           "position": [
             1.0,
             1.0,
@@ -147,6 +162,7 @@
             1.0,
             1.0
           ],
+          "intensity": 1.0,
           "position": [
             -1.0,
             1.0,
