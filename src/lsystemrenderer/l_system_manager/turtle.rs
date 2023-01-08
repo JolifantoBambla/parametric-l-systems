@@ -311,12 +311,6 @@ impl LSystemModel {
                             .push(instance);
                     }
                 }
-                TurtleCommand::BeginPrimitive(surface_command) => {
-                    log::debug!("unhandled begin surface command {:?}", surface_command);
-                }
-                TurtleCommand::EndPrimitive(surface_command) => {
-                    log::debug!("unhandled end surface command {:?}", surface_command);
-                }
                 TurtleCommand::BeginPolygon => {
                     log::debug!("unhandled begin polygon command");
                 }

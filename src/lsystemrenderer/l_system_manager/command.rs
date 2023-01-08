@@ -179,12 +179,6 @@ pub enum TurtleCommand {
     #[serde(rename = "~")]
     AddPredefinedPrimitive(PrimitiveCommand),
 
-    #[serde(rename = "<")]
-    BeginPrimitive(PrimitiveCommand),
-
-    #[serde(rename = ">")]
-    EndPrimitive(PrimitiveCommand),
-
     #[serde(rename = "{")]
     BeginPolygon,
 
