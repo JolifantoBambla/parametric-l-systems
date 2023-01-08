@@ -46,8 +46,8 @@
           "materials": [
             {
               "type": "Blinn-Phong",
-              "albedo":  [1.0, 1.0, 1.0, 1.0],
-              "specularColor":  [1.0, 1.0, 1.0, 1.0],
+              "albedo":  [1.0, 1.0, 1.0],
+              "specular":  [1.0, 1.0, 1.0],
               "shininess": 30.0
             }
           ]
@@ -69,8 +69,8 @@
           "materials": [
             {
               "type": "Blinn-Phong",
-              "albedo":  [1.0, 1.0, 1.0, 1.0],
-              "specularColor":  [1.0, 1.0, 1.0, 1.0],
+              "albedo":  [1.0, 1.0, 1.0],
+              "specular":  [1.0, 1.0, 1.0],
               "shininess": 30.0
             }
           ]
@@ -92,8 +92,8 @@
           "materials": [
             {
               "type": "Blinn-Phong",
-              "albedo":  [1.0, 1.0, 1.0, 1.0],
-              "specularColor":  [1.0, 1.0, 1.0, 1.0],
+              "albedo":  [1.0, 1.0, 1.0],
+              "specular":  [1.0, 1.0, 1.0],
               "shininess": 30.0
             }
           ]
@@ -115,8 +115,8 @@
           "materials": [
             {
               "type": "Blinn-Phong",
-              "albedo":  [1.0, 1.0, 1.0, 1.0],
-              "specularColor":  [1.0, 1.0, 1.0, 1.0],
+              "albedo":  [1.0, 1.0, 1.0],
+              "specular":  [1.0, 1.0, 1.0],
               "shininess": 30.0
             }
           ]
@@ -138,8 +138,8 @@
           "materials": [
             {
               "type": "Blinn-Phong",
-              "albedo":  [1.0, 1.0, 1.0, 1.0],
-              "specularColor":  [1.0, 1.0, 1.0, 1.0],
+              "albedo":  [1.0, 1.0, 1.0],
+              "specular":  [1.0, 1.0, 1.0],
               "shininess": 30.0
             }
           ]
@@ -161,8 +161,8 @@
           "materials": [
             {
               "type": "Blinn-Phong",
-              "albedo":  [1.0, 1.0, 1.0, 1.0],
-              "specularColor":  [1.0, 1.0, 1.0, 1.0],
+              "albedo":  [1.0, 1.0, 1.0],
+              "specular":  [1.0, 1.0, 1.0],
               "shininess": 30.0
             }
           ]
@@ -184,8 +184,8 @@
           "materials": [
             {
               "type": "Blinn-Phong",
-              "albedo":  [1.0, 1.0, 1.0, 1.0],
-              "specularColor":  [1.0, 1.0, 1.0, 1.0],
+              "albedo":  [1.0, 1.0, 1.0],
+              "specular":  [1.0, 1.0, 1.0],
               "shininess": 30.0
             }
           ]
@@ -207,8 +207,8 @@
           "materials": [
             {
               "type": "Blinn-Phong",
-              "albedo":  [1.0, 1.0, 1.0, 1.0],
-              "specularColor":  [1.0, 1.0, 1.0, 1.0],
+              "albedo":  [1.0, 1.0, 1.0],
+              "specular":  [1.0, 1.0, 1.0],
               "shininess": 30.0
             }
           ]
@@ -230,8 +230,8 @@
           "materials": [
             {
               "type": "Blinn-Phong",
-              "albedo":  [1.0, 1.0, 1.0, 1.0],
-              "specularColor":  [1.0, 1.0, 1.0, 1.0],
+              "albedo":  [1.0, 1.0, 1.0],
+              "specular":  [1.0, 1.0, 1.0],
               "shininess": 30.0
             }
           ]
@@ -279,6 +279,7 @@
             1.0,
             1.0
           ],
+          "intensity": 1.0,
           "position": [
             1.0,
             1.0,
@@ -291,6 +292,7 @@
             1.0,
             1.0
           ],
+          "intensity": 1.0,
           "position": [
             -10.0,
             1.0,
