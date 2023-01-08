@@ -337,7 +337,7 @@ Resources are uniquely defined by their name, e.g.:
 ### Wavefront OBJ
 
 A Wavefront OBJ resource must specify the type `"obj"`.
-Each OBJ resource must define either a `"path"` to fetch the resource from a server, or the OBJ's `"source"` directly.
+Each OBJ resource must define either a `"path"` to `fetch` the resource from a server, or the OBJ's `"source"` directly.
 If both a path and the source is given, the path is used.
 The OBJ is expected to define a position and normal for each vertex.
 Materials defined in the OBJ are ignored.
