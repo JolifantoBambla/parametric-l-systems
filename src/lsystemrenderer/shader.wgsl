@@ -106,14 +106,15 @@ fn fragment_main(input: VertexOutput) -> @location(0) vec4<f32> {
         let light_color = light_sources[i].color;
         let light_dir_distance = compute_light_direction_and_distance(i, position.xyz);
         let light_direction = light_dir_distance.xyz;
-        let inv_distance_squared = 1. / (light_dir_distance.w * light_dir_distance.w);
+        let recip_distance_squared = 1. / (light_dir_distance.w * light_dir_distance.w);
+        let light = light_color * light_sources[i].intensity * recip_distance_squared;
 
         let halfway = normalize(light_direction + view_direction);
 
         let lambertian = max(dot(normal, light_direction), 0.0);
-        diffuse += lambertian * light_color * inv_distance_squared;
+        diffuse += lambertian * light;
 
-        specular += light_color * pow(max(dot(normal, halfway), 0.0), shininess) * inv_distance_squared;
+        specular += pow(max(dot(normal, halfway), 0.0), shininess) * light;
     }
     let color = (ambient + diffuse) * albedo + specular * specular_color;
 

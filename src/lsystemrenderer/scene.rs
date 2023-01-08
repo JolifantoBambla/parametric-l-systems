@@ -110,14 +110,14 @@ impl LSystemScene {
             light_sources.push(LightSource::new_directional(
                 descriptor.direction(),
                 descriptor.color(),
-                1.0,
+                descriptor.intensity(),
             ));
         }
         for descriptor in scene_descriptor.scene().lights().point_lights() {
             light_sources.push(LightSource::new_point(
                 descriptor.position(),
                 descriptor.color(),
-                1.0,
+                descriptor.intensity(),
             ));
         }
 

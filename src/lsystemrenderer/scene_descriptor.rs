@@ -111,12 +111,16 @@ impl AmbientLightDescriptor {
 #[derive(Clone, Debug, Deserialize)]
 pub struct PointLightDescriptor {
     color: Vec3,
+    intensity: f32,
     position: Vec3,
 }
 
 impl PointLightDescriptor {
     pub fn color(&self) -> Vec3 {
         self.color
+    }
+    pub fn intensity(&self) -> f32 {
+        self.intensity
     }
     pub fn position(&self) -> Vec3 {
         self.position
@@ -126,12 +130,16 @@ impl PointLightDescriptor {
 #[derive(Clone, Debug, Deserialize)]
 pub struct DirectionalLightDescriptor {
     color: Vec3,
+    intensity: f32,
     direction: Vec3,
 }
 
 impl DirectionalLightDescriptor {
     pub fn color(&self) -> Vec3 {
         self.color
+    }
+    pub fn intensity(&self) -> f32 {
+        self.intensity
     }
     pub fn direction(&self) -> Vec3 {
         self.direction
