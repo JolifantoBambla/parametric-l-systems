@@ -3,6 +3,9 @@ name = "parametric-l-systems"
 version = "0.1.0"
 authors = ["Lukas Herzberger <herzberger.lukas@gmail.com>"]
 edition = "2021"
+description = "An implementation of parametric L-systems for the Fractals course at TU Wien."
+repository = "github.com/JolifantoBambla/parametric-l-systems"
+license = "MIT"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
