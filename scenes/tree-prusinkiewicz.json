@@ -255,13 +255,7 @@
       "Tree": {
         "type": "lSystem",
         "system": "tree",
-        "instance": "g",
-        "transform": [
-          1, 0, 0, 0,
-          0, 1, 0, 0,
-          0, 0, 1, 0,
-          0, 0, 0, 1
-        ]
+        "instance": "g"
       }
     },
     "lights": {

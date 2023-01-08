@@ -43,7 +43,7 @@
                             </div>
                             <button class="waves-effect waves-light btn-small" style="width: 24.6%;" type="submit" id="scene-download-button"><i class="material-icons left">save</i>Save File</button>
                             <button class="waves-effect waves-light btn-small" style="width: 24.5%;" type="submit" id="l-system-test-button"><i class="material-icons left">play_circle_outline</i>Test</button>
-                            <button class="waves-effect waves-light btn-small disabled" style="width: 24.6%;" type="submit" id="l-system-render-button"><i class="material-icons left">play_circle_filled</i>Render</button>
+                            <button class="waves-effect waves-light btn-small" style="width: 24.6%;" type="submit" id="l-system-render-button"><i class="material-icons left">play_circle_filled</i>Render</button>
                         </div>
                     </div>
                     <div class="divider"></div>
@@ -220,16 +220,19 @@
             const lSystemRenderButton = document.getElementById('l-system-render-button');
             let renderSceneLocked = true;
 
+            const lockRenderScene = () => {
+                renderSceneLocked = true;
+                // todo: disable button
+            };
             const unlockRenderScene = () => {
                 if (renderSceneLocked) {
                     renderSceneLocked = false;
-                    // todo: check how to enable a button
-                    lSystemRenderButton.disabled = false;
+                    // todo: enable a button
                 }
             }
             const renderNewScene = async (scene) => {
                 if (!renderSceneLocked) {
-                    renderSceneLocked = true;
+                    lockRenderScene();
                     try {
                         if (scene.lSystems) {
                             testAndPrintSystems(scene);
@@ -358,6 +361,7 @@
                 main(canvasId, scene, systems);
             }
 
+            lockRenderScene();
             const initialScene = parseCurrentSceneSource();
             testAndPrintSystems(initialScene);
             buildUi(initialScene);
