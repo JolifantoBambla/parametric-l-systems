@@ -300,7 +300,7 @@ Internally, `"Tree1"` and `"Tree2"` share the same L-system instance.
       "type": "lSystem",
       "system": "tree",
       "instance": "g",
-      "iterations": 2
+      "iteration": 2
     },
     "Tree2": {
       "type": "lSystem",

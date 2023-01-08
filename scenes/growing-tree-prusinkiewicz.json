@@ -63,15 +63,57 @@
   },
   "scene": {
     "camera": {
-      "eye": [0, 0, 1.5],
+      "eye": [0, 0, 3.5],
       "lookAt": [0, 0, 0],
       "up": [0, 1, 0]
     },
     "objects": {
-      "Tree": {
+      "Tree 1": {
         "type": "lSystem",
         "system": "tree",
-        "instance": "g"
+        "instance": "g",
+        "iteration": 2,
+        "transform": [
+          1, 0, 0, 0,
+          0, 1, 0, 0,
+          0, 0, 1, 0,
+          -1.5, 0, 0, 1
+        ]
+      },
+      "Tree 2": {
+        "type": "lSystem",
+        "system": "tree",
+        "instance": "g",
+        "iteration": 5,
+        "transform": [
+          1, 0, 0, 0,
+          0, 1, 0, 0,
+          0, 0, 1, 0,
+          -0.5, 0, 0, 1
+        ]
+      },
+      "Tree 3": {
+        "type": "lSystem",
+        "system": "tree",
+        "instance": "g",
+        "iteration": 7,
+        "transform": [
+          1, 0, 0, 0,
+          0, 1, 0, 0,
+          0, 0, 1, 0,
+          0.5, 0, 0, 1
+        ]
+      },
+      "Tree 4": {
+        "type": "lSystem",
+        "system": "tree",
+        "instance": "g",
+        "transform": [
+          1, 0, 0, 0,
+          0, 1, 0, 0,
+          0, 0, 1, 0,
+          1.5, 0, 0, 1
+        ]
       }
     },
     "lights": {

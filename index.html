@@ -190,8 +190,8 @@
                 }
             }
             for (const object of Object.values(scene.scene.objects)) {
-                if (object.iterations) {
-                    object.iterations = Math.max(object.iterations - 1, 0);
+                if (object.iteration) {
+                    object.iteration = Math.max(object.iteration - 1, 0);
                 }
             }
 
