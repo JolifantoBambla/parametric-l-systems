@@ -151,19 +151,26 @@ impl LSystemScene {
             }
         }
 
-        // todo: graceful error handling
         let mut l_system_managers = HashMap::new();
         for (name, mut system) in l_systems.drain() {
+            if !scene_descriptor.l_systems().contains_key(&name) {
+                log::error!("System has no descriptor: {}", name);
+                continue
+            }
             let system_descriptor = scene_descriptor
                 .l_systems()
                 .get(&name)
-                .unwrap_or_else(|| panic!("System has no descriptor: {}", name));
+                .unwrap();
             let mut instances = HashMap::new();
             for (instance_name, instance) in system.drain() {
+                if !system_descriptor.instances().contains_key(&instance_name) {
+                    log::error!("Instance has no descriptor: {}", instance_name);
+                    continue
+                }
                 let instance_descriptor = system_descriptor
                     .instances()
                     .get(&instance_name)
-                    .unwrap_or_else(|| panic!("Instance has no descriptor: {}", instance_name));
+                    .unwrap();
                 instances.insert(
                     instance_name.to_string(),
                     LSystemManager::new(
@@ -179,7 +186,6 @@ impl LSystemScene {
             l_system_managers.insert(name, instances);
         }
 
-        // todo: graceful error handling
         let mut objects = HashMap::new();
         for (object_id, descriptor) in scene_descriptor.scene().objects() {
             match descriptor {
@@ -187,28 +193,34 @@ impl LSystemScene {
                     let iteration = if let Some(iteration) = d.iteration() {
                         *iteration
                     } else {
+                        if !scene_descriptor.l_systems().contains_key(d.system()) {
+                            log::error!("Object references unknown LSystem: {}", d.system());
+                            continue
+                        } else if !scene_descriptor.l_systems().get(d.system()).unwrap().instances().contains_key(d.instance()) {
+                            log::error!("Object references unknown instance: {}", d.instance());
+                            continue
+                        }
                         scene_descriptor
                             .l_systems()
                             .get(d.system())
-                            .unwrap_or_else(|| {
-                                panic!("Object references unknown LSystem: {}", d.system())
-                            })
+                            .unwrap()
                             .instances()
                             .get(d.instance())
-                            .unwrap_or_else(|| {
-                                panic!("Object references unknown instance: {}", d.instance())
-                            })
+                            .unwrap()
                             .iterations()
                     };
+                    if !l_system_managers.contains_key(d.system()) {
+                        log::error!("Object references unknown LSystem: {}", d.system());
+                        continue
+                    } else if !l_system_managers.get(d.system()).unwrap().contains_key(d.instance()) {
+                        log::error!("Object references unknown instance: {}", d.instance());
+                        continue
+                    }
                     l_system_managers
                         .get_mut(d.system())
-                        .unwrap_or_else(|| {
-                            panic!("Object references unknown LSystem: {}", d.system())
-                        })
+                        .unwrap()
                         .get_mut(d.instance())
-                        .unwrap_or_else(|| {
-                            panic!("Object references unknown instance: {}", d.instance())
-                        })
+                        .unwrap()
                         .maybe_increase_max_iteration(iteration);
                     objects.insert(
                         object_id.to_string(),
@@ -230,9 +242,11 @@ impl LSystemScene {
                     );
                 }
                 SceneObjectDescriptor::Obj(d) => {
-                    let mesh = resources
-                        .get(d.obj())
-                        .unwrap_or_else(|| panic!("Object references unknown mesh: {}", d.obj()));
+                    if !resources.contains_key(d.obj()) {
+                        log::error!("Object references unknown mesh: {}", d.obj());
+                        continue
+                    }
+                    let mesh = resources.get(d.obj()).unwrap();
                     objects.insert(
                         object_id.to_string(),
                         SceneObject {
