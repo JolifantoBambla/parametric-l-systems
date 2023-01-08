@@ -26,26 +26,14 @@
         "axiom": "A"
       },
       "instances": {
-        "two": {
-          "iterations": 2,
-          "parameters": {},
-          "materials": [
-            {
-              "type": "Blinn-Phong",
-              "albedo":  [1.0, 1.0, 1.0],
-              "specular":  [1.0, 1.0, 1.0],
-              "shininess": 10.0
-            }
-          ]
-        },
         "four": {
           "iterations": 4,
           "parameters": {},
           "materials": [
             {
               "type": "Blinn-Phong",
-              "albedo":  [1.0, 1.0, 1.0],
-              "specular":  [1.0, 1.0, 1.0],
+              "albedo":  [0.7, 0.7, 0.7],
+              "specular":  [0.8, 0.5, 0.5],
               "shininess": 10.0
             }
           ]
@@ -69,7 +57,7 @@
       "Tree": {
         "type": "lSystem",
         "system": "hilbert3d",
-        "instance": "two"
+        "instance": "four"
       }
     },
     "lights": {

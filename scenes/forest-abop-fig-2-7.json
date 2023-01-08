@@ -1,0 +1,200 @@
+{
+  "lSystems": {
+    "tree": {
+      "type": "object",
+      "definition": {
+        "alphabet": [
+          "A(l,w)",
+          "B(l,w)",
+          "F(l)",
+          "!(w)",
+          "[",
+          "]",
+          "+(a)",
+          "-(a)",
+          "/(a)",
+          "&(a)",
+          "$"
+        ],
+        "parameters": {
+          "r1": 0.9,
+          "r2": 0.7,
+          "a1": 10,
+          "a2": 60,
+          "wr": 0.707
+        },
+        "productions": [
+          "A(l,w) -> !(w)F(l)[&(a1)B(l*r1,w*wr)]/(180)[&(a2)B(l*r2,w*wr)]",
+          "B(l,w) -> !(w)F(l)[+(a1)$B(l*r1,w*wr)][-(a2)$B(l*r2,w*wr)]"
+        ],
+        "axiom": "A(10,1)"
+      },
+      "instances": {
+        "a": {
+          "iterations": 10,
+          "parameters": {
+            "r1": 0.9,
+            "r2": 0.7,
+            "a1": 5,
+            "a2": 65
+          },
+          "materials": [
+            {
+              "type": "Blinn-Phong",
+              "albedo":  [1.0, 1.0, 1.0],
+              "specular":  [1.0, 1.0, 1.0],
+              "shininess": 30.0
+            }
+          ]
+        },
+        "b": {
+          "iterations": 10,
+          "parameters": {
+            "r1": 0.9,
+            "r2": 0.7,
+            "a1": 10,
+            "a2": 60
+          },
+          "materials": [
+            {
+              "type": "Blinn-Phong",
+              "albedo":  [1.0, 1.0, 1.0],
+              "specular":  [1.0, 1.0, 1.0],
+              "shininess": 30.0
+            }
+          ]
+        },
+        "c": {
+          "iterations": 10,
+          "parameters": {
+            "r1": 0.9,
+            "r2": 0.8,
+            "a1": 20,
+            "a2": 50
+          },
+          "materials": [
+            {
+              "type": "Blinn-Phong",
+              "albedo":  [1.0, 1.0, 1.0],
+              "specular":  [1.0, 1.0, 1.0],
+              "shininess": 30.0
+            }
+          ]
+        },
+        "d": {
+          "iterations": 10,
+          "parameters": {
+            "r1": 0.9,
+            "r2": 0.8,
+            "a1": 35,
+            "a2": 35
+          },
+          "materials": [
+            {
+              "type": "Blinn-Phong",
+              "albedo":  [1.0, 1.0, 1.0],
+              "specular":  [1.0, 1.0, 1.0],
+              "shininess": 30.0
+            }
+          ]
+        }
+      },
+      "transform": [
+        1, 0, 0, 0,
+        0, 0, 1, 0,
+        0, -1, 0, 0,
+        0, 0, 0, 1
+      ]
+    }
+  },
+  "scene": {
+    "camera": {
+      "eye": [0, 0, 1.5],
+      "lookAt": [0, 0, 0],
+      "up": [0, 1, 0]
+    },
+    "objects": {
+      "Tree a": {
+        "type": "lSystem",
+        "system": "tree",
+        "instance": "a",
+        "transform": [
+          1, 0, 0, 0,
+          0, 1, 0, 0,
+          0, 0, 1, 0,
+          -0.5, 0, -0.5, 1
+        ]
+      },
+      "Tree b": {
+        "type": "lSystem",
+        "system": "tree",
+        "instance": "b",
+        "transform": [
+          1, 0, 0, 0,
+          0, 1, 0, 0,
+          0, 0, 1, 0,
+          0.5, 0, -0.5, 1
+        ]
+      },
+      "Tree c": {
+        "type": "lSystem",
+        "system": "tree",
+        "instance": "c",
+        "transform": [
+          1, 0, 0, 0,
+          0, 1, 0, 0,
+          0, 0, 1, 0,
+          -0.5, 0, 0.5, 1
+        ]
+      },
+      "Tree d": {
+        "type": "lSystem",
+        "system": "tree",
+        "instance": "d",
+        "transform": [
+          1, 0, 0, 0,
+          0, 1, 0, 0,
+          0, 0, 1, 0,
+          0.5, 0, 0.5, 1
+        ]
+      }
+    },
+    "lights": {
+      "ambient": {
+        "color": [
+          0.1,
+          0.1,
+          0.1
+        ]
+      },
+      "pointLights": [
+        {
+          "color": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "intensity": 1.0,
+          "position": [
+            1.0,
+            1.0,
+            0.0
+          ]
+        },
+        {
+          "color": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "intensity": 1.0,
+          "position": [
+            -1.0,
+            1.0,
+            0.0
+          ]
+        }
+      ]
+    }
+  }
+}
