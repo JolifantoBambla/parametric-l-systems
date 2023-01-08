@@ -120,7 +120,7 @@ impl TurtleState {
             js_sys::Math::random() as f32,
         );
         Material::new(
-            color.extend(1.),
+            color,
             color,
             js_sys::Math::random() as f32 * 128.0
         )

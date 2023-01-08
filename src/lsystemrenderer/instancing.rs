@@ -1,18 +1,31 @@
 use glam::{Mat4, Vec3, Vec4};
 use serde::Deserialize;
 
+#[derive(Copy, Clone, Debug, Deserialize)]
+struct SerializedMaterial {
+    albedo: Vec3,
+    specular: Vec3,
+    shininess: f32,
+}
+
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Deserialize, bytemuck::Pod, bytemuck::Zeroable)]
+#[serde(from = "SerializedMaterial")]
 pub struct Material {
     albedo: Vec4,
-    #[serde(rename = "specularColor")]
     specular_color: Vec3,
     shininess: f32,
 }
 
 impl Material {
-    pub fn new(albedo: Vec4, specular_color: Vec3, shininess: f32) -> Self {
-        Self { albedo, specular_color, shininess }
+    pub fn new(albedo: Vec3, specular_color: Vec3, shininess: f32) -> Self {
+        Self { albedo: albedo.extend(1.0), specular_color, shininess }
+    }
+}
+
+impl From<SerializedMaterial> for Material {
+    fn from(m: SerializedMaterial) -> Self {
+        Self::new(m.albedo, m.specular, m.shininess)
     }
 }
 
