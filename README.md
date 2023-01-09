@@ -14,6 +14,8 @@ wasm-pack build --target web
 ```
 
 ## Run
+
 * Install a [browser that supports WebGPU](https://github.com/gpuweb/gpuweb/wiki/Implementation-Status).
 * If necessary, enable WebGPU in the browser (e.g. on Linux: Chromium with flags `--enable-vulkan --enable-unsafe-webgpu`)
-* Navigate to `index.html` using the browser with WebGPU enabled.
+* Serve the project using an HTTP server (e.g. [Python 3](https://www.python.org/downloads/) and its [http.server module](https://docs.python.org/3/library/http.server.html))
+* Navigate to the project's `index.html` using the browser with WebGPU enabled.
