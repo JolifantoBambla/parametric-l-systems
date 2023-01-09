@@ -434,9 +434,6 @@ A(foo,bar)
 A
 A(x)
 A(foo,bar)
-
-// A query module for querying the variable x from the L-system's state:
-?A(x)
 ```
 
 #### Special Module Names
