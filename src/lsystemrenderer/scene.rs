@@ -11,6 +11,7 @@ use crate::framework::scene::transform::Transform;
 use crate::lindenmayer::LSystem;
 use crate::lsystemrenderer::camera::OrbitCamera;
 use crate::lsystemrenderer::instancing::{Instance, ModelTransform};
+use crate::lsystemrenderer::l_system_manager::turtle::LSystemPrimitive;
 use crate::lsystemrenderer::l_system_manager::{turtle::MaterialState, LSystemManager};
 use crate::lsystemrenderer::renderer::{
     LightSourcesBindGroup, LightSourcesBindGroupBuilder, RenderObject, RenderObjectBuilder,
@@ -22,7 +23,6 @@ use glam::Vec3;
 use std::collections::HashMap;
 use std::sync::Arc;
 use wgpu::BufferUsages;
-use crate::lsystemrenderer::l_system_manager::turtle::LSystemPrimitive;
 
 struct MeshResource {
     mesh: Arc<GpuMesh>,
@@ -157,24 +157,20 @@ impl LSystemScene {
         for (name, mut system) in l_systems.drain() {
             if !scene_descriptor.l_systems().contains_key(&name) {
                 log::error!("System has no descriptor: {}", name);
-                continue
+                continue;
             }
-            let l_system_descriptor = scene_descriptor
-                .l_systems()
-                .get(&name)
-                .unwrap();
+            let l_system_descriptor = scene_descriptor.l_systems().get(&name).unwrap();
             let mut instances = HashMap::new();
             for (instance_name, instance) in system.drain() {
                 if !l_system_descriptor.instances().contains_key(&instance_name) {
                     log::error!("Instance has no descriptor: {}", instance_name);
-                    continue
+                    continue;
                 }
-                let instance_descriptor = l_system_descriptor
-                    .instances()
-                    .get(&instance_name)
-                    .unwrap();
+                let instance_descriptor =
+                    l_system_descriptor.instances().get(&instance_name).unwrap();
                 let mut primitives = HashMap::new();
-                for (primitive_id, primitive_descriptor) in l_system_descriptor.primitives().iter() {
+                for (primitive_id, primitive_descriptor) in l_system_descriptor.primitives().iter()
+                {
                     if let Some(primitive) = resources.get(primitive_id) {
                         match primitive {
                             Resource::Mesh(mesh_primitive) => {
@@ -184,7 +180,7 @@ impl LSystemScene {
                                         mesh_primitive.mesh.aabb(),
                                         primitive_descriptor.transform(),
                                         primitive_descriptor.material(),
-                                    )
+                                    ),
                                 );
                             }
                         }
@@ -214,10 +210,16 @@ impl LSystemScene {
                     } else {
                         if !scene_descriptor.l_systems().contains_key(d.system()) {
                             log::error!("Object references unknown LSystem: {}", d.system());
-                            continue
-                        } else if !scene_descriptor.l_systems().get(d.system()).unwrap().instances().contains_key(d.instance()) {
+                            continue;
+                        } else if !scene_descriptor
+                            .l_systems()
+                            .get(d.system())
+                            .unwrap()
+                            .instances()
+                            .contains_key(d.instance())
+                        {
                             log::error!("Object references unknown instance: {}", d.instance());
-                            continue
+                            continue;
                         }
                         scene_descriptor
                             .l_systems()
@@ -230,10 +232,14 @@ impl LSystemScene {
                     };
                     if !l_system_managers.contains_key(d.system()) {
                         log::error!("Object references unknown LSystem: {}", d.system());
-                        continue
-                    } else if !l_system_managers.get(d.system()).unwrap().contains_key(d.instance()) {
+                        continue;
+                    } else if !l_system_managers
+                        .get(d.system())
+                        .unwrap()
+                        .contains_key(d.instance())
+                    {
                         log::error!("Object references unknown instance: {}", d.instance());
-                        continue
+                        continue;
                     }
                     l_system_managers
                         .get_mut(d.system())
@@ -263,7 +269,7 @@ impl LSystemScene {
                 SceneObjectDescriptor::Obj(d) => {
                     if !resources.contains_key(d.obj()) {
                         log::error!("Object references unknown mesh: {}", d.obj());
-                        continue
+                        continue;
                     }
                     let mesh = resources.get(d.obj()).unwrap();
                     objects.insert(
@@ -335,8 +341,10 @@ impl LSystemScene {
         light_sources_bind_group_creator: &LightSourcesBindGroupBuilder,
     ) {
         if self.light_sources_bind_group.is_none() {
-            self.light_sources_bind_group =
-                Some(light_sources_bind_group_creator.build(self.ambient_light.light(), self.lights().as_slice()));
+            self.light_sources_bind_group = Some(
+                light_sources_bind_group_creator
+                    .build(self.ambient_light.light(), self.lights().as_slice()),
+            );
         }
 
         for (_, o) in self.objects.iter_mut() {
@@ -359,12 +367,11 @@ impl LSystemScene {
                             true
                         };
                         if insert {
-                            let cylinder_render_object = render_object_creator
-                                .build(
-                                    &self.cylinder_mesh,
-                                    &o.transform_buffer,
-                                    iteration.1.cylinder_instances_buffer(),
-                                );
+                            let cylinder_render_object = render_object_creator.build(
+                                &self.cylinder_mesh,
+                                &o.transform_buffer,
+                                iteration.1.cylinder_instances_buffer(),
+                            );
 
                             let mut render_objects = vec![cylinder_render_object];
                             for (primitive_id, primitive_instances) in
@@ -372,13 +379,11 @@ impl LSystemScene {
                             {
                                 if let Some(resource) = self.resources.get_mut(primitive_id) {
                                     for (iteration, instance_buffer) in primitive_instances.iter() {
-                                        render_objects.push(
-                                            render_object_creator.build(
-                                                resource.get_or_create_mesh(iteration),
-                                                &o.transform_buffer,
-                                                instance_buffer,
-                                            ),
-                                        );
+                                        render_objects.push(render_object_creator.build(
+                                            resource.get_or_create_mesh(iteration),
+                                            &o.transform_buffer,
+                                            instance_buffer,
+                                        ));
                                     }
                                 }
                             }
@@ -390,12 +395,11 @@ impl LSystemScene {
                 }
                 Primitive::Mesh(mesh) => {
                     if mesh.render_objects.is_none() {
-                        mesh.render_objects = Some(vec![render_object_creator
-                            .build(
-                                &mesh.mesh,
-                                &o.transform_buffer,
-                                &mesh.instance_buffer,
-                            )]);
+                        mesh.render_objects = Some(vec![render_object_creator.build(
+                            &mesh.mesh,
+                            &o.transform_buffer,
+                            &mesh.instance_buffer,
+                        )]);
                     }
                 }
             };

@@ -1,9 +1,9 @@
-use glam::Vec3;
-use crate::framework::mesh::{vertex::BufferLayout, Mesh};
-use wgpu::util::{BufferInitDescriptor, DeviceExt};
-use wgpu::{Buffer, BufferUsages, Device, IndexFormat, Label, RenderPass};
 use crate::framework::geometry::bounds::Bounds3;
 use crate::framework::mesh::vertex::Position;
+use crate::framework::mesh::{vertex::BufferLayout, Mesh};
+use glam::Vec3;
+use wgpu::util::{BufferInitDescriptor, DeviceExt};
+use wgpu::{Buffer, BufferUsages, Device, IndexFormat, Label, RenderPass};
 
 pub trait DrawInstanced {
     fn draw_instanced<'a>(&'a self, pass: &mut RenderPass<'a>, num_instances: u32);

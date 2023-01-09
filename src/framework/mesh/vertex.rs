@@ -34,7 +34,11 @@ pub trait FromPositionNormal {
 }
 
 pub trait FromPositionNormalTextureCoordinates {
-    fn from_position_normal_texture_coordinates(position: Vec3, normal: Vec3, texture_coordinates: Vec2) -> Self;
+    fn from_position_normal_texture_coordinates(
+        position: Vec3,
+        normal: Vec3,
+        texture_coordinates: Vec2,
+    ) -> Self;
 }
 
 #[repr(C)]
@@ -65,15 +69,16 @@ impl Normal for Vertex {
 
 impl FromPositionNormal for Vertex {
     fn from_position_normal(position: Vec3, normal: Vec3) -> Self {
-        Self {
-            position,
-            normal
-        }
+        Self { position, normal }
     }
 }
 
 impl FromPositionNormalTextureCoordinates for Vertex {
-    fn from_position_normal_texture_coordinates(position: Vec3, normal: Vec3, _texture_coordinates: Vec2) -> Self {
+    fn from_position_normal_texture_coordinates(
+        position: Vec3,
+        normal: Vec3,
+        _texture_coordinates: Vec2,
+    ) -> Self {
         Self::from_position_normal(position, normal)
     }
 }
@@ -140,7 +145,11 @@ impl TextureCoordinates for TexturedVertex {
 }
 
 impl FromPositionNormalTextureCoordinates for TexturedVertex {
-    fn from_position_normal_texture_coordinates(position: Vec3, normal: Vec3, texture_coordinates: Vec2) -> Self {
+    fn from_position_normal_texture_coordinates(
+        position: Vec3,
+        normal: Vec3,
+        texture_coordinates: Vec2,
+    ) -> Self {
         Self::new(position, normal, texture_coordinates)
     }
 }

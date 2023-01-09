@@ -34,7 +34,11 @@ pub struct LSystemPrimitive {
 
 impl LSystemPrimitive {
     pub fn new(aabb: Bounds3, transform: Option<Transform>, material: Option<Material>) -> Self {
-        Self { aabb, transform, material }
+        Self {
+            aabb,
+            transform,
+            material,
+        }
     }
     pub fn aabb(&self) -> Bounds3 {
         self.aabb
@@ -88,10 +92,8 @@ struct TurtleState {
 
 impl TurtleState {
     pub fn rotate_towards_up_plane(&mut self) {
-        let orientation = OrthonormalBasis::new(
-            self.transform.forward(),
-            self.initial_orientation.forward(),
-        );
+        let orientation =
+            OrthonormalBasis::new(self.transform.forward(), self.initial_orientation.forward());
         self.transform.set_orientation(orientation);
     }
 
@@ -111,11 +113,7 @@ impl TurtleState {
             js_sys::Math::random() as f32,
             js_sys::Math::random() as f32,
         );
-        Material::new(
-            color,
-            color,
-            js_sys::Math::random() as f32 * 128.0
-        )
+        Material::new(color, color, js_sys::Math::random() as f32 * 128.0)
     }
 
     pub fn get_material(&self) -> Material {
@@ -203,16 +201,15 @@ impl LSystemModel {
                     let scale_vec = Vec3::new(radius, cylinder.length(), radius);
                     let cylinder_transform =
                         Transform::from_scale_rotation(scale_vec, cylinder_base_rotation);
-                    let instance_transform = state.transform().as_mat4_with_child(&cylinder_transform);
+                    let instance_transform =
+                        state.transform().as_mat4_with_child(&cylinder_transform);
 
                     for c in cylinder_aabb.corners() {
                         aabb.grow(instance_transform.transform_point3(c));
                     }
 
-                    cylinder_instances.push(Instance::new(
-                        instance_transform,
-                        state.get_material(),
-                    ));
+                    cylinder_instances
+                        .push(Instance::new(instance_transform, state.get_material()));
 
                     state.transform.move_forward(cylinder.length());
 
@@ -293,7 +290,8 @@ impl LSystemModel {
                                 .insert(surface_iteration, Vec::new());
                         }
 
-                        let instance_transform = state.transform().as_mat4_with_child(&primitive.transform());
+                        let instance_transform =
+                            state.transform().as_mat4_with_child(&primitive.transform());
                         for c in primitive.aabb().corners() {
                             aabb.grow(instance_transform.transform_point3(c));
                         }

@@ -12,7 +12,6 @@ crate-type = ["cdylib", "rlib"]
 
 [features]
 default = ["console_error_panic_hook"]
-default-to-left-handed = []
 
 [dependencies]
 bytemuck = { version = "1.4", features = ["derive"] }

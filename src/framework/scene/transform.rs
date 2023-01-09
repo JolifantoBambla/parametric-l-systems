@@ -288,10 +288,7 @@ pub mod util {
                 let up = self.transform().up();
                 let center_to_eye = position - origin;
 
-                let mut orientation = OrthonormalBasis::new(
-                    center_to_eye.normalize(),
-                    up
-                );
+                let mut orientation = OrthonormalBasis::new(center_to_eye.normalize(), up);
                 orientation.yaw(-delta_scaled.x);
                 let direction_yaw = orientation.forward();
                 orientation.pitch(delta_scaled.y);
@@ -309,7 +306,8 @@ pub mod util {
                     self.transform_mut().set_position(new_position);
                 }
                 let forward = (self.target() - self.transform().position()).normalize();
-                self.transform_mut().set_orientation(OrthonormalBasis::new(forward, up));
+                self.transform_mut()
+                    .set_orientation(OrthonormalBasis::new(forward, up));
             }
         }
     }

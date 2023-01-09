@@ -19,7 +19,11 @@ pub struct Material {
 
 impl Material {
     pub fn new(albedo: Vec3, specular_color: Vec3, shininess: f32) -> Self {
-        Self { albedo: albedo.extend(1.0), specular_color, shininess }
+        Self {
+            albedo: albedo.extend(1.0),
+            specular_color,
+            shininess,
+        }
     }
 }
 
@@ -34,7 +38,7 @@ impl Default for Material {
         Self {
             albedo: Vec4::ONE,
             specular_color: Vec3::ZERO,
-            shininess: 0.0
+            shininess: 0.0,
         }
     }
 }
@@ -76,7 +80,7 @@ impl Instance {
     pub fn new(matrix: Mat4, material: Material) -> Self {
         Self {
             transform: ModelTransform::new(matrix),
-            material
+            material,
         }
     }
     pub fn matrix(&self) -> Mat4 {

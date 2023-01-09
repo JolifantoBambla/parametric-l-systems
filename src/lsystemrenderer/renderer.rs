@@ -1,9 +1,10 @@
 use crate::framework::context::Gpu;
 use crate::framework::event::window::OnResize;
 use crate::framework::gpu::buffer::Buffer;
-use crate::framework::mesh::vertex::{Vertex, BufferLayout};
+use crate::framework::mesh::vertex::{BufferLayout, Vertex};
 use crate::framework::renderer::drawable::{Draw, DrawInstanced, GpuMesh};
 use crate::framework::scene::light::{Light, LightSource, LightSourceType};
+use crate::framework::scene::transform::Transformable;
 use crate::lsystemrenderer::camera::OrbitCamera;
 use crate::lsystemrenderer::instancing::{Instance, ModelTransform};
 use crate::lsystemrenderer::scene::LSystemScene;
@@ -22,7 +23,6 @@ use wgpu::{
     SurfaceConfiguration, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages,
     TextureView, TextureViewDescriptor, VertexState,
 };
-use crate::framework::scene::transform::Transformable;
 
 pub struct RenderObject {
     gpu_mesh: Arc<GpuMesh>,
@@ -159,12 +159,12 @@ impl LightSourcesBindGroupBuilder {
             entries: &[
                 BindGroupEntry {
                     binding: 0,
-                    resource: ambient_light_buffer.buffer().as_entire_binding()
+                    resource: ambient_light_buffer.buffer().as_entire_binding(),
                 },
                 BindGroupEntry {
                     binding: 1,
                     resource: lights_buffer.buffer().as_entire_binding(),
-                }
+                },
             ],
         });
         LightSourcesBindGroup {
@@ -210,11 +210,11 @@ impl Renderer {
             source: ShaderSource::Wgsl(Cow::Borrowed(include_str!("shader.wgsl"))),
         });
 
-        let camera_uniforms_bind_group_layout = gpu.device().create_bind_group_layout(
-            &BindGroupLayoutDescriptor {
-                label: None,
-                entries: &[
-                    BindGroupLayoutEntry {
+        let camera_uniforms_bind_group_layout =
+            gpu.device()
+                .create_bind_group_layout(&BindGroupLayoutDescriptor {
+                    label: None,
+                    entries: &[BindGroupLayoutEntry {
                         binding: 0,
                         visibility: ShaderStages::VERTEX | ShaderStages::FRAGMENT,
                         ty: BindingType::Buffer {
@@ -225,41 +225,12 @@ impl Renderer {
                             ),
                         },
                         count: None,
-                    },
-                ],
-            },
-        );
-        let instances_bind_group_layout = gpu.device().create_bind_group_layout(
-            &BindGroupLayoutDescriptor {
-                label: Label::from("Instance buffer bind group layout"),
-                entries: &[
-                    BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: ShaderStages::VERTEX | ShaderStages::FRAGMENT,
-                        ty: BindingType::Buffer {
-                            ty: BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: wgpu::BufferSize::new(mem::size_of::<ModelTransform>() as _),
-                        },
-                        count: None,
-                    },
-                    BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: ShaderStages::VERTEX | ShaderStages::FRAGMENT,
-                        ty: BindingType::Buffer {
-                            ty: BufferBindingType::Storage { read_only: true },
-                            has_dynamic_offset: false,
-                            min_binding_size: wgpu::BufferSize::new(mem::size_of::<Instance>() as _),
-                        },
-                        count: None,
-                    },
-                ],
-            },
-        );
-        let light_sources_bind_group_layout =
+                    }],
+                });
+        let instances_bind_group_layout =
             gpu.device()
                 .create_bind_group_layout(&BindGroupLayoutDescriptor {
-                    label: Label::from("Light sources bind group layout"),
+                    label: Label::from("Instance buffer bind group layout"),
                     entries: &[
                         BindGroupLayoutEntry {
                             binding: 0,
@@ -267,7 +238,9 @@ impl Renderer {
                             ty: BindingType::Buffer {
                                 ty: BufferBindingType::Uniform,
                                 has_dynamic_offset: false,
-                                min_binding_size: wgpu::BufferSize::new(mem::size_of::<Vec4>() as _),
+                                min_binding_size: wgpu::BufferSize::new(
+                                    mem::size_of::<ModelTransform>() as _,
+                                ),
                             },
                             count: None,
                         },
@@ -277,53 +250,82 @@ impl Renderer {
                             ty: BindingType::Buffer {
                                 ty: BufferBindingType::Storage { read_only: true },
                                 has_dynamic_offset: false,
-                                min_binding_size: wgpu::BufferSize::new(mem::size_of::<
-                                    LightSourceUniforms,
-                                >()
-                                    as _),
+                                min_binding_size: wgpu::BufferSize::new(
+                                    mem::size_of::<Instance>() as _
+                                ),
                             },
                             count: None,
-                        }
+                        },
                     ],
                 });
+        let light_sources_bind_group_layout = gpu.device().create_bind_group_layout(
+            &BindGroupLayoutDescriptor {
+                label: Label::from("Light sources bind group layout"),
+                entries: &[
+                    BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: ShaderStages::VERTEX | ShaderStages::FRAGMENT,
+                        ty: BindingType::Buffer {
+                            ty: BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: wgpu::BufferSize::new(mem::size_of::<Vec4>() as _),
+                        },
+                        count: None,
+                    },
+                    BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: ShaderStages::VERTEX | ShaderStages::FRAGMENT,
+                        ty: BindingType::Buffer {
+                            ty: BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: wgpu::BufferSize::new(mem::size_of::<
+                                LightSourceUniforms,
+                            >()
+                                as _),
+                        },
+                        count: None,
+                    },
+                ],
+            },
+        );
         let vertex_buffer_layouts = vec![Vertex::buffer_layout()];
 
-        let depth_pre_pass_pipeline_layout = gpu
-            .device()
-            .create_pipeline_layout(&PipelineLayoutDescriptor {
-                label: Label::from("depth pre-pass pipeline layout"),
-                bind_group_layouts: &[
-                    &camera_uniforms_bind_group_layout,
-                    &instances_bind_group_layout,
-                ],
-                push_constant_ranges: &[],
-            });
-        let depth_pre_pass_pipeline = gpu
-            .device()
-            .create_render_pipeline(&RenderPipelineDescriptor {
-                label: Label::from("depth pre-pass pipeline"),
-                layout: Some(&depth_pre_pass_pipeline_layout),
-                vertex: VertexState {
-                    module: &shader_module,
-                    entry_point: "depth_pre_pass",
-                    buffers: vertex_buffer_layouts.as_slice(),
-                },
-                primitive: PrimitiveState {
-                    front_face: wgpu::FrontFace::Ccw,
-                    cull_mode: Some(Back),
-                    ..Default::default()
-                },
-                depth_stencil: Some(DepthStencilState {
-                    format: depth_format,
-                    depth_write_enabled: true,
-                    depth_compare: CompareFunction::Less,
-                    stencil: Default::default(),
-                    bias: Default::default(),
-                }),
-                multisample: Default::default(),
-                fragment: None,
-                multiview: None,
-            });
+        let depth_pre_pass_pipeline_layout =
+            gpu.device()
+                .create_pipeline_layout(&PipelineLayoutDescriptor {
+                    label: Label::from("depth pre-pass pipeline layout"),
+                    bind_group_layouts: &[
+                        &camera_uniforms_bind_group_layout,
+                        &instances_bind_group_layout,
+                    ],
+                    push_constant_ranges: &[],
+                });
+        let depth_pre_pass_pipeline =
+            gpu.device()
+                .create_render_pipeline(&RenderPipelineDescriptor {
+                    label: Label::from("depth pre-pass pipeline"),
+                    layout: Some(&depth_pre_pass_pipeline_layout),
+                    vertex: VertexState {
+                        module: &shader_module,
+                        entry_point: "depth_pre_pass",
+                        buffers: vertex_buffer_layouts.as_slice(),
+                    },
+                    primitive: PrimitiveState {
+                        front_face: wgpu::FrontFace::Ccw,
+                        cull_mode: Some(Back),
+                        ..Default::default()
+                    },
+                    depth_stencil: Some(DepthStencilState {
+                        format: depth_format,
+                        depth_write_enabled: true,
+                        depth_compare: CompareFunction::Less,
+                        stencil: Default::default(),
+                        bias: Default::default(),
+                    }),
+                    multisample: Default::default(),
+                    fragment: None,
+                    multiview: None,
+                });
 
         let pipeline_layout = gpu
             .device()
@@ -377,12 +379,10 @@ impl Renderer {
         let uniforms_bind_group = gpu.device().create_bind_group(&BindGroupDescriptor {
             label: Label::from("uniforms bind group"),
             layout: &camera_uniforms_bind_group_layout,
-            entries: &[
-                BindGroupEntry {
-                    binding: 0,
-                    resource: camera_uniforms.buffer().as_entire_binding(),
-                },
-            ],
+            entries: &[BindGroupEntry {
+                binding: 0,
+                resource: camera_uniforms.buffer().as_entire_binding(),
+            }],
         });
 
         Self {

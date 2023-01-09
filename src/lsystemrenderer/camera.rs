@@ -70,12 +70,15 @@ impl Update for OrbitCamera {
                             let distance_to_target = self.distance_to_target();
                             self.camera.move_right(translation.x);
                             self.camera.move_down(translation.y);
-                            self.set_target(self.camera.transform().position() + self.camera.transform().forward() * distance_to_target);
+                            self.set_target(
+                                self.camera.transform().position()
+                                    + self.camera.transform().forward() * distance_to_target,
+                            );
                         }
                     }
                     MouseEvent::Scroll(s) => {
                         self.camera.zoom_in(
-                            s.delta().abs().min(1.) * s.delta().signum() * self.zoom_speed
+                            s.delta().abs().min(1.) * s.delta().signum() * self.zoom_speed,
                         );
                     }
                     _ => {}
