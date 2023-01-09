@@ -39,7 +39,7 @@ jobs:
         run: wasm-pack build --target web
       - name: Package build
         run: |
-          touch build
+          mkdir build
           cd build
           mv ../ace-builds-1.5.0 .
           mv ../css .
