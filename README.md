@@ -1,7 +1,7 @@
 # Parametric L-systems
 An implementation of parametric L-systems for the Fractals course at TU Wien.
 
-Check it out [TODO]().
+On Windows and using Google Chrome, you can check it out directly at [jolifantobambla.github.io/parametric-l-systems](https://jolifantobambla.github.io/parametric-l-systems/).
 
 ## Install build dependencies
 * [Install Rust](https://www.rust-lang.org/tools/install)
