@@ -365,8 +365,8 @@
 
             const sceneViewContainer = document.getElementById('scene-view-container');
             const sceneCanvas = document.getElementById('scene-view');
-            sceneCanvas.width = sceneViewContainer.clientWidth;
-            sceneCanvas.height = sceneViewContainer.clientHeight;
+            sceneCanvas.width = sceneViewContainer.clientWidth * window.devicePixelRatio;
+            sceneCanvas.height = sceneViewContainer.clientHeight * window.devicePixelRatio;
             sceneCanvas.oncontextmenu = (e) => { e.preventDefault(); e.stopPropagation(); };
             sceneCanvas.addEventListener('app::frame::start', e => {
                 fpsGraph.begin();
