@@ -45,6 +45,7 @@ jobs:
           mv ../css .
           mv ../js .
           mv ../pkg .
+          mv ../scenes .
           mv ../index.html .
           mv ../DOCUMENTATION.md .
           cd ..
