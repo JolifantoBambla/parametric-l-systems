@@ -48,23 +48,16 @@ pub trait Transformable {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum Handedness {
-    LeftHanded,
-    RightHanded,
-}
-
 #[derive(Copy, Clone, Debug, Deserialize)]
 #[serde(from = "Mat3")]
 pub struct OrthonormalBasis {
     forward: Vec3,
     right: Vec3,
     up: Vec3,
-    handedness: Handedness,
 }
 
 impl OrthonormalBasis {
-    pub fn new_right_handed(forward: Vec3, up: Vec3) -> Self {
+    pub fn new(forward: Vec3, up: Vec3) -> Self {
         let forward_unit = forward.normalize();
         let up_unit = up.normalize();
         let right = forward_unit.cross(up_unit).normalize();
@@ -72,18 +65,6 @@ impl OrthonormalBasis {
             forward: forward_unit,
             right,
             up: right.cross(forward_unit).normalize(),
-            handedness: Handedness::RightHanded,
-        }
-    }
-    pub fn new_left_handed(forward: Vec3, up: Vec3) -> Self {
-        let forward_unit = forward.normalize();
-        let up_unit = up.normalize();
-        let right = up_unit.cross(forward_unit).normalize();
-        Self {
-            forward: forward_unit,
-            right,
-            up: forward_unit.cross(right).normalize(),
-            handedness: Handedness::LeftHanded,
         }
     }
     pub fn rotate(&mut self, rotation: Quat) {
@@ -127,15 +108,6 @@ impl OrthonormalBasis {
     pub fn up(&self) -> Vec3 {
         self.up
     }
-    pub fn handedness(&self) -> &Handedness {
-        &self.handedness
-    }
-    pub fn is_left_handed(&self) -> bool {
-        self.handedness == Handedness::LeftHanded
-    }
-    pub fn is_right_handed(&self) -> bool {
-        !self.is_left_handed()
-    }
 }
 
 impl Default for OrthonormalBasis {
@@ -145,14 +117,8 @@ impl Default for OrthonormalBasis {
 }
 
 impl From<Mat3> for OrthonormalBasis {
-    #[cfg(feature = "default-to-left-handed")]
     fn from(m: Mat3) -> Self {
-        Self::new_left_handed(-m.z_axis, m.y_axis)
-    }
-
-    #[cfg(not(feature = "default-to-left-handed"))]
-    fn from(m: Mat3) -> Self {
-        Self::new_right_handed(-m.z_axis, m.y_axis)
+        Self::new(-m.z_axis, m.y_axis)
     }
 }
 
@@ -228,7 +194,7 @@ impl Transform {
         let forward = target - position;
         Self {
             position,
-            orientation: OrthonormalBasis::new_right_handed(forward, up),
+            orientation: OrthonormalBasis::new(forward, up),
             scale: Vec3::ONE,
         }
     }
@@ -291,13 +257,16 @@ impl Transformable for Transform {
 }
 
 pub mod util {
-    use crate::framework::scene::transform::Transformable;
+    use crate::framework::scene::transform::{OrthonormalBasis, Transformable};
     use crate::framework::util::math::f32::is_close_to_zero;
-    use glam::{Mat3, Vec2, Vec3};
+    use glam::{Vec2, Vec3};
 
     pub trait Orbit: Transformable {
         fn target(&self) -> Vec3;
         fn set_target(&mut self, target: Vec3);
+        fn distance_to_target(&self) -> f32 {
+            self.target().distance(self.transform().position())
+        }
         fn orbit(&mut self, delta: Vec2, invert: bool) {
             if !(is_close_to_zero(delta.x) && is_close_to_zero(delta.y)) {
                 let delta_scaled = delta * (std::f32::consts::TAU);
@@ -316,30 +285,31 @@ pub mod util {
                     self.transform().position()
                 };
 
+                let up = self.transform().up();
                 let center_to_eye = position - origin;
-                let radius = center_to_eye.length();
 
-                let z = center_to_eye.normalize();
-                let y = self.transform().up();
-                let x = y.cross(z).normalize();
+                let mut orientation = OrthonormalBasis::new(
+                    center_to_eye.normalize(),
+                    up
+                );
+                orientation.yaw(-delta_scaled.x);
+                let direction_yaw = orientation.forward();
+                orientation.pitch(delta_scaled.y);
+                let direction_pitch = orientation.forward();
+                let direction = if direction_pitch.x.signum() == direction_yaw.x.signum() {
+                    direction_pitch
+                } else {
+                    direction_yaw
+                };
 
-                let y_rotation = Mat3::from_axis_angle(y, -delta_scaled.x);
-                let x_rotation = Mat3::from_axis_angle(x, -delta_scaled.y);
-
-                let rotated_y = y_rotation.mul_vec3(z);
-                let rotated_x = x_rotation.mul_vec3(rotated_y);
-
-                let new_position = origin
-                    + (if rotated_x.x.signum() == rotated_y.x.signum() {
-                        rotated_x
-                    } else {
-                        rotated_y
-                    } * radius);
+                let new_position = origin + direction * self.distance_to_target();
                 if invert {
                     self.set_target(new_position);
                 } else {
                     self.transform_mut().set_position(new_position);
                 }
+                let forward = (self.target() - self.transform().position()).normalize();
+                self.transform_mut().set_orientation(OrthonormalBasis::new(forward, up));
             }
         }
     }

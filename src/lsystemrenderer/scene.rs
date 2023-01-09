@@ -98,7 +98,8 @@ impl LSystemScene {
         let camera = OrbitCamera::new(
             Projection::new_perspective(f32::to_radians(45.), view_aspect_ratio, 0.0001, 1000.0),
             CameraView::from(scene_descriptor.scene().camera()),
-            5.0,
+            10.0,
+            0.1,
         );
 
         let ambient_light = if let Some(descriptor) = scene_descriptor.scene().lights().ambient() {

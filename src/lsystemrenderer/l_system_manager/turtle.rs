@@ -19,11 +19,7 @@ pub struct Tropism {
 
 impl Tropism {
     pub fn corrected_forward(&self, orientation: &OrthonormalBasis) -> Vec3 {
-        let torque = if orientation.is_left_handed() {
-            orientation.forward().cross(self.direction)
-        } else {
-            self.direction.cross(orientation.forward())
-        };
+        let torque = self.direction.cross(orientation.forward());
         let alpha = self.e * torque.length();
         (orientation.forward() + (self.direction * alpha)).normalize()
     }
@@ -92,26 +88,15 @@ struct TurtleState {
 
 impl TurtleState {
     pub fn rotate_towards_up_plane(&mut self) {
-        let orientation = if self.initial_orientation.is_left_handed() {
-            OrthonormalBasis::new_left_handed(
-                self.transform.forward(),
-                self.initial_orientation.forward(),
-            )
-        } else {
-            OrthonormalBasis::new_right_handed(
-                self.transform.forward(),
-                self.initial_orientation.forward(),
-            )
-        };
+        let orientation = OrthonormalBasis::new(
+            self.transform.forward(),
+            self.initial_orientation.forward(),
+        );
         self.transform.set_orientation(orientation);
     }
 
     pub fn set_forward(&mut self, forward: Vec3) {
-        let orientation = if self.initial_orientation.is_left_handed() {
-            OrthonormalBasis::new_left_handed(forward, self.transform.up())
-        } else {
-            OrthonormalBasis::new_right_handed(forward, self.transform.up())
-        };
+        let orientation = OrthonormalBasis::new(forward, self.transform.up());
         self.transform.set_orientation(orientation);
     }
 

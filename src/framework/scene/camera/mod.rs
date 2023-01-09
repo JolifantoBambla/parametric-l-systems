@@ -13,11 +13,17 @@ impl Camera {
     pub fn new(view: CameraView, projection: Projection) -> Self {
         Self { view, projection }
     }
-    pub fn view(&self) -> CameraView {
-        self.view
+    pub fn view(&self) -> &CameraView {
+        &self.view
     }
-    pub fn projection(&self) -> Projection {
-        self.projection
+    pub fn view_mut(&mut self) -> &mut CameraView {
+        &mut self.view
+    }
+    pub fn projection(&self) -> &Projection {
+        &self.projection
+    }
+    pub fn projection_mut(&mut self) -> &mut Projection {
+        &mut self.projection
     }
     pub fn view_mat(&self) -> Mat4 {
         self.view.view()
@@ -61,7 +67,7 @@ impl CameraView {
         Self {
             transform: Transform::new(
                 position,
-                OrthonormalBasis::new_right_handed(center_of_projection - position, up),
+                OrthonormalBasis::new(center_of_projection - position, up),
                 Vec3::ONE,
             ),
             center_of_projection,
@@ -77,19 +83,11 @@ impl CameraView {
     }
 
     pub fn view(&self) -> Mat4 {
-        if self.transform.orientation().is_left_handed() {
-            Mat4::look_at_lh(
-                self.transform.position(),
-                self.center_of_projection,
-                self.transform.up(),
-            )
-        } else {
-            Mat4::look_at_rh(
-                self.transform.position(),
-                self.center_of_projection,
-                self.transform.up(),
-            )
-        }
+        Mat4::look_at_rh(
+            self.transform.position(),
+            self.center_of_projection,
+            self.transform.up(),
+        )
     }
 
     pub fn zoom_in(&mut self, delta: f32) {

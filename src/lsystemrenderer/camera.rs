@@ -11,13 +11,15 @@ use glam::{Mat4, Vec3};
 pub struct OrbitCamera {
     camera: Camera,
     speed: f32,
+    zoom_speed: f32,
 }
 
 impl OrbitCamera {
-    pub fn new(projection: Projection, transform: CameraView, speed: f32) -> Self {
+    pub fn new(projection: Projection, transform: CameraView, speed: f32, zoom_speed: f32) -> Self {
         Self {
             camera: Camera::new(transform, projection),
             speed,
+            zoom_speed,
         }
     }
     pub fn view(&self) -> Mat4 {
@@ -44,13 +46,13 @@ impl Orbit for OrbitCamera {
     }
 
     fn set_target(&mut self, target: Vec3) {
-        self.camera.view().set_center_of_projection(target);
+        self.camera.view_mut().set_center_of_projection(target);
     }
 }
 
 impl OnResize for OrbitCamera {
     fn on_resize(&mut self, width: u32, height: u32) {
-        self.camera.projection().on_resize(width, height)
+        self.camera.projection_mut().on_resize(width, height)
     }
 }
 
@@ -64,14 +66,17 @@ impl Update for OrbitCamera {
                             self.orbit(m.delta(), false);
                         }
                         if m.state().right_button_pressed() {
-                            let translation = m.delta() * self.speed * 20.;
+                            let translation = m.delta() * self.speed;
+                            let distance_to_target = self.distance_to_target();
                             self.camera.move_right(translation.x);
                             self.camera.move_down(translation.y);
+                            self.set_target(self.camera.transform().position() + self.camera.transform().forward() * distance_to_target);
                         }
                     }
                     MouseEvent::Scroll(s) => {
-                        self.camera
-                            .zoom_in(s.delta().abs().min(1.) * s.delta().signum());
+                        self.camera.zoom_in(
+                            s.delta().abs().min(1.) * s.delta().signum() * self.zoom_speed
+                        );
                     }
                     _ => {}
                 },
