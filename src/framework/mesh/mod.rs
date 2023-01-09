@@ -189,7 +189,8 @@ impl<V: FromPositionNormalTextureCoordinates + Position> Mesh<V> {
         Mesh::new_cylinder(32, 1, centered)
     }
 
-    // https://vorg.github.io/pex/docs/pex-gen/Cylinder.html
+    // ported from https://vorg.github.io/pex/docs/pex-gen/Cylinder.html
+    // Copyright (c) 2012-2014 Marcin Ignac
     pub fn new_cylinder(num_sides: usize, num_segments: usize, centered: bool) -> Self {
         let radius: f32 = 0.5;
         let height: f32 = 1.0;

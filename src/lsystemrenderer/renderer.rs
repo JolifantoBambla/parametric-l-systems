@@ -1,7 +1,7 @@
 use crate::framework::context::Gpu;
 use crate::framework::event::window::OnResize;
 use crate::framework::gpu::buffer::Buffer;
-use crate::framework::mesh::vertex::{TexturedVertex, BufferLayout};
+use crate::framework::mesh::vertex::{Vertex, BufferLayout};
 use crate::framework::renderer::drawable::{Draw, DrawInstanced, GpuMesh};
 use crate::framework::scene::light::{Light, LightSource, LightSourceType};
 use crate::lsystemrenderer::camera::OrbitCamera;
@@ -286,7 +286,7 @@ impl Renderer {
                         }
                     ],
                 });
-        let vertex_buffer_layouts = vec![TexturedVertex::buffer_layout()];
+        let vertex_buffer_layouts = vec![Vertex::buffer_layout()];
 
         let depth_pre_pass_pipeline_layout = gpu
             .device()
