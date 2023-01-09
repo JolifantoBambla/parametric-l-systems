@@ -169,6 +169,9 @@ impl LSystemModel {
             material_state: initial_material_state,
             ..Default::default()
         };
+
+        // the L-system might specify a tropism in the L-system's local space
+        // -> transform it to the turtle's local space (a child of the L-system's space)
         let tropism = world_tropism.as_ref().map(|world_tropism| Tropism {
             direction: l_system_transform
                 .as_mat4()
@@ -178,8 +181,10 @@ impl LSystemModel {
             e: world_tropism.e,
         });
 
-        let cylinder_aabb = Bounds3::new(Vec3::new(-0.5, 0.0, -0.5), Vec3::new(0.5, 1.0, 0.5));
+        // the base cylinder mesh is oriented along the y axis but the turtle is oriented along the z axis
         let cylinder_base_rotation = Quat::from_rotation_x(f32::to_radians(-90.));
+        let cylinder_aabb = Bounds3::new(Vec3::new(-0.5, 0.0, -0.5), Vec3::new(0.5, 1.0, 0.5));
+
         for c in commands {
             if state.ignoring_branch_depth > 0 {
                 match c {

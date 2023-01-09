@@ -39,6 +39,8 @@ impl LSystemManager {
             .expect("Could not parse turtle commands");
 
         let material_state = initial_material_state.unwrap_or_default();
+
+        // evaluate the first iteration
         iterations.push(LSystemModel::from_turtle_commands(
             &commands,
             transform,
@@ -77,6 +79,9 @@ impl LSystemManager {
 
 impl Update for LSystemManager {
     fn update(&mut self, input: &Input) {
+        // if iterations have been requested but not yet evaluated, evaluate more iterations until
+        // either all requested iterations have been evaluated, or the time to iterate per frame is
+        // exceeded
         while self.max_target_iteration >= self.iterations.len() as u32 {
             let commands: Vec<TurtleCommand> =
                 serde_wasm_bindgen::from_value(self.l_system.next_raw())

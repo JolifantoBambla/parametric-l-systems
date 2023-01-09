@@ -95,6 +95,7 @@ impl LSystemScene {
         view_aspect_ratio: f32,
         gpu: &Arc<Gpu>,
     ) -> Self {
+        // parse camera from scene descriptor
         let camera = OrbitCamera::new(
             Projection::new_perspective(f32::to_radians(45.), view_aspect_ratio, 0.0001, 1000.0),
             CameraView::from(scene_descriptor.scene().camera()),
@@ -102,6 +103,7 @@ impl LSystemScene {
             0.1,
         );
 
+        // parse light sources from scene descriptor
         let ambient_light = if let Some(descriptor) = scene_descriptor.scene().lights().ambient() {
             LightSource::new_ambient(descriptor.color())
         } else {
@@ -128,6 +130,8 @@ impl LSystemScene {
             gpu.device(),
         ));
 
+        // parse resources from scene descriptor
+        // ignores faulty resources
         let mut resources: HashMap<String, Resource> = HashMap::new();
         if let Some(scene_resources) = scene_descriptor.resources() {
             for (resource_id, resource) in scene_resources.iter() {
@@ -153,6 +157,8 @@ impl LSystemScene {
             }
         }
 
+        // initialize L-system managers for all L-systems in the scene
+        // ignores faulty L-systems
         let mut l_system_managers = HashMap::new();
         for (name, mut system) in l_systems.drain() {
             if !scene_descriptor.l_systems().contains_key(&name) {
@@ -201,6 +207,8 @@ impl LSystemScene {
             l_system_managers.insert(name, instances);
         }
 
+        // parse scene objects from the scene descriptor
+        // ignore objects with invalid references
         let mut objects = HashMap::new();
         for (object_id, descriptor) in scene_descriptor.scene().objects() {
             match descriptor {
@@ -354,6 +362,10 @@ impl LSystemScene {
                         .render_objects
                         .contains_key(&l_system.target_iteration)
                     {
+                        // to find the object's L-system iteration for this frame, check if ...
+                        // - the object already stores its desired iteration
+                        // - the L-system already evaluated the desired iteration
+                        // - the L-system already evaluated an iteration closer to the desired iteration
                         let iteration = self
                             .l_systems
                             .get(&l_system.system)
@@ -367,6 +379,8 @@ impl LSystemScene {
                             true
                         };
                         if insert {
+                            // prepare render objects for all primitives used by the object's new
+                            // L-system iteration and update the object
                             let cylinder_render_object = render_object_creator.build(
                                 &self.cylinder_mesh,
                                 &o.transform_buffer,
@@ -394,6 +408,7 @@ impl LSystemScene {
                     }
                 }
                 Primitive::Mesh(mesh) => {
+                    // prepare the object's render object if it is uninitialized
                     if mesh.render_objects.is_none() {
                         mesh.render_objects = Some(vec![render_object_creator.build(
                             &mesh.mesh,
