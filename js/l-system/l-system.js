@@ -425,6 +425,8 @@ export class LSystemParser {
                 }
 
                 const spec = specs[i];
+
+                // find all productions with same requirements
                 const operations = [];
                 for (let j = i; j < specs.length; ++j) {
                     const s = specs[j];
@@ -457,11 +459,11 @@ export class LSystemParser {
                     processed.add(j);
                 }
 
+                // determine probabilities for operations of productions with equal requirements
                 const numNoProbability = operations.reduce((sum, c) => sum + (c.probability ? 0 : 1), 0);
                 const sumProbability = operations.reduce((sum, c) => sum + (c.probability || 0), 0);
                 const defaultProbability = (1.0 - sumProbability) / numNoProbability;
 
-                // todo: make sameO
                 const ops = [];
                 let offset = 0.0;
                 for (const i in operations) {
@@ -475,6 +477,7 @@ export class LSystemParser {
                     }
                 }
 
+                // add new production to mapping of symbol -> productions
                 if (!productions[symbolName]) {
                     productions[symbolName] = [];
                 }
@@ -493,6 +496,7 @@ export class LSystemParser {
         }, {});
     }
 
+    // creates a js function using the l-system's parameters and the production's parameters and its condition
     #parseProductionCondition(conditionDefinition, moduleParameters, predecessorParameters, successorParameters, systemParameters) {
         const requiredSystemParameters = [];
         for (const p of Object.keys(systemParameters)) {
@@ -516,6 +520,7 @@ export class LSystemParser {
         };
     }
 
+    // creates a js function using the l-system's parameters and the production's parameters and its body
     #parseProductionBody(bodyDefinition, moduleParameters, predecessorParameters, successorParameters, systemParameters, symbols) {
         const producedSymbols = LSystemParser.#parseProductionPreOrSuccessors(bodyDefinition, symbols);
         const body = producedSymbols.map(s => {
@@ -532,6 +537,7 @@ export class LSystemParser {
     }
 
     // todo: same as parseAxiom except for Symbol instead of Module -> combine and add if statement
+    // parses predecessors or successors from a production's module declaration (also used to parse modules in a production's body)
     static #parseProductionPreOrSuccessors(moduleDefinitions, symbols) {
         const parsedSymbols = [];
         const originalAxiom = `${moduleDefinitions}`;
@@ -568,6 +574,7 @@ export class LSystemParser {
         return parsedSymbols;
     }
 
+    // parses the l-system's axiom into a list of modules
     static #parseAxiom(axiom, symbols, parameters) {
         const parsedAxiom = [];
         const originalAxiom = `${axiom}`;
@@ -605,6 +612,7 @@ export class LSystemParser {
         return parsedAxiom;
     }
 
+    // splits a production's module declaration in its three parts (main module, and environment)
     #splitModuleSpecification(definition) {
         const predSeparator = definition.indexOf(this.#modulePredecessorSeparator);
         const succSeparator = definition.indexOf(this.#moduleSuccessorSeparator);
@@ -617,6 +625,7 @@ export class LSystemParser {
         }
     }
 
+    // splits a production's body into its four parts (probability, module declaration, condition, body)
     #splitProductionDefinition(definition) {
         const cleanDefinition = definition.replace(/\s/g, '');
         let probSepIdx = cleanDefinition.indexOf(this.#probabilitySeparator);
@@ -679,6 +688,7 @@ export class LSystem {
             return null;
         }
         candidates.sort((a, b) => b.rank() - a.rank());
+        // check for each candidate if its requirements are met -> choose the first one for which the requirements are met
         for (const c of candidates) {
             let matches = true;
             const predecessors = [];
@@ -739,6 +749,8 @@ export class LSystemIterator {
 
     current(asString = true) {
         return asString ? this.#state.toString() : this.#state.toSerializable().axiom.map(s => {
+            // ~<primitive name> modules are replaced with ~("<primitive name>") modules s.t. they get parsed to the
+            // correct turtle commands (see DOCUMENTATION.md)
             if (s.name[0] === '~') {
                 return {
                     name: '~',
@@ -767,6 +779,7 @@ export class LSystemIterator {
     }
 }
 
+// unused: function to test some l-system definitions during development
 function runLSystem(definition) {
     const lSystem = new LSystemParser({}).parseLSystem(definition);
     const evaluator = new LSystemIterator(lSystem);
@@ -785,6 +798,7 @@ function runLSystem(definition) {
     return lSystem;
 }
 
+// unused: function to test some l-system definitions during development
 export function testLSystems() {
     const deterministic = {
         axiom: 'a',
