@@ -4,18 +4,20 @@
 
 Allows users to upload, edit, and save input files for this tool.
 Additionally, the buttons `Test` and `Render` allow users to run test iterations of the L-systems, or render the Scene defined in the current
-input file (see [Input File Format](#input-file-format)) respectively.
-The editor is initialized with a default input file.
+input file (see [Input File Format](#input-file-format)) in the [viewer](#viewer).
+The editor is initialized with a default input file that is then tested and rendered in the viewer (if the browser supports WebGPU).
 
 ### Test Output
 
 Shows the output of test iterations run for L-systems defined in the current input file.
 By default, 3 iterations are run for each instance of each L-system (see [L-systems](#l-systems) and [Instaces](#instances)).
+This default number of iterations can be changed in the input file (see [Instaces](#instances)).
 
 ### Viewer
 
-A 3D rendering of the scene defined in the last input file passed to the renderer via clicking the `Render` button.
+A 3D rendering of the scene defined in the last input file passed to the renderer via clicking the `Render` button or at initialization.
 The camera orbits around the center of the scene and can be controlled via the mouse: to change the camera's orientation click the left mouse button and move the mouse.
+Moving the mouse while pressing the right mouse button moves the camera.
 The mouse wheel controls the camera's zoom level.
 The active iteration of each L-system instance in the scene can be controlled by a corresponding slider in the user interface.
 If an iteration has not yet been evaluated by the system, this is done on the fly.
@@ -50,6 +52,13 @@ Example:
 Several objects in an input file may specify a `"transform"` property that defines their relation to their embedding space.
 A transform is given as an array of 12 floats, the elements of a 4x4 column-major matrix.
 All transform properties are optional and default to the identity.
+The following example shows a translation on the x-axis by 1:
+```json
+[1, 0, 0, 0,
+ 0, 1, 0, 0,
+ 0, 0, 1, 0,
+ 1, 0, 0, 1]
+```
 
 ### Material
 
@@ -104,7 +113,7 @@ Each L-system specifies the following properties:
 The actual L-system consisting of the following properties:
 - **Alphabet**: A collection of modules that may occur in either the axiom or a production. Each module is uniquely defined by a name and an implicit number of parameters (e.g., `Foo(a,b,c)` and `Foo(x,y,z)` are equivalent in the context of the L-system).
 - **Parameters**: A collection of global, immutable parameters that may occur in either the axiom or a production. Parameter names must be valid identifiers in the JavaScript language and their values must be numbers (they are coerced to the JavaScript `Number` type). Parameter values may be overriden by an [instance](#instances) before they are evaluated.
-- **Productions**: A collection of productions to transform modules in the L-systems axiom. Productions may only use modules defined in the L-system's alphabet and parameters defined by the module they replace, the module's environment, i.e., predecessors or successors of the module they replace, or by the L-system itself.
+- **Productions**: A collection of productions to replace modules in the L-systems axiom. Productions may only use modules defined in the L-system's alphabet and parameters defined by the module they replace, the module's environment, i.e., predecessors or successors of the module they replace, or by the L-system itself.
 - **Axiom**: An initial string of modules that must occur in the L-system's alphabet. Parameters of the axiom's modules must be either numbers or name one of the L-system's parameters.
 
 The following example shows an L-system with a single module in its alphabet: `A(x,y)`. Its name is `A` and its number of parameters is 2.
@@ -114,7 +123,7 @@ The first two productions do not require the module to appear in a specific envi
 While the first one specifies this probability explicitly, the second production's probability is implicitly set to `(1 - sum_explicit_p) / num_implicit_p) = (1 - 0.5) / 1 = 0.5`, where `sum_explicit_p` is the sum of all probabilities explicitly given for all productions with the same condition and environment, and `num_implicit_p` is the number of productions not specifying a probability with the same condition and environment.
 The third production replaces an instance of `A(x,y)` if there are other instances of `A(x,y)` before and after it, and the condition `x0 + y0 < x1 + x2 && x2 + y2 < b`, where `x0`, `x1`, `x2`, `y0`, `y1`, `y2` are the parameters of the three `A(x,y)` instances, and `b` is the L-system's global parameter `b`, evaluates to `true`.
 The fourth production simply replaces an instance of `A(x,y)` if there are other instances of `A(x,y)` before and after it without any further condition.
-For more detailed information see the [L-system syntax specification](#l-system-syntax).
+Finally, the L-system's axiom consists of three instances of the module `A(x,y)` which all have `x=100` and `y=b` where `b` is the L-system's global parameter `b`.
 
 ```json
 { 
@@ -134,6 +143,21 @@ For more detailed information see the [L-system syntax specification](#l-system-
   ...
 }
 ```
+
+Conditions and productions use the same syntax as the JavaScript language and are in fact parsed to JavaScript functions. E.g., you can think of the third production in the example above to define two functions like this:
+```js
+// The following production gets parsed into two functions similar to the examples given here:
+// A(x0,y0) < A(x1,y1) > A(x2,y2): x0 + y0 < x1 + x2 && x2 + y2 < b -> A(1,2)
+
+function conditionP3(x0, y0, x1, y1, x2, y2, b) {
+  return x0 + y0 < x1 + x2 && x2 + y2 < b;
+}
+
+function bodyP3(x0, y0, x1, y1, x2, y2, b) {
+  return new A(1, 2);
+}
+```
+For more detailed information see the [L-system syntax specification](#l-system-syntax).
 
 ### Instances
 
@@ -171,7 +195,7 @@ The following two examples are equivalent:
 ### Primitives
 
 A collection of named primitives that may be used by the L-system.
-Each primitive's name must be a resource defined in the input file's `"resources"` property.
+Each primitive's name must map to a resource defined in the input file's `"resources"` property.
 A primitive may specify a `"transform"` and a `"material"` property, e.g.:
 
 ```json
@@ -179,8 +203,8 @@ A primitive may specify a `"transform"` and a `"material"` property, e.g.:
   ...,
   "primitives": {
     "quad.obj": {
-      "transform": [ ... ], // optional
-      "material": { ... }   // optional
+      "transform": [ ... ], // optional; maps from the resource's local space to the turtle's space
+      "material": { ... }   // optional; if not specified, the turtle's current material is used instead
     }
   }
 }
@@ -284,7 +308,7 @@ The `"objects"` property of a scene specifies all 3D objects that are to be rend
 All objects may specify a transform matrix (see [Transform](#transform)) to transform the object to a common world space.
 All scene objects must specify a `"type"`. There are two types of objects:
 - **L-System**: An L-System object must name an L-System defined in the `"lSystems"` property of the input file, as well as one of its instances. It may specify a number of iterations to override the instance's default number of iterations (see [Instances](#instances)).
-- **Wavefront OBJ**: An external mesh resource given in the Wavefront OBJ format (see [Wavefront OBJ](#wavefront-obj)). The object must name an OBJ resource defined in the input file's `"resources"` property. An OBJ object may define a material.
+- **Wavefront OBJ**: An external mesh resource given in the Wavefront OBJ format (see [Wavefront OBJ](#wavefront-obj)). The object must name an OBJ resource defined in the input file's `"resources"` property. An OBJ object may define a `"material"`.
 
 The following example defines three scene objects: two L-system and one OBJ object.
 Both L-system objects use the same L-system instance, instance `"g"` of L-system `"tree"`.
@@ -459,20 +483,20 @@ A(1)B(2,foo)
 ## Production
 A production specifies a rule for replacing a single [module](#module) in a string of [modules](#module), e.g., in the L-system's [axiom](#axiom), with zero or more [modules](#module).
 A production consists of four parts:
-1. A **probability** for the production to be applied.
+1. A **probability** for the production to be applied if the production's requirements are met.
 2. A **module declaration** that specifies the main module to be replaced by the production and the **environment** in which the module must occur for the production to be a candidate to replace it.
 3. A **condition** that has to be fulfilled for the production to be applied.
 4. A list of **module forms**, i.e., a list of modules and rules for setting their parameters, that replace the main module with zero or more other modules.
 
 These four parts are separated by the keywords `;`, `<`, `>`, `:`, and `->` in that order, i.e.:
-`<probability> ; <module declaration list> < <module declaration> > <module declaration list> : <condition> -> <module form list>`
+`<probability> ; <list of predecessor module declarations> < <module declaration> > <list of successor module declaration> : <condition> -> <list of module forms>`
 White spaces hold no meaning and may be inserted or omitted for readability.
 
 The combination of a production's **environment** and **condition** are the production's *requirements* for it to be a **candidate** to replace the **module**.
 
 ### Probability
 The probability of a production including the separating keyword `;` is optional.
-If two or more productions have the same requirements to replace a module, the productions probabilities is used to choose one of them (see [Evaluation](#evaluation)).
+If two or more productions have the same requirements to replace a module and these requirements are met, the productions probabilities is used to choose one of them (see [Evaluation](#evaluation)).
 Probabilities must be positive floating point numbers less than or equal to 1.
 The sum of all probabilities of productions with the same requirements must be less than or equal to 1.
 If the sum of all probabilities of productions that can be applied to an evaluated module is less than 1, they are rescaled to the range `[0,1]`.
@@ -498,14 +522,14 @@ E.g.:
 
 ### Module Declaration
 
-A production's module declaration consists of the main [module](#module) to replace and its environment, i.e., modules that have to appear before and after the module that is replaced by the production.
+A production's module declaration consists of the main [module](#module) to replace and its environment, i.e., modules that have to appear before and after the main module in a given string (e.g., the L-system's axiom).
 The main module's environment is separated in the module declaration by the keywords `<` and `>` in the following order:
 ```
 <predecessor modules ... > < <main module> > <successor modules ... >
 ```
-Both parts of the main module's environment are optional.
+Both parts of the main module's environment including their corresponding separator keywords (`<` and `>`) are optional.
 
-All parameter names within a production's module declaration must be a valid identifier in the JavaScript language and unique across all modules within the declaration.
+All parameter names within a production's module declaration must be a valid identifier in the JavaScript language and unique across all modules within the declaration, as well as the L-system's list of global parameters.
 They are defined within the whole scope of the production and may be used within the production's condition and its list of module forms.
 E.g.:
 ```
@@ -526,7 +550,7 @@ B(x) < A(y,z) -> ...
 ```
 
 ### Condition
-Specifying a condition for a production optional.
+Specifying a condition for a production including the separator keyword `:` is optional.
 A condition must be empty or a valid JavaScript expression.
 If no condition is specified or the specification is empty, the condition is true by default.
 Otherwise, its result is coerced to a boolean value. 
@@ -555,7 +579,7 @@ A(x, y) : x < y -> ...
 A(x, y) : x<y -> ...
 A(y, x) : y < x -> ...
 
-// The following conditions are not equivalent because their source strings differ:
+// The following conditions are not(!) equivalent because their source strings differ:
 A(x, y) : x < y -> ...
 A(x, y) : y > x -> ...
 ```
@@ -586,7 +610,7 @@ If multiple candidates have the same rank the first that fulfills all requiremen
 If multiple candidates have the same rank and the same requirements, i.e., the same environment and condition, the rules for probabilities apply.
 In that case, the condition is only checked once even if the condition is not deterministic, e.g.:
 ```
-// The condition of the following productions is only checked once:
+// The condition of the following productions is only checked once even though it is not deterministics:
 0.5; A(x): x < Math.random() : ...
 0.5; A(x): x < Math.random() : ...
 ```
