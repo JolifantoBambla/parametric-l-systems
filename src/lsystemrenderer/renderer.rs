@@ -202,6 +202,7 @@ impl Renderer {
             dimension: TextureDimension::D2,
             format: depth_format,
             usage: TextureUsages::RENDER_ATTACHMENT,
+            view_formats: &[depth_format],
         });
         let depth_view = depth_texture.create_view(&TextureViewDescriptor::default());
 
