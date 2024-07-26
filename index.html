@@ -95,7 +95,7 @@
     <script type="module">
         import init, { main } from "./pkg/parametric_l_systems.js";
         import {LSystemIterator} from './js/l-system/l-system.js';
-        import * as defaultScene from './scenes/tree-prusinkiewicz-using-primitives.json' assert {type: 'json'};
+        import * as defaultScene from './scenes/tree-prusinkiewicz-using-primitives.json' with {type: 'json'};
 
         const tabs = document.querySelectorAll('.tabs');
         for (let i = 1; i < tabs.length; i++){
